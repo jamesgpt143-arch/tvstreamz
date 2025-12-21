@@ -40,7 +40,7 @@ const WatchLive = () => {
           </Button>
 
           {/* Main Content - Same max-width as Movies/TV Shows */}
-          <div className="max-w-5xl">
+          <div className="max-w-5xl mx-auto">
             {/* Channel Info */}
             <div className="flex items-center gap-4 mb-6">
               <img
