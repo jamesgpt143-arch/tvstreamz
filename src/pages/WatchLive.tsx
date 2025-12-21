@@ -1,7 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
-import { LiveChat } from '@/components/LiveChat';
 import { liveChannels } from '@/lib/channels';
 import { ChevronLeft, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -63,17 +62,9 @@ const WatchLive = () => {
               </div>
             </div>
 
-            {/* Player and Chat Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-              {/* Player */}
-              <div>
-                <LivePlayer channel={channel} />
-              </div>
-              
-              {/* Live Chat - Side on desktop, below on mobile */}
-              <div className="lg:h-auto">
-                <LiveChat channelId={channelId!} />
-              </div>
+            {/* Player */}
+            <div className="max-w-4xl mx-auto">
+              <LivePlayer channel={channel} />
             </div>
           </div>
 
