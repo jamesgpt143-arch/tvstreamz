@@ -44,18 +44,6 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
         />
       </div>
 
-      {/* External link */}
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-2 text-muted-foreground"
-          onClick={() => window.open(currentUrl, '_blank')}
-        >
-          <ExternalLink className="w-4 h-4" />
-          Open in new tab
-        </Button>
-      </div>
     </div>
   );
 };
