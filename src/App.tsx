@@ -10,8 +10,8 @@ import LiveTV from "./pages/LiveTV";
 import WatchLive from "./pages/WatchLive";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { FloatingChat } from "./components/FloatingChat";
 
 const queryClient = new QueryClient();
 
@@ -29,9 +29,9 @@ const App = () => (
           <Route path="/live/:channelId" element={<WatchLive />} />
           <Route path="/watch/:type/:id" element={<Watch />} />
           <Route path="/search" element={<Search />} />
-          <Route path="/auth" element={<Auth />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <FloatingChat />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
