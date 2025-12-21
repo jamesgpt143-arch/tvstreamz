@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { ContentRow } from '@/components/ContentRow';
+import { EpisodePicker } from '@/components/EpisodePicker';
 import {
   fetchMovieDetails,
   fetchTVDetails,
@@ -20,6 +21,10 @@ const Watch = () => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // For TV shows
+  const [selectedSeason, setSelectedSeason] = useState(1);
+  const [selectedEpisode, setSelectedEpisode] = useState(1);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -30,6 +35,12 @@ const Watch = () => {
           ? await fetchMovieDetails(Number(id))
           : await fetchTVDetails(Number(id));
         setDetails(data);
+        
+        // Reset to season 1, episode 1 when loading new show
+        if (type === 'tv') {
+          setSelectedSeason(1);
+          setSelectedEpisode(1);
+        }
 
         const trending = await fetchTrending(type, 'week');
         setSimilar(trending.filter((item) => item.id !== Number(id)));
@@ -42,6 +53,11 @@ const Watch = () => {
 
     loadDetails();
   }, [id, type]);
+
+  const handleEpisodeSelect = (season: number, episode: number) => {
+    setSelectedSeason(season);
+    setSelectedEpisode(episode);
+  };
 
   if (isLoading) {
     return (
@@ -72,7 +88,10 @@ const Watch = () => {
   const date = details.release_date || details.first_air_date;
   const year = date ? new Date(date).getFullYear() : '';
   const runtime = details.runtime || (details.episode_run_time?.[0] ?? 0);
-  const servers = getStreamingUrls(details.id, type as 'movie' | 'tv');
+  const servers = type === 'movie'
+    ? getStreamingUrls(details.id, 'movie')
+    : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode);
+  const isTV = type === 'tv';
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,6 +153,11 @@ const Watch = () => {
                 <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs uppercase font-medium">
                   {type === 'movie' ? 'Movie' : 'TV Series'}
                 </span>
+                {isTV && (
+                  <span className="text-muted-foreground">
+                    S{selectedSeason} E{selectedEpisode}
+                  </span>
+                )}
               </div>
 
               {/* Genres */}
@@ -153,6 +177,19 @@ const Watch = () => {
 
               {/* Video Player */}
               <VideoPlayer servers={servers} title={title} />
+
+              {/* Episode Picker for TV Shows */}
+              {isTV && details.seasons && details.seasons.length > 0 && (
+                <div className="mt-6">
+                  <EpisodePicker
+                    tvId={details.id}
+                    seasons={details.seasons}
+                    onSelect={handleEpisodeSelect}
+                    currentSeason={selectedSeason}
+                    currentEpisode={selectedEpisode}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

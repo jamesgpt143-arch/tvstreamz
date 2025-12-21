@@ -16,6 +16,24 @@ export interface Movie {
   genre_ids?: number[];
 }
 
+export interface Season {
+  id: number;
+  name: string;
+  season_number: number;
+  episode_count: number;
+  poster_path: string | null;
+}
+
+export interface Episode {
+  id: number;
+  name: string;
+  episode_number: number;
+  season_number: number;
+  overview: string;
+  still_path: string | null;
+  air_date: string;
+}
+
 export interface MovieDetails extends Movie {
   runtime?: number;
   episode_run_time?: number[];
@@ -24,6 +42,7 @@ export interface MovieDetails extends Movie {
   status: string;
   number_of_seasons?: number;
   number_of_episodes?: number;
+  seasons?: Season[];
 }
 
 export interface TVShow {
@@ -100,11 +119,16 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
   return data.results;
 };
 
-export const getStreamingUrls = (id: number, type: 'movie' | 'tv') => ({
+export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
   'Server 1': type === 'movie' 
     ? `https://vidlink.pro/movie/${id}` 
-    : `https://vidlink.pro/tv/${id}`,
+    : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
   'Server 2': type === 'movie'
     ? `https://multiembed.mov/?video_id=${id}&tmdb=1`
-    : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=1&e=1`,
+    : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
 });
+
+export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
+  const response = await fetch(`${API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
+  return response.json();
+};
