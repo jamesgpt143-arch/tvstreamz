@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
+import { LiveChat } from '@/components/LiveChat';
 import { liveChannels } from '@/lib/channels';
 import { ChevronLeft, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,8 +45,8 @@ const WatchLive = () => {
             </Link>
           </Button>
 
-          {/* Main Content - Same max-width as Movies/TV Shows */}
-          <div className="max-w-5xl mx-auto">
+          {/* Main Content with Player and Chat side by side on desktop */}
+          <div className="max-w-6xl mx-auto">
             {/* Channel Info */}
             <div className="flex items-center gap-4 mb-6">
               <img
@@ -62,13 +63,23 @@ const WatchLive = () => {
               </div>
             </div>
 
-            {/* Player */}
-            <LivePlayer channel={channel} />
+            {/* Player and Chat Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+              {/* Player */}
+              <div>
+                <LivePlayer channel={channel} />
+              </div>
+              
+              {/* Live Chat - Side on desktop, below on mobile */}
+              <div className="lg:h-auto">
+                <LiveChat channelId={channelId!} />
+              </div>
+            </div>
           </div>
 
           {/* Other Channels - Grid Layout */}
           {otherChannels.length > 0 && (
-            <section className="mt-10 max-w-5xl mx-auto">
+            <section className="mt-10 max-w-6xl mx-auto">
               <h2 className="text-lg font-semibold mb-4">Other Channels</h2>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                 {otherChannels.map((ch) => (
