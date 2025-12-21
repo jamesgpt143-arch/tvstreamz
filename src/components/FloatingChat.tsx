@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, MessageCircle, X, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EmojiPicker } from './EmojiPicker';
 
 interface ChatMessage {
   id: string;
@@ -212,6 +213,10 @@ export const FloatingChat = () => {
     setIsLoading(false);
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji);
+  };
+
   const getInitials = (name: string) => {
     return name.slice(0, 2).toUpperCase();
   };
@@ -312,12 +317,13 @@ export const FloatingChat = () => {
 
               {/* Input */}
               {profile ? (
-                <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex gap-2">
+                <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex items-center gap-2">
+                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="text-sm"
+                    className="text-sm flex-1"
                     maxLength={500}
                   />
                   <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
