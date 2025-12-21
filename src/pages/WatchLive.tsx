@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
 import { liveChannels } from '@/lib/channels';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 
 const WatchLive = () => {
   const { channelId } = useParams<{ channelId: string }>();
+  const navigate = useNavigate();
   const channel = liveChannels.find((c) => c.id === channelId);
 
   if (!channel) {
@@ -24,6 +25,10 @@ const WatchLive = () => {
   }
 
   const otherChannels = liveChannels.filter((c) => c.id !== channelId);
+
+  const handleChannelSwitch = (newChannelId: string) => {
+    navigate(`/live/${newChannelId}`, { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,32 +66,30 @@ const WatchLive = () => {
             <LivePlayer channel={channel} />
           </div>
 
-          {/* Other Channels - Horizontal Scroll */}
+          {/* Other Channels - Grid Layout */}
           {otherChannels.length > 0 && (
-            <section className="mt-10">
+            <section className="mt-10 max-w-5xl mx-auto">
               <h2 className="text-lg font-semibold mb-4">Other Channels</h2>
-              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                 {otherChannels.map((ch) => (
-                  <Link
+                  <button
                     key={ch.id}
-                    to={`/live/${ch.id}`}
-                    className="flex-shrink-0 flex items-center gap-3 p-3 pr-5 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 group"
+                    onClick={() => handleChannelSwitch(ch.id)}
+                    className="flex flex-col items-center p-2 sm:p-3 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 group"
                   >
                     <img
                       src={ch.logo}
                       alt={ch.name}
-                      className="w-12 h-12 object-contain rounded-lg bg-secondary/50 p-1.5"
+                      className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg bg-secondary/50 p-1"
                     />
-                    <div>
-                      <p className="font-medium text-sm group-hover:text-primary transition-colors whitespace-nowrap">
-                        {ch.name}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                        <Radio className="w-3 h-3 text-destructive animate-pulse" />
-                        <span>Live</span>
-                      </div>
+                    <p className="font-medium text-[10px] sm:text-xs group-hover:text-primary transition-colors text-center mt-2 line-clamp-1">
+                      {ch.name}
+                    </p>
+                    <div className="flex items-center gap-1 text-[8px] sm:text-[10px] text-muted-foreground mt-0.5">
+                      <Radio className="w-2 h-2 text-destructive animate-pulse" />
+                      <span>Live</span>
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             </section>
