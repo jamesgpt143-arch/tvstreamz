@@ -2,11 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { Channel } from '@/lib/channels';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
+declare global {
+  interface Window {
+    shaka: any;
+  }
+}
+
 interface LivePlayerProps {
   channel: Channel;
 }
 
 export const LivePlayer = ({ channel }: LivePlayerProps) => {
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,20 +53,42 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
             });
           }
         } else if (channel.type === 'mpd') {
-          // Dynamic import for Shaka Player
-          const shaka = await import('shaka-player/dist/shaka-player.compiled');
+          // Use global shaka from CDN
+          const shaka = window.shaka;
           
-          if (videoRef.current) {
-            shaka.default.polyfill.installAll();
+          if (!shaka) {
+            setError('Shaka Player not loaded.');
+            setIsLoading(false);
+            return;
+          }
+
+          if (videoRef.current && videoContainerRef.current) {
+            shaka.polyfill.installAll();
             
-            if (!shaka.default.Player.isBrowserSupported()) {
+            if (!shaka.Player.isBrowserSupported()) {
               setError('Your browser does not support this stream format.');
               setIsLoading(false);
               return;
             }
 
-            const player = new shaka.default.Player();
+            const player = new shaka.Player();
             await player.attach(videoRef.current);
+
+            // Initialize UI
+            const ui = new shaka.ui.Overlay(player, videoContainerRef.current, videoRef.current);
+            ui.configure({
+              addBigPlayButton: true,
+              controlPanelElements: [
+                'play_pause',
+                'time_and_duration',
+                'spacer',
+                'mute',
+                'volume',
+                'fullscreen',
+                'overflow_menu'
+              ],
+              overflowMenuButtons: ['quality', 'playback_rate', 'picture_in_picture']
+            });
 
             player.configure({
               drm: {
@@ -106,15 +135,19 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
   }
 
   return (
-    <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
+    <div 
+      ref={videoContainerRef}
+      className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative"
+      data-shaka-player-container
+    >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-card">
+        <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
         </div>
       )}
 
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-10">
           <AlertCircle className="w-12 h-12 text-destructive" />
           <p className="text-muted-foreground">{error}</p>
         </div>
@@ -123,9 +156,9 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
       <video
         ref={videoRef}
         className="w-full h-full"
-        controls
         autoPlay
         playsInline
+        data-shaka-player
       />
     </div>
   );
