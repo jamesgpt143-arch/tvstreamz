@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Channel } from '@/lib/channels';
-import { AlertCircle, Loader2, Subtitles, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+declare global {
+  interface Window {
+    shaka: any;
+  }
+}
 
 interface LivePlayerProps {
   channel: Channel;
@@ -11,14 +17,21 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
+  const uiRef = useRef<any>(null);
   const hlsRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
-  const [hasSubtitles, setHasSubtitles] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   const destroyPlayers = useCallback(async () => {
+    if (uiRef.current) {
+      try {
+        await uiRef.current.destroy();
+      } catch (e) {
+        console.error('Error destroying Shaka UI:', e);
+      }
+      uiRef.current = null;
+    }
     if (playerRef.current) {
       try {
         await playerRef.current.destroy();
@@ -43,7 +56,6 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
     await destroyPlayers();
     setIsLoading(true);
     setError(null);
-    setHasSubtitles(false);
 
     try {
       if (channel.type === 'hls') {
@@ -63,11 +75,9 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
           
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setIsLoading(false);
-            // Check for subtitles
             if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
-              setHasSubtitles(true);
               hls.subtitleTrack = 0;
-              hls.subtitleDisplay = subtitlesEnabled;
+              hls.subtitleDisplay = true;
             }
             videoRef.current?.play().catch(() => {});
           });
@@ -86,94 +96,126 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
           });
         }
       } else if (channel.type === 'mpd') {
-        // Dynamic import for Shaka Player
-        const shaka = await import('shaka-player/dist/shaka-player.compiled');
-        
-        if (videoRef.current) {
-          shaka.default.polyfill.installAll();
+        // Use global Shaka Player UI from CDN
+        if (!window.shaka) {
+          setError('Video player not loaded. Please refresh the page.');
+          setIsLoading(false);
+          return;
+        }
+
+        window.shaka.polyfill.installAll();
+
+        if (!window.shaka.Player.isBrowserSupported()) {
+          setError('Your browser does not support this stream format.');
+          setIsLoading(false);
+          return;
+        }
+
+        if (!containerRef.current || !videoRef.current) return;
+
+        // Create new player
+        const player = new window.shaka.Player();
+        await player.attach(videoRef.current);
+        playerRef.current = player;
+
+        // Create UI with quality selector and subtitles
+        const ui = new window.shaka.ui.Overlay(player, containerRef.current, videoRef.current);
+        uiRef.current = ui;
+
+        // Configure UI with quality selector, subtitles, etc.
+        ui.configure({
+          addBigPlayButton: true,
+          controlPanelElements: [
+            'play_pause',
+            'time_and_duration',
+            'spacer',
+            'mute',
+            'volume',
+            'captions',
+            'quality',
+            'overflow_menu',
+            'fullscreen'
+          ],
+          overflowMenuButtons: [
+            'captions',
+            'quality',
+            'language',
+            'playback_rate',
+            'picture_in_picture'
+          ],
+          addSeekBar: true,
+          enableTooltips: true
+        });
+
+        // Configure player
+        player.configure({
+          drm: {
+            clearKeys: channel.clearKey || {},
+            servers: channel.widevineUrl
+              ? { 'com.widevine.alpha': channel.widevineUrl }
+              : {},
+          },
+          streaming: {
+            bufferingGoal: 15,
+            rebufferingGoal: 2,
+            alwaysStreamText: true,
+            retryParameters: {
+              maxAttempts: 3,
+              baseDelay: 1000,
+              backoffFactor: 2,
+              fuzzFactor: 0.5,
+            }
+          },
+          preferredTextLanguage: 'en',
+        });
+
+        // Error handling
+        player.addEventListener('error', (event: any) => {
+          const errorDetail = event.detail;
+          console.error('Shaka error:', errorDetail);
           
-          if (!shaka.default.Player.isBrowserSupported()) {
-            setError('Your browser does not support this stream format.');
-            setIsLoading(false);
-            return;
+          if (errorDetail.category === window.shaka.util.Error.Category.NETWORK) {
+            setError('Network Error: Stream is unreachable or blocked.');
+          } else if (errorDetail.category === window.shaka.util.Error.Category.MANIFEST) {
+            setError('Stream Error: Invalid link or stream ended.');
+          } else {
+            setError(`Playback Error: ${errorDetail.message || 'Unknown error'}`);
           }
+          setIsLoading(false);
+        });
 
-          const player = new shaka.default.Player();
-          await player.attach(videoRef.current);
-          playerRef.current = player;
-
-          // Configure player
-          player.configure({
-            drm: {
-              clearKeys: channel.clearKey || {},
-              servers: channel.widevineUrl
-                ? { 'com.widevine.alpha': channel.widevineUrl }
-                : {},
-            },
-            streaming: {
-              bufferingGoal: 15,
-              rebufferingGoal: 2,
-              alwaysStreamText: true,
-              retryParameters: {
-                maxAttempts: 3,
-                baseDelay: 1000,
-                backoffFactor: 2,
-                fuzzFactor: 0.5,
-              }
-            },
-            preferredTextLanguage: 'en',
-          });
-
-          // Error handling
-          player.addEventListener('error', (event: any) => {
-            const errorDetail = event.detail;
-            console.error('Shaka error:', errorDetail);
+        try {
+          await player.load(channel.manifestUri);
+          setIsLoading(false);
+          
+          // Auto-select subtitles if available
+          const textTracks = player.getTextTracks();
+          console.log('Available text tracks:', textTracks);
+          
+          if (textTracks && textTracks.length > 0) {
+            // Try to find English track first
+            const englishTrack = textTracks.find((track: any) => 
+              track.language === 'en' || track.language === 'eng'
+            );
             
-            if (errorDetail.category === shaka.default.util.Error.Category.NETWORK) {
-              setError('Network Error: Stream is unreachable or blocked.');
-            } else if (errorDetail.category === shaka.default.util.Error.Category.MANIFEST) {
-              setError('Stream Error: Invalid link or stream ended.');
+            if (englishTrack) {
+              player.selectTextTrack(englishTrack);
             } else {
-              setError(`Playback Error: ${errorDetail.message || 'Unknown error'}`);
-            }
-            setIsLoading(false);
-          });
-
-          try {
-            await player.load(channel.manifestUri);
-            setIsLoading(false);
-            
-            // Auto-select subtitles if available
-            const textTracks = player.getTextTracks();
-            console.log('Available text tracks:', textTracks);
-            
-            if (textTracks && textTracks.length > 0) {
-              setHasSubtitles(true);
-              
-              // Try to find English track first
-              const englishTrack = textTracks.find((track: any) => 
-                track.language === 'en' || track.language === 'eng'
-              );
-              
-              if (englishTrack) {
-                player.selectTextTrack(englishTrack);
-              } else {
-                // Select first available track
-                player.selectTextTrack(textTracks[0]);
-              }
-              
-              // Enable subtitle visibility
-              player.setTextTrackVisibility(subtitlesEnabled);
+              // Select first available track
+              player.selectTextTrack(textTracks[0]);
             }
             
-            videoRef.current?.play().catch(() => {
-              console.log("Autoplay blocked, waiting for user interaction");
-            });
-          } catch (err) {
-            console.error('Shaka load error:', err);
-            setError('Failed to load stream. The channel may require different DRM or is offline.');
-            setIsLoading(false);
+            // Enable subtitle visibility
+            player.setTextTrackVisibility(true);
           }
+          
+          videoRef.current?.play().catch(() => {
+            console.log("Autoplay blocked, waiting for user interaction");
+          });
+        } catch (err) {
+          console.error('Shaka load error:', err);
+          setError('Failed to load stream. The channel may require different DRM or is offline.');
+          setIsLoading(false);
         }
       }
     } catch (err) {
@@ -181,7 +223,7 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
       setError('Failed to initialize player.');
       setIsLoading(false);
     }
-  }, [channel, destroyPlayers, subtitlesEnabled]);
+  }, [channel, destroyPlayers]);
 
   useEffect(() => {
     loadChannel();
@@ -190,28 +232,6 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
       destroyPlayers();
     };
   }, [channel, retryCount]);
-
-  // Toggle subtitles
-  const toggleSubtitles = () => {
-    const newState = !subtitlesEnabled;
-    setSubtitlesEnabled(newState);
-    
-    if (playerRef.current) {
-      playerRef.current.setTextTrackVisibility(newState);
-    }
-    
-    if (hlsRef.current) {
-      hlsRef.current.subtitleDisplay = newState;
-    }
-    
-    // Also toggle native video text tracks
-    if (videoRef.current) {
-      const tracks = videoRef.current.textTracks;
-      for (let i = 0; i < tracks.length; i++) {
-        tracks[i].mode = newState ? 'showing' : 'hidden';
-      }
-    }
-  };
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
@@ -235,7 +255,8 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
     <div className="relative">
       <div 
         ref={containerRef}
-        className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative"
+        data-shaka-player-container
+        className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative shaka-video-container"
       >
         {isLoading && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
@@ -261,34 +282,11 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
 
         <video
           ref={videoRef}
+          data-shaka-player
           className="w-full h-full"
-          controls
           autoPlay
           playsInline
         />
-      </div>
-
-      {/* Subtitle Controls */}
-      <div className="flex items-center gap-2 mt-2">
-        <Button
-          variant={subtitlesEnabled ? "default" : "outline"}
-          size="sm"
-          onClick={toggleSubtitles}
-          className="gap-2"
-        >
-          <Subtitles className="w-4 h-4" />
-          {subtitlesEnabled ? 'Subtitles On' : 'Subtitles Off'}
-        </Button>
-        {hasSubtitles && (
-          <span className="text-xs text-green-500">
-            ✓ Subtitles available
-          </span>
-        )}
-        {!hasSubtitles && !isLoading && !error && (
-          <span className="text-xs text-muted-foreground">
-            No subtitles found
-          </span>
-        )}
       </div>
     </div>
   );
