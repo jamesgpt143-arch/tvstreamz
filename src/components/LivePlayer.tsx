@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Channel } from '@/lib/channels';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import Hls from 'hls.js';
+import shaka from 'shaka-player/dist/shaka-player.compiled';
 
 interface LivePlayerProps {
   channel: Channel;
@@ -8,23 +10,46 @@ interface LivePlayerProps {
 
 export const LivePlayer = ({ channel }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const shakaRef = useRef<shaka.Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const cleanup = useCallback(() => {
+    // Cleanup HLS
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    // Cleanup Shaka
+    if (shakaRef.current) {
+      shakaRef.current.destroy();
+      shakaRef.current = null;
+    }
+    // Reset video element
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.removeAttribute('src');
+      videoRef.current.load();
+    }
+  }, []);
 
   useEffect(() => {
     if (channel.type === 'youtube') return;
 
     const loadPlayer = async () => {
+      // Cleanup previous player first
+      cleanup();
+      
       setIsLoading(true);
       setError(null);
 
       try {
         if (channel.type === 'hls') {
-          // Dynamic import for HLS.js
-          const Hls = (await import('hls.js')).default;
-          
           if (videoRef.current && Hls.isSupported()) {
             const hls = new Hls();
+            hlsRef.current = hls;
+            
             hls.loadSource(channel.manifestUri);
             hls.attachMedia(videoRef.current);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -46,19 +71,17 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
             });
           }
         } else if (channel.type === 'mpd') {
-          // Dynamic import for Shaka Player
-          const shaka = await import('shaka-player/dist/shaka-player.compiled');
-          
           if (videoRef.current) {
-            shaka.default.polyfill.installAll();
+            shaka.polyfill.installAll();
             
-            if (!shaka.default.Player.isBrowserSupported()) {
+            if (!shaka.Player.isBrowserSupported()) {
               setError('Your browser does not support this stream format.');
               setIsLoading(false);
               return;
             }
 
-            const player = new shaka.default.Player();
+            const player = new shaka.Player();
+            shakaRef.current = player;
             await player.attach(videoRef.current);
 
             player.configure({
@@ -89,7 +112,11 @@ export const LivePlayer = ({ channel }: LivePlayerProps) => {
     };
 
     loadPlayer();
-  }, [channel]);
+
+    return () => {
+      cleanup();
+    };
+  }, [channel, cleanup]);
 
   if (channel.type === 'youtube') {
     return (
