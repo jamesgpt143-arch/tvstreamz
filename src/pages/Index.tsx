@@ -3,6 +3,7 @@ import { Navbar } from '@/components/Navbar';
 import { HeroSection } from '@/components/HeroSection';
 import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
+import { RecommendationsRow } from '@/components/RecommendationsRow';
 import { liveChannels } from '@/lib/channels';
 import {
   fetchTrending,
@@ -65,6 +66,7 @@ const Index = () => {
         <HeroSection items={trending} />
 
         <div className="relative -mt-20 z-10">
+          <RecommendationsRow />
           <ContentRow title="🔥 Trending Now" items={trending} />
           <ContentRow title="🎬 Now Playing" items={nowPlaying} type="movie" />
           <ContentRow title="🎥 Popular Movies" items={popularMovies} type="movie" />

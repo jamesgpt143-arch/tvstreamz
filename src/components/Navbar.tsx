@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Search, Menu, X, Tv, Film, MonitorPlay, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from './ThemeToggle';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -58,8 +59,8 @@ export const Navbar = () => {
             })}
           </div>
 
-          {/* Search & Mobile Menu */}
-          <div className="flex items-center gap-2">
+          {/* Search, Theme Toggle & Mobile Menu */}
+          <div className="flex items-center gap-1">
             {isSearchOpen ? (
               <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
                 <Input
@@ -89,6 +90,8 @@ export const Navbar = () => {
                 <Search className="w-5 h-5" />
               </Button>
             )}
+
+            <ThemeToggle />
 
             <Button
               variant="ghost"

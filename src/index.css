@@ -6,6 +6,44 @@
 
 @layer base {
   :root {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    --primary: 15 90% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 92%;
+    --secondary-foreground: 220 20% 10%;
+
+    --muted: 220 10% 90%;
+    --muted-foreground: 220 10% 40%;
+
+    --accent: 350 85% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 10% 85%;
+    --input: 220 10% 85%;
+    --ring: 15 90% 55%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gradient-hero: linear-gradient(135deg, hsl(15 90% 55% / 0.3), hsl(350 85% 60% / 0.2));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 10% 96%));
+    --shadow-glow: 0 0 60px hsl(15 90% 55% / 0.2);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.1);
+  }
+
+  .dark {
     --background: 220 20% 6%;
     --foreground: 0 0% 98%;
 
@@ -34,18 +72,11 @@
     --input: 220 15% 20%;
     --ring: 15 90% 55%;
 
-    --radius: 0.75rem;
-
     /* Custom tokens */
     --gradient-hero: linear-gradient(135deg, hsl(15 90% 55% / 0.3), hsl(350 85% 60% / 0.2));
     --gradient-card: linear-gradient(180deg, hsl(220 18% 12%), hsl(220 18% 8%));
     --shadow-glow: 0 0 60px hsl(15 90% 55% / 0.3);
     --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.4);
-  }
-
-  .dark {
-    --background: 220 20% 6%;
-    --foreground: 0 0% 98%;
   }
 }
 
