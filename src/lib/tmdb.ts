@@ -135,3 +135,28 @@ export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Pr
   const response = await fetch(`${API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
   return response.json();
 };
+
+// Anime functions - using animation genre (16) and Japanese origin
+export const fetchAnimeTV = async (page = 1): Promise<TVShow[]> => {
+  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&sort_by=popularity.desc&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};
+
+export const fetchAnimeMovies = async (page = 1): Promise<Movie[]> => {
+  const response = await fetch(`${API_BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=16&with_original_language=ja&sort_by=popularity.desc&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};
+
+export const fetchTopRatedAnime = async (page = 1): Promise<TVShow[]> => {
+  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=100&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};
+
+export const fetchAiringAnime = async (page = 1): Promise<TVShow[]> => {
+  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&with_status=0&sort_by=popularity.desc&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};

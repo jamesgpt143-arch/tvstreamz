@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Menu, X, Tv, Film, MonitorPlay, Home } from 'lucide-react';
+import { Search, Menu, X, Tv, Film, MonitorPlay, Home, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from './ThemeToggle';
@@ -15,6 +15,7 @@ export const Navbar = () => {
     { path: '/', label: 'Home', icon: Home },
     { path: '/movies', label: 'Movies', icon: Film },
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
+    { path: '/anime', label: 'Anime', icon: Sparkles },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
   ];
 
