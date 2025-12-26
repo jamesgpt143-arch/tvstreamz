@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
-import { fetchPopularTV, fetchTopRatedTV, TVShow } from '@/lib/tmdb';
+import { GenreFilter } from '@/components/GenreFilter';
+import { fetchPopularTV, fetchTopRatedTV, discoverContent, TVShow, TV_GENRES } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -10,6 +11,7 @@ type Category = 'popular' | 'top_rated';
 const TVShows = () => {
   const [shows, setShows] = useState<TVShow[]>([]);
   const [category, setCategory] = useState<Category>('popular');
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,10 +20,20 @@ const TVShows = () => {
     { id: 'top_rated', label: 'Top Rated' },
   ];
 
-  const fetchShows = async (cat: Category, p: number) => {
+  const fetchShows = async (cat: Category, p: number, genre: number | null) => {
     setIsLoading(true);
     try {
-      const data = cat === 'top_rated' ? await fetchTopRatedTV(p) : await fetchPopularTV(p);
+      let data: TVShow[];
+      
+      if (genre) {
+        data = await discoverContent('tv', {
+          page: p,
+          genre,
+          sortBy: cat === 'top_rated' ? 'vote_average.desc' : 'popularity.desc',
+        }) as TVShow[];
+      } else {
+        data = cat === 'top_rated' ? await fetchTopRatedTV(p) : await fetchPopularTV(p);
+      }
       setShows(p === 1 ? data : [...shows, ...data]);
     } catch (error) {
       console.error('Failed to fetch TV shows:', error);
@@ -33,25 +45,25 @@ const TVShows = () => {
   useEffect(() => {
     setShows([]);
     setPage(1);
-    fetchShows(category, 1);
-  }, [category]);
+    fetchShows(category, 1, selectedGenre);
+  }, [category, selectedGenre]);
 
   const loadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    fetchShows(category, nextPage);
+    fetchShows(category, nextPage, selectedGenre);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="pt-24 pb-12">
+      <main className="pt-24 pb-20 md:pb-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold mb-6">TV Shows</h1>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-8">
+          <div className="flex flex-wrap gap-2 mb-4">
             {categories.map((cat) => (
               <Button
                 key={cat.id}
@@ -62,6 +74,15 @@ const TVShows = () => {
                 {cat.label}
               </Button>
             ))}
+          </div>
+
+          {/* Genre Filter */}
+          <div className="mb-8">
+            <GenreFilter
+              genres={TV_GENRES}
+              selectedGenre={selectedGenre}
+              onSelectGenre={setSelectedGenre}
+            />
           </div>
 
           {/* Shows Grid */}

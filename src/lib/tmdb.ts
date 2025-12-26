@@ -54,7 +54,79 @@ export interface TVShow {
   vote_average: number;
   first_air_date: string;
   media_type?: string;
+  genre_ids?: number[];
 }
+
+export interface Video {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+// Genre lists
+export const MOVIE_GENRES: Genre[] = [
+  { id: 28, name: 'Action' },
+  { id: 12, name: 'Adventure' },
+  { id: 16, name: 'Animation' },
+  { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' },
+  { id: 99, name: 'Documentary' },
+  { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' },
+  { id: 14, name: 'Fantasy' },
+  { id: 36, name: 'History' },
+  { id: 27, name: 'Horror' },
+  { id: 10402, name: 'Music' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10749, name: 'Romance' },
+  { id: 878, name: 'Sci-Fi' },
+  { id: 10770, name: 'TV Movie' },
+  { id: 53, name: 'Thriller' },
+  { id: 10752, name: 'War' },
+  { id: 37, name: 'Western' },
+];
+
+export const TV_GENRES: Genre[] = [
+  { id: 10759, name: 'Action & Adventure' },
+  { id: 16, name: 'Animation' },
+  { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' },
+  { id: 99, name: 'Documentary' },
+  { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' },
+  { id: 10762, name: 'Kids' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10763, name: 'News' },
+  { id: 10764, name: 'Reality' },
+  { id: 10765, name: 'Sci-Fi & Fantasy' },
+  { id: 10766, name: 'Soap' },
+  { id: 10767, name: 'Talk' },
+  { id: 10768, name: 'War & Politics' },
+  { id: 37, name: 'Western' },
+];
+
+export const ANIME_GENRES: Genre[] = [
+  { id: 1, name: 'Action' },
+  { id: 2, name: 'Adventure' },
+  { id: 4, name: 'Comedy' },
+  { id: 8, name: 'Drama' },
+  { id: 10, name: 'Fantasy' },
+  { id: 14, name: 'Horror' },
+  { id: 7, name: 'Mystery' },
+  { id: 22, name: 'Romance' },
+  { id: 24, name: 'Sci-Fi' },
+  { id: 36, name: 'Slice of Life' },
+  { id: 30, name: 'Sports' },
+  { id: 37, name: 'Supernatural' },
+];
 
 export const getImageUrl = (path: string | null, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500') => {
   if (!path) return 'https://via.placeholder.com/500x750?text=No+Image';
@@ -157,6 +229,52 @@ export const fetchTopRatedAnime = async (page = 1): Promise<TVShow[]> => {
 
 export const fetchAiringAnime = async (page = 1): Promise<TVShow[]> => {
   const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&with_status=0&sort_by=popularity.desc&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};
+
+// Fetch videos/trailers
+export const fetchVideos = async (id: number, type: 'movie' | 'tv'): Promise<Video[]> => {
+  const response = await fetch(`${API_BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`);
+  const data = await response.json();
+  return data.results || [];
+};
+
+// Get YouTube trailer URL
+export const getTrailerUrl = (videos: Video[]): string | null => {
+  const trailer = videos.find(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'));
+  if (trailer) {
+    return `https://www.youtube.com/embed/${trailer.key}?autoplay=1`;
+  }
+  return null;
+};
+
+// Discover with filters
+export const discoverContent = async (
+  type: 'movie' | 'tv',
+  options: {
+    page?: number;
+    genre?: number;
+    year?: number;
+    minRating?: number;
+    sortBy?: string;
+  } = {}
+): Promise<Movie[] | TVShow[]> => {
+  const { page = 1, genre, year, minRating, sortBy = 'popularity.desc' } = options;
+  
+  let url = `${API_BASE_URL}/discover/${type}?api_key=${API_KEY}&page=${page}&sort_by=${sortBy}`;
+  
+  if (genre) url += `&with_genres=${genre}`;
+  if (year) {
+    if (type === 'movie') {
+      url += `&primary_release_year=${year}`;
+    } else {
+      url += `&first_air_date_year=${year}`;
+    }
+  }
+  if (minRating) url += `&vote_average.gte=${minRating}&vote_count.gte=50`;
+  
+  const response = await fetch(url);
   const data = await response.json();
   return data.results;
 };
