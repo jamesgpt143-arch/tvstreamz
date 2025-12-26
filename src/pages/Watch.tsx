@@ -13,6 +13,7 @@ import {
   MovieDetails,
   Movie,
 } from '@/lib/tmdb';
+import { addToWatchHistory } from '@/lib/watchHistory';
 import { ChevronLeft, Star, Calendar, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,6 +36,15 @@ const Watch = () => {
           ? await fetchMovieDetails(Number(id))
           : await fetchTVDetails(Number(id));
         setDetails(data);
+        
+        // Track watch history
+        addToWatchHistory({
+          id: data.id,
+          type: type as 'movie' | 'tv',
+          title: data.title || data.name || '',
+          poster_path: data.poster_path,
+          genre_ids: data.genres?.map(g => g.id) || [],
+        });
         
         // Reset to season 1, episode 1 when loading new show
         if (type === 'tv') {
