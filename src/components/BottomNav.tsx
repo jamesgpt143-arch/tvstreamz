@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Film, MonitorPlay, Tv, Search } from 'lucide-react';
+import { Home, Film, Sparkles, Tv, Search } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/movies', label: 'Movies', icon: Film },
-  { path: '/tv-shows', label: 'TV', icon: MonitorPlay },
+  { path: '/anime', label: 'Anime', icon: Sparkles },
   { path: '/live-tv', label: 'Live', icon: Tv },
   { path: '/search', label: 'Search', icon: Search },
 ];
