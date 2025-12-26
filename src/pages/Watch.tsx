@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { TrailerModal } from '@/components/TrailerModal';
 import { ContentRow } from '@/components/ContentRow';
 import { EpisodePicker } from '@/components/EpisodePicker';
 import {
   fetchMovieDetails,
   fetchTVDetails,
   fetchTrending,
+  fetchVideos,
+  getTrailerUrl,
   getStreamingUrls,
   getImageUrl,
   MovieDetails,
   Movie,
 } from '@/lib/tmdb';
 import { addToWatchHistory } from '@/lib/watchHistory';
-import { ChevronLeft, Star, Calendar, Clock, Loader2 } from 'lucide-react';
+import { ChevronLeft, Star, Calendar, Clock, Loader2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Watch = () => {
@@ -22,6 +25,8 @@ const Watch = () => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [showTrailer, setShowTrailer] = useState(false);
   
   // For TV shows
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -31,11 +36,19 @@ const Watch = () => {
     const loadDetails = async () => {
       if (!id || !type) return;
       setIsLoading(true);
+      setShowTrailer(false);
+      setTrailerUrl(null);
+      
       try {
         const data = type === 'movie' 
           ? await fetchMovieDetails(Number(id))
           : await fetchTVDetails(Number(id));
         setDetails(data);
+        
+        // Fetch trailer
+        const videos = await fetchVideos(Number(id), type);
+        const trailer = getTrailerUrl(videos);
+        setTrailerUrl(trailer);
         
         // Track watch history
         addToWatchHistory({
@@ -107,6 +120,16 @@ const Watch = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
+      {/* Trailer Modal */}
+      {showTrailer && trailerUrl && (
+        <TrailerModal
+          trailerUrl={trailerUrl}
+          title={title}
+          onClose={() => setShowTrailer(false)}
+          onSkip={() => setShowTrailer(false)}
+        />
+      )}
+
       {/* Backdrop */}
       <div
         className="absolute top-0 left-0 right-0 h-[50vh] bg-cover bg-center opacity-30"
@@ -144,8 +167,8 @@ const Watch = () => {
               )}
 
               <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
+                <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold">
+                  <Star className="w-4 h-4" fill="currentColor" />
                   {details.vote_average.toFixed(1)}
                 </span>
                 {year && (
@@ -184,6 +207,18 @@ const Watch = () => {
 
               {/* Overview */}
               <p className="text-muted-foreground mb-6 max-w-3xl">{details.overview}</p>
+
+              {/* Watch Trailer Button */}
+              {trailerUrl && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTrailer(true)}
+                  className="mb-4 gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  Watch Trailer
+                </Button>
+              )}
 
               {/* Video Player */}
               <VideoPlayer servers={servers} title={title} />
