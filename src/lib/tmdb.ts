@@ -127,10 +127,10 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
     ? `https://multiembed.mov/?video_id=${id}&tmdb=1`
     : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
   'Server 3': type === 'movie'
-    ? `https://zxcstream.xyz/player/movie/${id}/en`
-    : `https://zxcstream.xyz/player/tv/${id}/${season}/${episode}/en`,
-  'Server 4': type === 'movie'
     ? `https://zxcstream.xyz/embed/movie/${id}`
+    : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}`,
+  'Server 4': type === 'movie'
+    ? `https://zxcstream.xyz/player/movie/${id}/en`
     : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}`,
 });
 
