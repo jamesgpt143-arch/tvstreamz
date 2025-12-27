@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Channel } from '@/lib/channels';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import Hls from 'hls.js';
@@ -7,73 +7,20 @@ import shaka from 'shaka-player/dist/shaka-player.compiled';
 interface LivePlayerProps {
   channel: Channel;
   onStatusChange?: (isOnline: boolean) => void;
-  onSwipeLeft?: () => void;
-  onSwipeRight?: () => void;
 }
 
 // Inner component that handles the actual player
-const PlayerCore = ({ channel, onStatusChange, onSwipeLeft, onSwipeRight }: LivePlayerProps) => {
+const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const shakaRef = useRef<shaka.Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Swipe detection refs
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Update parent about online status
   useEffect(() => {
     onStatusChange?.(!error);
   }, [error, onStatusChange]);
-
-  // Swipe handlers for fullscreen
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  }, []);
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    const swipeThreshold = 80;
-    const diff = touchStartX.current - touchEndX.current;
-    
-    // Only trigger swipe in fullscreen mode
-    const isFullscreen = document.fullscreenElement !== null;
-    
-    if (isFullscreen && Math.abs(diff) > swipeThreshold) {
-      if (diff > 0) {
-        // Swiped left - next channel
-        onSwipeLeft?.();
-      } else {
-        // Swiped right - previous channel
-        onSwipeRight?.();
-      }
-    }
-    
-    touchStartX.current = 0;
-    touchEndX.current = 0;
-  }, [onSwipeLeft, onSwipeRight]);
-
-  // Add touch listeners
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: true });
-    container.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   useEffect(() => {
     let isMounted = true;
@@ -186,7 +133,7 @@ const PlayerCore = ({ channel, onStatusChange, onSwipeLeft, onSwipeRight }: Live
   }, [channel.manifestUri, channel.type, channel.clearKey, channel.widevineUrl]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0">
+    <>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -207,11 +154,11 @@ const PlayerCore = ({ channel, onStatusChange, onSwipeLeft, onSwipeRight }: Live
         autoPlay
         playsInline
       />
-    </div>
+    </>
   );
 };
 
-export const LivePlayer = ({ channel, onStatusChange, onSwipeLeft, onSwipeRight }: LivePlayerProps) => {
+export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   if (channel.type === 'youtube') {
     return (
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
@@ -233,8 +180,6 @@ export const LivePlayer = ({ channel, onStatusChange, onSwipeLeft, onSwipeRight 
         key={channel.id} 
         channel={channel} 
         onStatusChange={onStatusChange}
-        onSwipeLeft={onSwipeLeft}
-        onSwipeRight={onSwipeRight}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
@@ -13,27 +13,10 @@ const WatchLive = () => {
   const [isOnline, setIsOnline] = useState(true);
   
   const channel = liveChannels.find((c) => c.id === channelId);
-  const currentIndex = useMemo(() => 
-    liveChannels.findIndex((c) => c.id === channelId), 
-    [channelId]
-  );
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
   }, [navigate]);
-
-  // Swipe handlers for fullscreen navigation
-  const handleSwipeLeft = useCallback(() => {
-    // Next channel
-    const nextIndex = (currentIndex + 1) % liveChannels.length;
-    handleChannelSwitch(liveChannels[nextIndex].id);
-  }, [currentIndex, handleChannelSwitch]);
-
-  const handleSwipeRight = useCallback(() => {
-    // Previous channel
-    const prevIndex = currentIndex <= 0 ? liveChannels.length - 1 : currentIndex - 1;
-    handleChannelSwitch(liveChannels[prevIndex].id);
-  }, [currentIndex, handleChannelSwitch]);
 
   const handleStatusChange = useCallback((online: boolean) => {
     setIsOnline(online);
@@ -104,8 +87,6 @@ const WatchLive = () => {
               <LivePlayer 
                 channel={channel} 
                 onStatusChange={handleStatusChange}
-                onSwipeLeft={handleSwipeLeft}
-                onSwipeRight={handleSwipeRight}
               />
             </div>
 
