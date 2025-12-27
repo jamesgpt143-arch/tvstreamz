@@ -1,15 +1,43 @@
+import { useState, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
 import { liveChannels } from '@/lib/channels';
-import { ChevronLeft, Radio } from 'lucide-react';
+import { ChevronLeft, Radio, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const WatchLive = () => {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
+  const [isOnline, setIsOnline] = useState(true);
+  
   const channel = liveChannels.find((c) => c.id === channelId);
+  const currentIndex = useMemo(() => 
+    liveChannels.findIndex((c) => c.id === channelId), 
+    [channelId]
+  );
+
+  const handleChannelSwitch = useCallback((newChannelId: string) => {
+    navigate(`/live/${newChannelId}`, { replace: true });
+  }, [navigate]);
+
+  // Swipe handlers for fullscreen navigation
+  const handleSwipeLeft = useCallback(() => {
+    // Next channel
+    const nextIndex = (currentIndex + 1) % liveChannels.length;
+    handleChannelSwitch(liveChannels[nextIndex].id);
+  }, [currentIndex, handleChannelSwitch]);
+
+  const handleSwipeRight = useCallback(() => {
+    // Previous channel
+    const prevIndex = currentIndex <= 0 ? liveChannels.length - 1 : currentIndex - 1;
+    handleChannelSwitch(liveChannels[prevIndex].id);
+  }, [currentIndex, handleChannelSwitch]);
+
+  const handleStatusChange = useCallback((online: boolean) => {
+    setIsOnline(online);
+  }, []);
 
   if (!channel) {
     return (
@@ -26,10 +54,6 @@ const WatchLive = () => {
   }
 
   const otherChannels = liveChannels.filter((c) => c.id !== channelId);
-
-  const handleChannelSwitch = (newChannelId: string) => {
-    navigate(`/live/${newChannelId}`, { replace: true });
-  };
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -60,15 +84,29 @@ const WatchLive = () => {
                 />
                 <div>
                   <h1 className="text-lg font-bold">{channel.name}</h1>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Radio className="w-3 h-3 text-destructive animate-pulse" />
-                    <span>Live Now</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    {isOnline ? (
+                      <>
+                        <Radio className="w-3 h-3 text-green-500 animate-pulse" />
+                        <span className="text-green-500">Live Now</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-3 h-3 text-destructive" />
+                        <span className="text-destructive">Offline</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Player */}
-              <LivePlayer channel={channel} />
+              <LivePlayer 
+                channel={channel} 
+                onStatusChange={handleStatusChange}
+                onSwipeLeft={handleSwipeLeft}
+                onSwipeRight={handleSwipeRight}
+              />
             </div>
 
             {/* Other Channels - Separate Scrollable Section */}
