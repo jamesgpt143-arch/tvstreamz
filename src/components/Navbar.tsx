@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, X, Tv, Film, MonitorPlay, Home, Sparkles } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ThemeToggle } from './ThemeToggle';
+import { SearchSuggestions } from './SearchSuggestions';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
 
   const navItems = [
@@ -17,13 +16,6 @@ export const Navbar = () => {
     { path: '/anime', label: 'Anime', icon: Sparkles },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
   ];
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
-    }
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
@@ -59,27 +51,10 @@ export const Navbar = () => {
             })}
           </div>
 
-          {/* Search, Theme Toggle & Mobile Menu */}
+          {/* Search & Theme Toggle */}
           <div className="flex items-center gap-1">
             {isSearchOpen ? (
-              <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
-                <Input
-                  type="text"
-                  placeholder="Search movies, shows..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 sm:w-64 bg-secondary border-border"
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSearchOpen(false)}
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </form>
+              <SearchSuggestions isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
             ) : (
               <Button
                 variant="ghost"
@@ -92,7 +67,6 @@ export const Navbar = () => {
             )}
 
             <ThemeToggle />
-
           </div>
         </div>
 
