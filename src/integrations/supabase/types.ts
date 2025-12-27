@@ -71,6 +71,42 @@ export type Database = {
         }
         Relationships: []
       }
+      watchlist: {
+        Row: {
+          content_id: number
+          content_type: string
+          created_at: string
+          id: string
+          poster_path: string | null
+          release_date: string | null
+          title: string
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          content_id: number
+          content_type: string
+          created_at?: string
+          id?: string
+          poster_path?: string | null
+          release_date?: string | null
+          title: string
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          content_id?: number
+          content_type?: string
+          created_at?: string
+          id?: string
+          poster_path?: string | null
+          release_date?: string | null
+          title?: string
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
