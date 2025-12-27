@@ -1,13 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Heart, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchSuggestions } from './SearchSuggestions';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const location = useLocation();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -66,10 +91,53 @@ export const Navbar = () => {
               </Button>
             )}
 
+            <Link to="/watchlist">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Heart className="w-5 h-5" />
+              </Button>
+            </Link>
+
             <ThemeToggle />
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <User className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem className="text-muted-foreground text-sm">
+                    {user.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/watchlist" className="flex items-center gap-2 cursor-pointer">
+                      <Heart className="w-4 h-4" />
+                      My Watchlist
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
-
       </div>
     </nav>
   );
