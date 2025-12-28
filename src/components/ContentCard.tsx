@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Star, Play } from 'lucide-react';
 import { Movie, TVShow, getImageUrl } from '@/lib/tmdb';
-import { WatchlistButton } from './WatchlistButton';
 
 interface ContentCardProps {
   item: Movie | TVShow;
@@ -42,18 +41,6 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
           <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition-transform duration-300">
             <Play className="w-6 h-6 text-primary-foreground ml-1" fill="currentColor" />
           </div>
-        </div>
-
-        {/* Watchlist button */}
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <WatchlistButton
-            contentId={item.id}
-            contentType={mediaType as 'movie' | 'tv'}
-            title={title}
-            posterPath={item.poster_path}
-            voteAverage={rating}
-            releaseDate={date || null}
-          />
         </div>
 
         {/* Rating badge - more prominent */}

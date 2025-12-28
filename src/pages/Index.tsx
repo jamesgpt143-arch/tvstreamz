@@ -116,6 +116,7 @@ const Index = () => {
                 className="w-full h-auto rounded-lg"
               />
               <p className="text-center text-muted-foreground text-sm mt-2">Scan to donate via GCash</p>
+              <p className="text-center text-muted-foreground text-xs">Tap outside or press X to close</p>
             </DialogContent>
           </Dialog>
           <p className="text-muted-foreground text-sm mt-3">Tap to enlarge</p>
