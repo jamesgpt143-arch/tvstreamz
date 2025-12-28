@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import gcashQr from '@/assets/gcash-qr.jpg';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Navbar } from '@/components/Navbar';
 import { HeroSection } from '@/components/HeroSection';
 import { ContentRow } from '@/components/ContentRow';
@@ -100,12 +101,24 @@ const Index = () => {
       <footer className="py-8 border-t border-border mt-12">
         <div className="container mx-auto px-4 flex flex-col items-center">
           <h3 className="text-lg font-semibold mb-4">Support Us / Donate</h3>
-          <img 
-            src={gcashQr} 
-            alt="GCash QR Code for Donation" 
-            className="w-48 h-auto rounded-lg shadow-lg"
-          />
-          <p className="text-muted-foreground text-sm mt-3">Scan to donate via GCash</p>
+          <Dialog>
+            <DialogTrigger asChild>
+              <img 
+                src={gcashQr} 
+                alt="GCash QR Code for Donation" 
+                className="w-24 h-auto rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform"
+              />
+            </DialogTrigger>
+            <DialogContent className="max-w-sm p-4">
+              <img 
+                src={gcashQr} 
+                alt="GCash QR Code for Donation" 
+                className="w-full h-auto rounded-lg"
+              />
+              <p className="text-center text-muted-foreground text-sm mt-2">Scan to donate via GCash</p>
+            </DialogContent>
+          </Dialog>
+          <p className="text-muted-foreground text-sm mt-3">Tap to enlarge</p>
         </div>
       </footer>
     </div>
