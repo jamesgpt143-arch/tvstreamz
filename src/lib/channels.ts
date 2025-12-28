@@ -843,6 +843,14 @@ export const liveChannels: Channel[] = [
     logo: 'https://vignette1.wikia.nocookie.net/logopedia/images/3/3e/Sari-Sari_alternate_Logo.PNG/revision/latest?cb=20160619031101'
   },
   {
+ id: 'SineManila',
+    name: '&Flix',
+    manifestUri: 'https://live20.bozztv.com/giatv/giatv-sinemanila/sinemanila/chunks.m3u8',
+    type: 'hls',
+    logo: 'https://i.imgur.com/zcFUYC5.png'
+  },
+  {
+
     id: 'sony-cine',
     name: 'Sony Cine',
     manifestUri: 'https://a-cdn.klowdtv.com/live1/cine_720p/chunks.m3u8',
