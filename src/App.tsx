@@ -13,7 +13,6 @@ import WatchLive from "./pages/WatchLive";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
 
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
@@ -38,7 +37,6 @@ const App = () => (
               <Route path="/watch/:type/:id" element={<Watch />} />
               <Route path="/search" element={<Search />} />
               
-              <Route path="/auth" element={<Auth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
