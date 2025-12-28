@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Heart, User, LogOut } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchSuggestions } from './SearchSuggestions';
@@ -91,16 +91,6 @@ export const Navbar = () => {
               </Button>
             )}
 
-            <Link to="/watchlist">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Heart className="w-5 h-5" />
-              </Button>
-            </Link>
-
             <ThemeToggle />
 
             {user ? (
@@ -113,13 +103,6 @@ export const Navbar = () => {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem className="text-muted-foreground text-sm">
                     {user.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/watchlist" className="flex items-center gap-2 cursor-pointer">
-                      <Heart className="w-4 h-4" />
-                      My Watchlist
-                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
