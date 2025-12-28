@@ -75,7 +75,7 @@ export const SearchSuggestions = ({ isOpen, onClose }: SearchSuggestionsProps) =
 
   const handleSelect = (item: SearchResult) => {
     if (isChannel(item)) {
-      navigate(`/watch-live/${item.channel.id}`);
+      navigate(`/live/${item.channel.id}`);
     } else {
       const tmdbItem = item as Movie | TVShow;
       const mediaType = 'title' in tmdbItem ? 'movie' : 'tv';
