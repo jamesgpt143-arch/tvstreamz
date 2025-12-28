@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Channel } from '@/lib/channels';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import Hls from 'hls.js';
-// IMPORTANT: Changed import to .ui to enable the UI overlay (Quality Selector, etc.)
+// IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
+import 'shaka-player/dist/controls.css';
 
 interface LivePlayerProps {
   channel: Channel;
