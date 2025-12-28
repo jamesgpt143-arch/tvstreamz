@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import gcashQr from '@/assets/gcash-qr.jpg';
 import { Navbar } from '@/components/Navbar';
 import { HeroSection } from '@/components/HeroSection';
 import { ContentRow } from '@/components/ContentRow';
@@ -95,11 +96,16 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Donation Section */}
       <footer className="py-8 border-t border-border mt-12">
-        <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
-          <p>© 2024 PinoyFlix. All rights reserved.</p>
-          <p className="mt-2">Content provided by TMDB. For educational purposes only.</p>
+        <div className="container mx-auto px-4 flex flex-col items-center">
+          <h3 className="text-lg font-semibold mb-4">Support Us / Donate</h3>
+          <img 
+            src={gcashQr} 
+            alt="GCash QR Code for Donation" 
+            className="w-48 h-auto rounded-lg shadow-lg"
+          />
+          <p className="text-muted-foreground text-sm mt-3">Scan to donate via GCash</p>
         </div>
       </footer>
     </div>
