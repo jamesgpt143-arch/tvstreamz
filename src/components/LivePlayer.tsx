@@ -93,6 +93,21 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
           try {
             await player.load(channel.manifestUri);
+
+            // --- ADDED: Subtitle Logic from Stream Hub ---
+            const textTracks = player.getTextTracks();
+            // Find English track (can be 'en' or 'eng')
+            const englishTrack = textTracks.find((track: any) => 
+                track.language === 'en' || track.language === 'eng'
+            );
+
+            if (englishTrack) {
+                player.setTextTrackVisibility(true); // Turn on subtitles
+                player.selectTextTrack(englishTrack); // Select English
+                console.log('Subtitles enabled:', englishTrack);
+            }
+            // ---------------------------------------------
+
             if (isMounted) {
               setIsLoading(false);
               videoRef.current?.play().catch(() => {});
