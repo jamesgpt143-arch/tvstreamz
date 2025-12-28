@@ -844,7 +844,7 @@ export const liveChannels: Channel[] = [
   },
   {
  id: 'SineManila',
-    name: '&Flix',
+    name: 'SineManila',
     manifestUri: 'https://live20.bozztv.com/giatv/giatv-sinemanila/sinemanila/chunks.m3u8',
     type: 'hls',
     logo: 'https://i.imgur.com/zcFUYC5.png'
