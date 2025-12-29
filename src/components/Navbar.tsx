@@ -1,13 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchSuggestions } from './SearchSuggestions';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
   const location = useLocation();
+
+  // Site-wide presence tracking
+  useEffect(() => {
+    const sessionId = `user_${Math.random().toString(36).substring(2, 15)}`;
+    
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: sessionId,
+        },
+      },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const count = Object.keys(state).length;
+        setOnlineCount(Math.max(1, count));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -21,13 +54,28 @@ export const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Tv className="w-6 h-6 text-primary-foreground" />
+          {/* Logo & Online Counter */}
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Tv className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold text-gradient hidden sm:block">PinoyFlix</span>
+            </Link>
+            
+            {/* Online Counter */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <Users className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary tabular-nums">
+                {onlineCount.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">online</span>
             </div>
-            <span className="text-xl font-bold text-gradient hidden sm:block">PinoyFlix</span>
-          </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">

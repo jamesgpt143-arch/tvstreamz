@@ -15,7 +15,6 @@ import Search from "./pages/Search";
 
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
-import { FloatingViewerCounter } from "./components/FloatingViewerCounter";
 import { BottomNav } from "./components/BottomNav";
 
 const queryClient = new QueryClient();
@@ -42,7 +41,6 @@ const App = () => (
             </Routes>
             <BottomNav />
           </div>
-          <FloatingViewerCounter />
           <FloatingChat />
         </BrowserRouter>
       </TooltipProvider>
