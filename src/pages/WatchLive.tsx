@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
-import { ViewerCounter } from '@/components/ViewerCounter';
 import { liveChannels } from '@/lib/channels';
 import { ChevronLeft, Radio, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,11 +88,6 @@ const WatchLive = () => {
                 channel={channel} 
                 onStatusChange={handleStatusChange}
               />
-
-              {/* Viewer Counter */}
-              <div className="mt-3 flex justify-start">
-                <ViewerCounter channelId={channel.id} />
-              </div>
             </div>
 
             {/* Other Channels - Separate Scrollable Section */}
