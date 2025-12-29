@@ -60,7 +60,7 @@ export const Navbar = () => {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <Tv className="w-6 h-6 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-gradient hidden sm:block">PinoyFlix</span>
+              <span className="text-xl font-bold text-gradient hidden sm:block">MovieStreamz</span>
             </Link>
             
             {/* Online Counter */}
