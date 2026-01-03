@@ -11,6 +11,14 @@ export interface Channel {
 
 export const liveChannels: Channel[] = [
   {
+    id: 'metro-channel',
+    name: 'Metro Channel',
+    manifestUri: 'https://mc-w06gaampw0.bunny.run/ABSJtQ8DJg95/gsat/manifest.mpd',
+    type: 'mpd',
+    logo: 'https://d3b82urek5tfep.cloudfront.net/POSTER/fnaibd4xu8i_LANDSCAPE_SD.jpg',
+    widevineUrl: 'https://mc-w06gaampw0.bunny.run/license?cid=ABSJtQ8DJg95'
+  },
+  {
     id: 'gma7',
     name: 'GMA 7',
     manifestUri: 'https://gsattv.akamaized.net/live/media0/gma7/Fairplay/gma7.m3u8',
