@@ -11,6 +11,13 @@ export interface Channel {
 
 export const liveChannels: Channel[] = [
   {
+    id: 'gma7',
+    name: 'GMA 7',
+    manifestUri: 'https://gsattv.akamaized.net/live/media0/gma7/Fairplay/gma7.m3u8',
+    type: 'hls',
+    logo: 'https://philippines.mom-gmr.org/uploads/_processed_/0/4/csm_1011-167_import_5fdc5c345c.png'
+  },
+  {
     id: 'a2z',
     name: 'A2Z',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd',
