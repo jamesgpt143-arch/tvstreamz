@@ -11,6 +11,13 @@ export interface Channel {
 
 export const liveChannels: Channel[] = [
   {
+    id: 'gtv',
+    name: 'GTV',
+    manifestUri: 'https://gsattv.akamaized.net/live/media0/gtv/Widevine/gtv.mpd',
+    type: 'mpd',
+    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/40/GTV_Philippines_Logo_Vector.svg/250px-GTV_Philippines_Logo_Vector.svg.png'
+  },
+  {
     id: 'metro-channel',
     name: 'Metro Channel',
     manifestUri: 'https://mc-w06gaampw0.bunny.run/ABSJtQ8DJg95/gsat/manifest.mpd',
