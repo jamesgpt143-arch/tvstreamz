@@ -222,6 +222,11 @@ export const FloatingChat = () => {
   };
 
   const handleChatClick = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    
     if (!user || !profile) {
       setShowSetup(true);
     }
