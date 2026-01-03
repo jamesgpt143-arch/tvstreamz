@@ -245,7 +245,7 @@ export const FloatingChat = () => {
 
       {/* Chat Popup */}
       {isOpen && (
-        <div className="fixed bottom-36 md:bottom-24 right-4 md:right-6 z-50 w-[calc(100%-2rem)] sm:w-96 max-w-96 bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-36 md:bottom-24 right-4 md:right-6 z-50 w-[calc(100%-2rem)] sm:w-96 max-w-96 max-h-[60vh] md:max-h-[500px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
           <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export const FloatingChat = () => {
           ) : (
             <>
               {/* Messages */}
-              <ScrollArea className="flex-1 h-80 p-3" ref={scrollRef}>
+              <ScrollArea className="flex-1 min-h-0 max-h-[40vh] md:max-h-80 p-3" ref={scrollRef}>
                 <div className="space-y-3">
                   {messages.length === 0 ? (
                     <p className="text-center text-muted-foreground text-sm py-8">
