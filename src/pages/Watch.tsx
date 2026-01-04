@@ -5,6 +5,7 @@ import { VideoPlayer } from '@/components/VideoPlayer';
 import { TrailerModal } from '@/components/TrailerModal';
 import { ContentRow } from '@/components/ContentRow';
 import { EpisodePicker } from '@/components/EpisodePicker';
+import { SaveProgressDialog } from '@/components/SaveProgressDialog';
 import {
   fetchMovieDetails,
   fetchTVDetails,
@@ -18,8 +19,8 @@ import {
 } from '@/lib/tmdb';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { addToMyList, removeFromMyList, isInMyList } from '@/lib/myList';
-import { updateWatchProgress } from '@/lib/continueWatching';
-import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check } from 'lucide-react';
+import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
+import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -38,9 +39,18 @@ const Watch = () => {
   // My List state
   const [inMyList, setInMyList] = useState(false);
   
+  // Progress dialog state
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<{ currentTime: number; duration: number } | null>(null);
+  
   useEffect(() => {
     if (id && type) {
       setInMyList(isInMyList(Number(id), type));
+      // Load existing progress
+      const progress = getWatchProgress(Number(id), type);
+      if (progress) {
+        setSavedProgress({ currentTime: progress.currentTime, duration: progress.duration });
+      }
     }
   }, [id, type]);
 
@@ -145,6 +155,31 @@ const Watch = () => {
         toast.success('Added to My List');
       }
     }
+  };
+
+  const handleSaveProgress = (hours: number, minutes: number, seconds: number) => {
+    if (!details || !type) return;
+    
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const contentRuntime = details.runtime || (details.episode_run_time?.[0] ?? 90);
+    const durationSeconds = contentRuntime * 60;
+    const progress = Math.min(100, Math.round((totalSeconds / durationSeconds) * 100));
+    
+    updateWatchProgress({
+      id: details.id,
+      type: type as 'movie' | 'tv',
+      title: details.title || details.name || '',
+      poster_path: details.poster_path,
+      progress,
+      currentTime: totalSeconds,
+      duration: durationSeconds,
+      season: type === 'tv' ? selectedSeason : undefined,
+      episode: type === 'tv' ? selectedEpisode : undefined,
+    });
+    
+    setSavedProgress({ currentTime: totalSeconds, duration: durationSeconds });
+    setShowProgressDialog(false);
+    toast.success('Progress saved!');
   };
 
   if (isLoading) {
@@ -302,7 +337,24 @@ const Watch = () => {
                     Watch Trailer
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProgressDialog(true)}
+                  className="gap-2"
+                >
+                  <Bookmark className="w-4 h-4" />
+                  Save Progress
+                </Button>
               </div>
+
+              {/* Progress Dialog */}
+              <SaveProgressDialog
+                open={showProgressDialog}
+                onOpenChange={setShowProgressDialog}
+                onSave={handleSaveProgress}
+                currentTime={savedProgress?.currentTime}
+                duration={savedProgress?.duration || (runtime * 60)}
+              />
 
               {/* Video Player */}
               <VideoPlayer servers={servers} title={title} />
