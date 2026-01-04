@@ -380,7 +380,7 @@ export const FloatingChat = () => {
                                 minute: '2-digit' 
                               })}
                             </span>
-                            {user && msg.user_id === user.id && (
+                            {user && (
                               <button
                                 onClick={() => openDeleteDialog(msg.id)}
                                 className="ml-auto p-1 hover:bg-destructive/10 rounded opacity-60 hover:opacity-100 transition-opacity"
