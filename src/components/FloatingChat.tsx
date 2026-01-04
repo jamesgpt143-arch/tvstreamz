@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, MessageCircle, X, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -287,7 +287,10 @@ export const FloatingChat = () => {
           ) : (
             <>
               {/* Messages */}
-              <ScrollArea className="flex-1 min-h-0 max-h-[40vh] md:max-h-80 p-3" ref={scrollRef}>
+              <div 
+                ref={scrollRef}
+                className="flex-1 min-h-0 max-h-[40vh] md:max-h-80 overflow-y-auto p-3"
+              >
                 <div className="space-y-3">
                   {messages.length === 0 ? (
                     <p className="text-center text-muted-foreground text-sm py-8">
@@ -318,7 +321,7 @@ export const FloatingChat = () => {
                     ))
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* Input */}
               {profile ? (
