@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, X, User, Trash2 } from 'lucide-react';
+import { Send, MessageCircle, X, User, Trash2, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmojiPicker } from './EmojiPicker';
 import {
@@ -23,6 +23,7 @@ interface ChatMessage {
   avatar_url: string | null;
   message: string;
   created_at: string;
+  is_admin?: boolean;
 }
 
 interface Profile {
@@ -33,6 +34,7 @@ interface Profile {
 }
 
 const DELETE_CODE = 'darman18';
+const ADMIN_AVATAR = 'https://api.dicebear.com/7.x/bottts/svg?seed=admin&backgroundColor=0ea5e9';
 
 export const FloatingChat = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +42,7 @@ export const FloatingChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [username, setUsername] = useState('');
@@ -59,9 +62,11 @@ export const FloatingChat = () => {
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            checkAdminStatus(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
       }
     );
@@ -70,11 +75,23 @@ export const FloatingChat = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        checkAdminStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    setIsAdmin(!!data);
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -210,7 +227,13 @@ export const FloatingChat = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !user || !profile) return;
+    if (!newMessage.trim() || !user) return;
+    
+    // For admins, use admin username and avatar even without profile
+    const displayUsername = isAdmin ? 'Admin' : profile?.username;
+    const displayAvatar = isAdmin ? ADMIN_AVATAR : profile?.avatar_url;
+    
+    if (!displayUsername) return;
 
     setIsLoading(true);
 
@@ -219,8 +242,8 @@ export const FloatingChat = () => {
       .insert({
         channel_id: channelId,
         user_id: user.id,
-        username: profile.username,
-        avatar_url: profile.avatar_url,
+        username: displayUsername,
+        avatar_url: displayAvatar,
         message: newMessage.trim()
       });
 
@@ -251,10 +274,15 @@ export const FloatingChat = () => {
       return;
     }
     
-    if (!user || !profile) {
+    // Admins don't need profile setup
+    if (!user || (!profile && !isAdmin)) {
       setShowSetup(true);
     }
     setIsOpen(true);
+  };
+
+  const isAdminMessage = (username: string) => {
+    return username === 'Admin';
   };
 
   const openDeleteDialog = (messageId: string) => {
@@ -325,7 +353,7 @@ export const FloatingChat = () => {
           </div>
 
           {/* Setup Form */}
-          {showSetup && !profile ? (
+          {showSetup && !profile && !isAdmin ? (
             <form onSubmit={handleQuickSignup} className="p-4 space-y-4">
               <div className="text-center mb-4">
                 <User className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
@@ -368,13 +396,18 @@ export const FloatingChat = () => {
                       <div key={msg.id} className="flex gap-2 group">
                         <Avatar className="w-8 h-8 flex-shrink-0">
                           <AvatarImage src={msg.avatar_url || undefined} />
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {getInitials(msg.username)}
+                          <AvatarFallback className={`text-xs ${isAdminMessage(msg.username) ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
+                            {isAdminMessage(msg.username) ? <ShieldCheck className="w-4 h-4" /> : getInitials(msg.username)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs flex items-center gap-1">
-                            <span className="font-medium text-primary">{msg.username}</span>
+                            {isAdminMessage(msg.username) && (
+                              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                            )}
+                            <span className={`font-medium ${isAdminMessage(msg.username) ? 'text-primary font-bold' : 'text-primary'}`}>
+                              {msg.username}
+                            </span>
                             <span className="text-muted-foreground text-[10px]">
                               {new Date(msg.created_at).toLocaleTimeString('en-PH', { 
                                 hour: '2-digit', 
@@ -400,7 +433,7 @@ export const FloatingChat = () => {
               </div>
 
               {/* Input */}
-              {profile ? (
+              {(profile || isAdmin) ? (
                 <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex items-center gap-2">
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                   <Input
