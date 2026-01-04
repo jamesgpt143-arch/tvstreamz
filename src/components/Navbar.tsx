@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, X } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { getMyList } from '@/lib/myList';
 import { getContinueWatching } from '@/lib/continueWatching';
+import { toast } from 'sonner';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -21,7 +22,45 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [myListCount, setMyListCount] = useState(0);
   const [continueWatchingCount, setContinueWatchingCount] = useState(0);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
   const location = useLocation();
+
+  // Listen for PWA install prompt
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      toast.info('To install: tap Share → Add to Home Screen');
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      toast.success('App installed successfully!');
+      setIsInstallable(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   // Update counts when menu opens
   useEffect(() => {
@@ -190,6 +229,27 @@ export const Navbar = () => {
                       </div>
                     </div>
                   </Link>
+
+                  {/* Install App */}
+                  <button
+                    onClick={() => {
+                      handleInstallClick();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Download className="w-5 h-5 text-green-500" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium">Install App</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isInstallable ? 'Add to home screen' : 'Available offline'}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
 
               </SheetContent>

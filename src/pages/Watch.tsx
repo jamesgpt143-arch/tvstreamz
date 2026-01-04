@@ -18,6 +18,7 @@ import {
 } from '@/lib/tmdb';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { addToMyList, removeFromMyList, isInMyList } from '@/lib/myList';
+import { updateWatchProgress } from '@/lib/continueWatching';
 import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -69,6 +70,20 @@ const Watch = () => {
           poster_path: data.poster_path,
           genre_ids: data.genres?.map(g => g.id) || [],
         });
+
+        // Track continue watching (estimate progress since we use external embeds)
+        const runtime = data.runtime || (data.episode_run_time?.[0] ?? 90);
+        updateWatchProgress({
+          id: data.id,
+          type: type as 'movie' | 'tv',
+          title: data.title || data.name || '',
+          poster_path: data.poster_path,
+          progress: 5, // Start at 5% when they open
+          currentTime: 0,
+          duration: runtime * 60,
+          season: type === 'tv' ? 1 : undefined,
+          episode: type === 'tv' ? 1 : undefined,
+        });
         
         // Reset to season 1, episode 1 when loading new show
         if (type === 'tv') {
@@ -91,6 +106,22 @@ const Watch = () => {
   const handleEpisodeSelect = (season: number, episode: number) => {
     setSelectedSeason(season);
     setSelectedEpisode(episode);
+    
+    // Update continue watching for new episode
+    if (details) {
+      const runtime = details.episode_run_time?.[0] ?? 45;
+      updateWatchProgress({
+        id: details.id,
+        type: 'tv',
+        title: details.title || details.name || '',
+        poster_path: details.poster_path,
+        progress: 5,
+        currentTime: 0,
+        duration: runtime * 60,
+        season,
+        episode,
+      });
+    }
   };
 
   const handleToggleMyList = () => {
