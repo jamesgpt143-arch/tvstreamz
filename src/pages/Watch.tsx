@@ -17,8 +17,10 @@ import {
   Movie,
 } from '@/lib/tmdb';
 import { addToWatchHistory } from '@/lib/watchHistory';
-import { ChevronLeft, Star, Calendar, Clock, Loader2, Play } from 'lucide-react';
+import { addToMyList, removeFromMyList, isInMyList } from '@/lib/myList';
+import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const Watch = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
@@ -31,6 +33,15 @@ const Watch = () => {
   // For TV shows
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
+  
+  // My List state
+  const [inMyList, setInMyList] = useState(false);
+  
+  useEffect(() => {
+    if (id && type) {
+      setInMyList(isInMyList(Number(id), type));
+    }
+  }, [id, type]);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -80,6 +91,29 @@ const Watch = () => {
   const handleEpisodeSelect = (season: number, episode: number) => {
     setSelectedSeason(season);
     setSelectedEpisode(episode);
+  };
+
+  const handleToggleMyList = () => {
+    if (!details || !type) return;
+    
+    if (inMyList) {
+      removeFromMyList(details.id, type);
+      setInMyList(false);
+      toast.success('Removed from My List');
+    } else {
+      const added = addToMyList({
+        id: details.id,
+        type: type,
+        title: details.title || details.name || '',
+        poster_path: details.poster_path,
+        vote_average: details.vote_average,
+        release_date: details.release_date || details.first_air_date,
+      });
+      if (added) {
+        setInMyList(true);
+        toast.success('Added to My List');
+      }
+    }
   };
 
   if (isLoading) {
@@ -208,17 +242,36 @@ const Watch = () => {
               {/* Overview */}
               <p className="text-muted-foreground mb-6 max-w-3xl">{details.overview}</p>
 
-              {/* Watch Trailer Button */}
-              {trailerUrl && (
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 mb-4">
                 <Button
-                  variant="outline"
-                  onClick={() => setShowTrailer(true)}
-                  className="mb-4 gap-2"
+                  variant={inMyList ? "secondary" : "outline"}
+                  onClick={handleToggleMyList}
+                  className="gap-2"
                 >
-                  <Play className="w-4 h-4" />
-                  Watch Trailer
+                  {inMyList ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      In My List
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add to My List
+                    </>
+                  )}
                 </Button>
-              )}
+                {trailerUrl && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTrailer(true)}
+                    className="gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Watch Trailer
+                  </Button>
+                )}
+              </div>
 
               {/* Video Player */}
               <VideoPlayer servers={servers} title={title} />
