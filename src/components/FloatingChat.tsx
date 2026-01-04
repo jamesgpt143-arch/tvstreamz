@@ -32,7 +32,7 @@ interface Profile {
   avatar_url: string | null;
 }
 
-
+const DELETE_CODE = 'darman18';
 
 export const FloatingChat = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +46,7 @@ export const FloatingChat = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [deleteCode, setDeleteCode] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -258,11 +259,21 @@ export const FloatingChat = () => {
 
   const openDeleteDialog = (messageId: string) => {
     setMessageToDelete(messageId);
+    setDeleteCode('');
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteMessage = async () => {
     if (!messageToDelete) return;
+
+    if (deleteCode !== DELETE_CODE) {
+      toast({
+        title: "Error",
+        description: "Incorrect code",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const { error } = await supabase
       .from('live_chat_messages')
@@ -285,6 +296,7 @@ export const FloatingChat = () => {
 
     setDeleteDialogOpen(false);
     setMessageToDelete(null);
+    setDeleteCode('');
   };
 
   return (
@@ -419,9 +431,16 @@ export const FloatingChat = () => {
           <DialogHeader>
             <DialogTitle>Delete Message</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this message?
+              Enter the code to delete this message.
             </DialogDescription>
           </DialogHeader>
+          <Input
+            value={deleteCode}
+            onChange={(e) => setDeleteCode(e.target.value)}
+            placeholder="Enter code..."
+            className="mt-2"
+            type="password"
+          />
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
