@@ -14,7 +14,8 @@ import Watch from "./pages/Watch";
 import Search from "./pages/Search";
 import MyList from "./pages/MyList";
 import ContinueWatching from "./pages/ContinueWatching";
-
+import Auth from "./pages/Auth";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
@@ -40,7 +41,8 @@ const App = () => (
               <Route path="/search" element={<Search />} />
               <Route path="/my-list" element={<MyList />} />
               <Route path="/continue-watching" element={<ContinueWatching />} />
-              
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
