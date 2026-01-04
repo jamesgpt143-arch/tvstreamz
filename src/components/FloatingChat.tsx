@@ -355,7 +355,8 @@ export const FloatingChat = () => {
               {/* Messages */}
               <div 
                 ref={scrollRef}
-                className="flex-1 min-h-0 max-h-[40vh] md:max-h-80 overflow-y-auto p-3"
+                className="flex-1 min-h-0 overflow-y-scroll p-3"
+                style={{ maxHeight: 'calc(60vh - 140px)' }}
               >
                 <div className="space-y-3">
                   {messages.length === 0 ? (
