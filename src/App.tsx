@@ -12,6 +12,8 @@ import LiveTV from "./pages/LiveTV";
 import WatchLive from "./pages/WatchLive";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
+import MyList from "./pages/MyList";
+import ContinueWatching from "./pages/ContinueWatching";
 
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
@@ -36,6 +38,8 @@ const App = () => (
               <Route path="/live/:channelId" element={<WatchLive />} />
               <Route path="/watch/:type/:id" element={<Watch />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/my-list" element={<MyList />} />
+              <Route path="/continue-watching" element={<ContinueWatching />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

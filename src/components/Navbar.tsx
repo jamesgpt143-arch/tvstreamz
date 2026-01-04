@@ -1,15 +1,35 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchSuggestions } from './SearchSuggestions';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { getMyList } from '@/lib/myList';
+import { getContinueWatching } from '@/lib/continueWatching';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [myListCount, setMyListCount] = useState(0);
+  const [continueWatchingCount, setContinueWatchingCount] = useState(0);
   const location = useLocation();
+
+  // Update counts when menu opens
+  useEffect(() => {
+    if (isMenuOpen) {
+      setMyListCount(getMyList().length);
+      setContinueWatchingCount(getContinueWatching().length);
+    }
+  }, [isMenuOpen]);
 
   // Site-wide presence tracking
   useEffect(() => {
@@ -99,7 +119,7 @@ export const Navbar = () => {
             })}
           </div>
 
-          {/* Search & Theme Toggle */}
+          {/* Hamburger Menu, Search & Theme Toggle */}
           <div className="flex items-center gap-1">
             {isSearchOpen ? (
               <SearchSuggestions isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
@@ -115,6 +135,90 @@ export const Navbar = () => {
             )}
 
             <ThemeToggle />
+
+            {/* Hamburger Menu */}
+            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80">
+                <SheetHeader>
+                  <SheetTitle className="text-left">Menu</SheetTitle>
+                </SheetHeader>
+                
+                <div className="mt-6 space-y-2">
+                  {/* My List */}
+                  <Link
+                    to="/my-list"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <ListVideo className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">My List</p>
+                        <p className="text-sm text-muted-foreground">
+                          {myListCount} {myListCount === 1 ? 'item' : 'items'} saved
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Continue Watching */}
+                  <Link
+                    to="/continue-watching"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-accent" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Continue Watching</p>
+                        <p className="text-sm text-muted-foreground">
+                          {continueWatchingCount} {continueWatchingCount === 1 ? 'item' : 'items'} in progress
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+
+                {/* Mobile Navigation Links */}
+                <div className="mt-8 md:hidden">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Navigation</p>
+                  <div className="space-y-1">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = location.pathname === item.path;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive
+                              ? 'bg-primary/20 text-primary'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
