@@ -2,11 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, X, User } from 'lucide-react';
+import { Send, MessageCircle, X, User, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmojiPicker } from './EmojiPicker';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ChatMessage {
   id: string;
@@ -25,6 +32,8 @@ interface Profile {
   avatar_url: string | null;
 }
 
+const DELETE_CODE = 'darman18';
+
 export const FloatingChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -35,6 +44,9 @@ export const FloatingChat = () => {
   const [showSetup, setShowSetup] = useState(false);
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [deleteCode, setDeleteCode] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -104,6 +116,18 @@ export const FloatingChat = () => {
         },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as ChatMessage]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'live_chat_messages',
+          filter: `channel_id=eq.${channelId}`
+        },
+        (payload) => {
+          setMessages((prev) => prev.filter(msg => msg.id !== (payload.old as any).id));
         }
       )
       .subscribe();
@@ -233,6 +257,48 @@ export const FloatingChat = () => {
     setIsOpen(true);
   };
 
+  const openDeleteDialog = (messageId: string) => {
+    setMessageToDelete(messageId);
+    setDeleteCode('');
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!messageToDelete) return;
+    
+    if (deleteCode !== DELETE_CODE) {
+      toast({
+        title: "Error",
+        description: "Incorrect code. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('live_chat_messages')
+      .delete()
+      .eq('id', messageToDelete);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive"
+      });
+    } else {
+      setMessages((prev) => prev.filter(msg => msg.id !== messageToDelete));
+      toast({
+        title: "Success",
+        description: "Message deleted"
+      });
+    }
+
+    setDeleteDialogOpen(false);
+    setMessageToDelete(null);
+    setDeleteCode('');
+  };
+
   return (
     <>
       {/* Floating Button - adjusted for mobile bottom nav */}
@@ -298,7 +364,7 @@ export const FloatingChat = () => {
                     </p>
                   ) : (
                     messages.map((msg) => (
-                      <div key={msg.id} className="flex gap-2">
+                      <div key={msg.id} className="flex gap-2 group">
                         <Avatar className="w-8 h-8 flex-shrink-0">
                           <AvatarImage src={msg.avatar_url || undefined} />
                           <AvatarFallback className="text-xs bg-primary/10 text-primary">
@@ -306,14 +372,23 @@ export const FloatingChat = () => {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs">
+                          <p className="text-xs flex items-center gap-1">
                             <span className="font-medium text-primary">{msg.username}</span>
-                            <span className="text-muted-foreground ml-2 text-[10px]">
+                            <span className="text-muted-foreground text-[10px]">
                               {new Date(msg.created_at).toLocaleTimeString('en-PH', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
                               })}
                             </span>
+                            {user && msg.user_id === user.id && (
+                              <button
+                                onClick={() => openDeleteDialog(msg.id)}
+                                className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                                title="Delete message"
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </button>
+                            )}
                           </p>
                           <p className="text-sm break-words">{msg.message}</p>
                         </div>
@@ -349,6 +424,32 @@ export const FloatingChat = () => {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Message</DialogTitle>
+            <DialogDescription>
+              Type the code <span className="font-bold text-primary">darman18</span> to confirm deletion.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={deleteCode}
+            onChange={(e) => setDeleteCode(e.target.value)}
+            placeholder="Enter code..."
+            className="mt-2"
+          />
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteMessage}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
