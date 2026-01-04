@@ -20,6 +20,7 @@ import {
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { addToMyList, removeFromMyList, isInMyList } from '@/lib/myList';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
+import { trackPageView, trackContentView } from '@/lib/analytics';
 import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -61,11 +62,17 @@ const Watch = () => {
       setShowTrailer(false);
       setTrailerUrl(null);
       
+      // Track page view
+      trackPageView(`/watch/${type}/${id}`);
+      
       try {
         const data = type === 'movie' 
           ? await fetchMovieDetails(Number(id))
           : await fetchTVDetails(Number(id));
         setDetails(data);
+        
+        // Track content view for analytics
+        trackContentView(id, type, data.title || data.name || '');
         
         // Fetch trailer
         const videos = await fetchVideos(Number(id), type);

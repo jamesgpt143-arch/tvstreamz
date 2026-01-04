@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      site_analytics: {
+        Row: {
+          content_id: string | null
+          content_title: string | null
+          content_type: string | null
+          created_at: string
+          event_type: string
+          id: string
+          page_path: string
+          visitor_id: string
+        }
+        Insert: {
+          content_id?: string | null
+          content_title?: string | null
+          content_type?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          page_path: string
+          visitor_id: string
+        }
+        Update: {
+          content_id?: string | null
+          content_title?: string | null
+          content_type?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          page_path?: string
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           content_id: number

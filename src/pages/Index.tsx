@@ -6,7 +6,9 @@ import { HeroSection } from '@/components/HeroSection';
 import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
+import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { liveChannels } from '@/lib/channels';
+import { trackPageView } from '@/lib/analytics';
 import {
   fetchTrending,
   fetchPopularMovies,
@@ -28,6 +30,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    trackPageView('/');
+    
     const loadContent = async () => {
       try {
         const [trendingData, moviesData, tvData, topData, nowData] = await Promise.all([
@@ -97,8 +101,11 @@ const Index = () => {
         </div>
       </main>
 
+      {/* Site Analytics */}
+      <SiteAnalytics />
+
       {/* Donation Section */}
-      <footer className="py-8 border-t border-border mt-12">
+      <footer className="py-8 border-t border-border">
         <div className="container mx-auto px-4 flex flex-col items-center">
           <h3 className="text-lg font-semibold mb-4">Support Us / Donate</h3>
           <Dialog>
