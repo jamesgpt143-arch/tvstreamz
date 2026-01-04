@@ -192,31 +192,6 @@ export const Navbar = () => {
                   </Link>
                 </div>
 
-                {/* Mobile Navigation Links */}
-                <div className="mt-8 md:hidden">
-                  <p className="text-sm font-medium text-muted-foreground mb-3">Navigation</p>
-                  <div className="space-y-1">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = location.pathname === item.path;
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => setIsMenuOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                            isActive
-                              ? 'bg-primary/20 text-primary'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
               </SheetContent>
             </Sheet>
           </div>
