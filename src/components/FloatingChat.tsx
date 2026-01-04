@@ -383,7 +383,7 @@ export const FloatingChat = () => {
                             {user && msg.user_id === user.id && (
                               <button
                                 onClick={() => openDeleteDialog(msg.id)}
-                                className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                                className="ml-auto p-1 hover:bg-destructive/10 rounded opacity-60 hover:opacity-100 transition-opacity"
                                 title="Delete message"
                               >
                                 <Trash2 className="w-3 h-3 text-destructive" />
