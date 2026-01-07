@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Manga from "./pages/Manga";
 import MangaDetails from "./pages/MangaDetails";
 import MangaReader from "./pages/MangaReader";
+import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/manga" element={<Manga />} />
               <Route path="/manga/:mangaId" element={<MangaDetails />} />
               <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
+              <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
               <Route path="/live-tv" element={<LiveTV />} />
               <Route path="/live/:channelId" element={<WatchLive />} />
               <Route path="/watch/:type/:id" element={<Watch />} />

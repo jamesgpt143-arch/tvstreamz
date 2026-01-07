@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const MANGADEX_API = "https://api.mangadex.org";
+const COMICK_API = "https://api.comick.fun";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,7 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const endpoint = url.searchParams.get("endpoint");
+    const comickEndpoint = url.searchParams.get("comick");
     const imageUrl = url.searchParams.get("image");
 
     // Proxy image requests
@@ -25,8 +27,8 @@ serve(async (req) => {
       
       const response = await fetch(imageUrl, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": "https://mangadex.org/",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": imageUrl.includes("comick") ? "https://comick.io/" : "https://mangadex.org/",
           "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         },
       });
@@ -49,17 +51,38 @@ serve(async (req) => {
       });
     }
 
-    // Proxy API requests
+    // Proxy ComicK API requests
+    if (comickEndpoint) {
+      const comickUrl = `${COMICK_API}${comickEndpoint}`;
+      console.log("Proxying ComicK request to:", comickUrl);
+
+      const response = await fetch(comickUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Proxy MangaDex API requests
     if (!endpoint) {
       return new Response(
-        JSON.stringify({ error: "Missing endpoint or image parameter" }),
+        JSON.stringify({ error: "Missing endpoint, comick, or image parameter" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Build the MangaDex URL
     const mangadexUrl = `${MANGADEX_API}${endpoint}`;
-    console.log("Proxying request to:", mangadexUrl);
+    console.log("Proxying MangaDex request to:", mangadexUrl);
 
     const response = await fetch(mangadexUrl, {
       method: "GET",

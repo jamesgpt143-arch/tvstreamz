@@ -10,14 +10,25 @@ import {
   type Manga,
   type Chapter,
 } from '@/lib/mangadex';
-import { Loader2, BookOpen, ArrowLeft, Calendar, User, Palette, ChevronRight } from 'lucide-react';
+import {
+  searchComickManga,
+  fetchComickChapters,
+  type ComickChapter,
+} from '@/lib/comick';
+import { Loader2, BookOpen, ArrowLeft, Calendar, User, Palette, ChevronRight, RefreshCw } from 'lucide-react';
+
+type ChapterSource = 'mangadex' | 'comick';
 
 const MangaDetails = () => {
   const { mangaId } = useParams<{ mangaId: string }>();
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [comickChapters, setComickChapters] = useState<ComickChapter[]>([]);
+  const [comickHid, setComickHid] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChapters, setIsLoadingChapters] = useState(true);
+  const [chapterSource, setChapterSource] = useState<ChapterSource>('mangadex');
+  const [isSearchingFallback, setIsSearchingFallback] = useState(false);
 
   useEffect(() => {
     if (!mangaId) return;
@@ -25,6 +36,9 @@ const MangaDetails = () => {
     const loadData = async () => {
       setIsLoading(true);
       setIsLoadingChapters(true);
+      setChapterSource('mangadex');
+      setComickChapters([]);
+      setComickHid(null);
 
       const [mangaData, chaptersData] = await Promise.all([
         fetchMangaDetails(mangaId),
@@ -35,6 +49,28 @@ const MangaDetails = () => {
       setChapters(chaptersData);
       setIsLoading(false);
       setIsLoadingChapters(false);
+
+      // If no chapters from MangaDex, try ComicK as fallback
+      if (chaptersData.length === 0 && mangaData?.title) {
+        setIsSearchingFallback(true);
+        console.log('No MangaDex chapters, searching ComicK for:', mangaData.title);
+        
+        const comickResult = await searchComickManga(mangaData.title);
+        
+        if (comickResult) {
+          console.log('Found on ComicK:', comickResult);
+          setComickHid(comickResult.hid);
+          
+          const comickChaptersData = await fetchComickChapters(comickResult.hid);
+          
+          if (comickChaptersData.length > 0) {
+            setComickChapters(comickChaptersData);
+            setChapterSource('comick');
+          }
+        }
+        
+        setIsSearchingFallback(false);
+      }
     };
 
     loadData();
@@ -73,6 +109,9 @@ const MangaDetails = () => {
   const coverUrl = manga.coverUrl 
     ? getProxiedImageUrl(manga.coverUrl.replace('.256.jpg', '.512.jpg'))
     : null;
+
+  const displayChapters = chapterSource === 'mangadex' ? chapters : comickChapters;
+  const hasChapters = displayChapters.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,8 +188,13 @@ const MangaDetails = () => {
                   {manga.status === 'completed' ? '✓ Tapos' : manga.status === 'ongoing' ? '◉ Ongoing' : manga.status}
                 </span>
                 <span className="px-3 py-1 text-sm bg-secondary rounded-full">
-                  {chapters.length} chapters
+                  {displayChapters.length} chapters
                 </span>
+                {chapterSource === 'comick' && (
+                  <span className="px-3 py-1 text-sm bg-orange-500/20 text-orange-500 rounded-full">
+                    via ComicK
+                  </span>
+                )}
               </div>
 
               {/* Tags */}
@@ -175,8 +219,14 @@ const MangaDetails = () => {
               )}
 
               {/* Read Button */}
-              {chapters.length > 0 && (
-                <Link to={`/manga/${mangaId}/read/${chapters[0].id}`}>
+              {hasChapters && (
+                <Link 
+                  to={
+                    chapterSource === 'mangadex' 
+                      ? `/manga/${mangaId}/read/${chapters[0].id}`
+                      : `/manga/${mangaId}/read-comick/${comickChapters[0].hid}?hid=${comickHid}`
+                  }
+                >
                   <Button size="lg" className="mt-6">
                     <BookOpen className="w-5 h-5 mr-2" />
                     Basahin ang Chapter 1
@@ -190,17 +240,30 @@ const MangaDetails = () => {
 
       {/* Chapters List */}
       <div className="container mx-auto px-4 py-8">
-        <h2 className="text-xl font-bold mb-4">📚 Chapters</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">📚 Chapters</h2>
+          {chapterSource === 'comick' && (
+            <span className="text-xs text-orange-500 flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" />
+              Chapters mula sa ComicK
+            </span>
+          )}
+        </div>
 
-        {isLoadingChapters ? (
-          <div className="flex items-center justify-center py-10">
+        {isLoadingChapters || isSearchingFallback ? (
+          <div className="flex items-center justify-center py-10 flex-col gap-2">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            {isSearchingFallback && (
+              <p className="text-sm text-muted-foreground">Hinahanap sa ComicK...</p>
+            )}
           </div>
-        ) : chapters.length === 0 ? (
+        ) : !hasChapters ? (
           <div className="text-center py-10">
             <p className="text-muted-foreground">Walang available na English chapters</p>
+            <p className="text-xs text-muted-foreground mt-2">Hindi nakita sa MangaDex at ComicK</p>
           </div>
-        ) : (
+        ) : chapterSource === 'mangadex' ? (
+          // MangaDex Chapters
           <ScrollArea className="h-[400px] rounded-lg border">
             <div className="divide-y divide-border">
               {chapters.map((chapter, index) => (
@@ -234,9 +297,44 @@ const MangaDetails = () => {
               ))}
             </div>
           </ScrollArea>
+        ) : (
+          // ComicK Chapters
+          <ScrollArea className="h-[400px] rounded-lg border">
+            <div className="divide-y divide-border">
+              {comickChapters.map((chapter, index) => (
+                <Link
+                  key={chapter.hid}
+                  to={`/manga/${mangaId}/read-comick/${chapter.hid}?hid=${comickHid}`}
+                  className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {chapter.vol && `Vol. ${chapter.vol} `}
+                        Chapter {chapter.chap || index + 1}
+                      </span>
+                      {chapter.title && (
+                        <span className="text-muted-foreground truncate">
+                          - {chapter.title}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      {chapter.group_name && (
+                        <span>{chapter.group_name}</span>
+                      )}
+                      <span>{new Date(chapter.created_at).toLocaleDateString()}</span>
+                      <span className="text-orange-500">ComicK</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </Link>
+              ))}
+            </div>
+          </ScrollArea>
         )}
 
-        {/* MangaDex Credit */}
+        {/* Credit */}
         <p className="text-center text-xs text-muted-foreground mt-8">
           Data provided by{' '}
           <a
@@ -247,6 +345,19 @@ const MangaDetails = () => {
           >
             MangaDex
           </a>
+          {chapterSource === 'comick' && (
+            <>
+              {' & '}
+              <a
+                href="https://comick.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-500 hover:underline"
+              >
+                ComicK
+              </a>
+            </>
+          )}
         </p>
       </div>
     </div>
