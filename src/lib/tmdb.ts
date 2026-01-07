@@ -192,13 +192,16 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
 };
 
 export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
-  'Server 1': type === 'movie' 
+  'VidSrc': type === 'movie' 
+    ? `https://vidsrc.cc/v2/embed/movie/${id}` 
+    : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`,
+  'VidLink': type === 'movie' 
     ? `https://vidlink.pro/movie/${id}` 
     : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
-  'Server 2': type === 'movie'
+  'MultiEmbed': type === 'movie'
     ? `https://multiembed.mov/?video_id=${id}&tmdb=1`
     : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
-  'Server 3': type === 'movie'
+  'ZXCStream': type === 'movie'
     ? `https://zxcstream.xyz/embed/movie/${id}`
     : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}`,
 });
