@@ -39,8 +39,9 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
           title={title}
           className="w-full h-full"
           allowFullScreen
-          allow="autoplay; encrypted-media; picture-in-picture"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           referrerPolicy="origin"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
       </div>
 
