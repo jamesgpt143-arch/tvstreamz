@@ -17,10 +17,42 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const endpoint = url.searchParams.get("endpoint");
+    const imageUrl = url.searchParams.get("image");
 
+    // Proxy image requests
+    if (imageUrl) {
+      console.log("Proxying image:", imageUrl);
+      
+      const response = await fetch(imageUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": "https://mangadex.org/",
+          "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Image fetch failed:", response.status);
+        return new Response(null, { status: response.status, headers: corsHeaders });
+      }
+
+      const imageBuffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+
+      return new Response(imageBuffer, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    }
+
+    // Proxy API requests
     if (!endpoint) {
       return new Response(
-        JSON.stringify({ error: "Missing endpoint parameter" }),
+        JSON.stringify({ error: "Missing endpoint or image parameter" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

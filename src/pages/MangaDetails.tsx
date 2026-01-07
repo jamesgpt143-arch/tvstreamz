@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   fetchMangaDetails,
   fetchMangaChapters,
+  getProxiedImageUrl,
   type Manga,
   type Chapter,
 } from '@/lib/mangadex';
@@ -68,8 +69,10 @@ const MangaDetails = () => {
     );
   }
 
-  // Get high-res cover
-  const coverUrl = manga.coverUrl?.replace('.256.jpg', '.512.jpg');
+  // Get high-res cover and proxy it
+  const coverUrl = manga.coverUrl 
+    ? getProxiedImageUrl(manga.coverUrl.replace('.256.jpg', '.512.jpg'))
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
