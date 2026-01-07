@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download, BookOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -106,6 +106,7 @@ export const Navbar = () => {
     { path: '/movies', label: 'Movies', icon: Film },
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
     { path: '/anime', label: 'Anime', icon: Sparkles },
+    { path: '/manga', label: 'Manga', icon: BookOpen },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
   ];
 
