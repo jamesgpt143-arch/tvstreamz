@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import type { Manga } from '@/lib/mangadex';
+import { getProxiedImageUrl } from '@/lib/mangadex';
 
 interface MangaCardProps {
   manga: Manga;
@@ -19,7 +20,7 @@ export const MangaCard = ({ manga }: MangaCardProps) => {
       <div className="aspect-[2/3] relative">
         {manga.coverUrl && !imageError ? (
           <img
-            src={manga.coverUrl}
+            src={getProxiedImageUrl(manga.coverUrl)}
             alt={manga.title}
             className="w-full h-full object-cover"
             loading="lazy"

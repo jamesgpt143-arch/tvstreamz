@@ -17,6 +17,11 @@ const proxyFetch = async (endpoint: string): Promise<any> => {
   return response.json();
 };
 
+// Helper to get proxied image URL
+export const getProxiedImageUrl = (imageUrl: string): string => {
+  return `${PROXY_URL}?image=${encodeURIComponent(imageUrl)}`;
+};
+
 export interface Manga {
   id: string;
   title: string;
@@ -230,14 +235,15 @@ export const fetchChapterPages = async (chapterId: string): Promise<ChapterPages
   }
 };
 
-// Get full image URL for a chapter page
+// Get full image URL for a chapter page (proxied)
 export const getChapterPageUrl = (
   baseUrl: string,
   hash: string,
   filename: string,
   quality: 'data' | 'data-saver' = 'data'
 ): string => {
-  return `${baseUrl}/${quality}/${hash}/${filename}`;
+  const directUrl = `${baseUrl}/${quality}/${hash}/${filename}`;
+  return getProxiedImageUrl(directUrl);
 };
 
 // Fetch manga by tag/genre
