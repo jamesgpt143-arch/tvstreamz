@@ -41,7 +41,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
           allowFullScreen
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           referrerPolicy="origin"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
         />
       </div>
 
