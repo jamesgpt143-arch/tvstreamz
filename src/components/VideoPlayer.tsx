@@ -7,8 +7,8 @@ interface VideoPlayerProps {
   title: string;
 }
 
-// VidSrc supports sandbox, others don't
-const SANDBOX_COMPATIBLE_SERVERS = ['VidSrc'];
+// Server 1 (VidSrc) supports sandbox, others don't
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
