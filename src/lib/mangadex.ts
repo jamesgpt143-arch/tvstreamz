@@ -1,5 +1,21 @@
 // MangaDex API Library
-const BASE_URL = 'https://api.mangadex.org';
+const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mangadex-proxy`;
+
+// Helper to call MangaDex through our proxy
+const proxyFetch = async (endpoint: string): Promise<any> => {
+  const url = `${PROXY_URL}?endpoint=${encodeURIComponent(endpoint)}`;
+  const response = await fetch(url, {
+    headers: {
+      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status}`);
+  }
+  
+  return response.json();
+};
 
 export interface Manga {
   id: string;
@@ -105,8 +121,7 @@ export const fetchPopularManga = async (limit = 20, offset = 0): Promise<Manga[]
       'availableTranslatedLanguage[]': 'en',
     });
 
-    const response = await fetch(`${BASE_URL}/manga?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga?${params}`);
     return data.data?.map(transformManga) || [];
   } catch (error) {
     console.error('Error fetching popular manga:', error);
@@ -126,8 +141,7 @@ export const fetchLatestManga = async (limit = 20, offset = 0): Promise<Manga[]>
       'availableTranslatedLanguage[]': 'en',
     });
 
-    const response = await fetch(`${BASE_URL}/manga?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga?${params}`);
     return data.data?.map(transformManga) || [];
   } catch (error) {
     console.error('Error fetching latest manga:', error);
@@ -147,8 +161,7 @@ export const searchManga = async (query: string, limit = 20, offset = 0): Promis
       'availableTranslatedLanguage[]': 'en',
     });
 
-    const response = await fetch(`${BASE_URL}/manga?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga?${params}`);
     return data.data?.map(transformManga) || [];
   } catch (error) {
     console.error('Error searching manga:', error);
@@ -165,8 +178,7 @@ export const fetchMangaDetails = async (mangaId: string): Promise<Manga | null> 
     params.append('includes[]', 'author');
     params.append('includes[]', 'artist');
 
-    const response = await fetch(`${BASE_URL}/manga/${mangaId}?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga/${mangaId}?${params}`);
     return data.data ? transformManga(data.data) : null;
   } catch (error) {
     console.error('Error fetching manga details:', error);
@@ -190,8 +202,7 @@ export const fetchMangaChapters = async (
       'contentRating[]': 'safe',
     });
 
-    const response = await fetch(`${BASE_URL}/manga/${mangaId}/feed?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga/${mangaId}/feed?${params}`);
     return data.data?.map(transformChapter) || [];
   } catch (error) {
     console.error('Error fetching chapters:', error);
@@ -202,8 +213,7 @@ export const fetchMangaChapters = async (
 // Fetch chapter pages
 export const fetchChapterPages = async (chapterId: string): Promise<ChapterPages | null> => {
   try {
-    const response = await fetch(`${BASE_URL}/at-home/server/${chapterId}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/at-home/server/${chapterId}`);
     
     if (data.baseUrl && data.chapter) {
       return {
@@ -247,8 +257,7 @@ export const fetchMangaByTag = async (
       'order[followedCount]': 'desc',
     });
 
-    const response = await fetch(`${BASE_URL}/manga?${params}`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga?${params}`);
     return data.data?.map(transformManga) || [];
   } catch (error) {
     console.error('Error fetching manga by tag:', error);
@@ -259,8 +268,7 @@ export const fetchMangaByTag = async (
 // Fetch available tags
 export const fetchTags = async (): Promise<{ id: string; name: string }[]> => {
   try {
-    const response = await fetch(`${BASE_URL}/manga/tag`);
-    const data = await response.json();
+    const data = await proxyFetch(`/manga/tag`);
     return data.data?.map((tag: any) => ({
       id: tag.id,
       name: tag.attributes?.name?.en || 'Unknown',

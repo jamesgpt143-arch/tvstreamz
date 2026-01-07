@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import type { Manga } from '@/lib/mangadex';
@@ -7,6 +8,8 @@ interface MangaCardProps {
 }
 
 export const MangaCard = ({ manga }: MangaCardProps) => {
+  const [imageError, setImageError] = useState(false);
+  
   return (
     <Link
       to={`/manga/${manga.id}`}
@@ -14,12 +17,13 @@ export const MangaCard = ({ manga }: MangaCardProps) => {
     >
       {/* Cover Image */}
       <div className="aspect-[2/3] relative">
-        {manga.coverUrl ? (
+        {manga.coverUrl && !imageError ? (
           <img
             src={manga.coverUrl}
             alt={manga.title}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={() => setImageError(true)}
           />
         ) : (
           <div className="w-full h-full bg-muted flex items-center justify-center">
