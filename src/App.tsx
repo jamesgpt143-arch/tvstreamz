@@ -23,8 +23,42 @@ import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
+import { useDevToolsProtection } from "./hooks/useDevToolsProtection";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  // Enable DevTools protection
+  useDevToolsProtection();
+
+  return (
+    <BrowserRouter>
+      <div className="pb-16 md:pb-0">
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/movies" element={<Movies />} />
+          <Route path="/tv-shows" element={<TVShows />} />
+          <Route path="/anime" element={<Anime />} />
+          <Route path="/manga" element={<Manga />} />
+          <Route path="/manga/:mangaId" element={<MangaDetails />} />
+          <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
+          <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
+          <Route path="/live-tv" element={<LiveTV />} />
+          <Route path="/live/:channelId" element={<WatchLive />} />
+          <Route path="/watch/:type/:id" element={<Watch />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/my-list" element={<MyList />} />
+          <Route path="/continue-watching" element={<ContinueWatching />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <BottomNav />
+      </div>
+      <FloatingChat />
+    </BrowserRouter>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,31 +66,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <div className="pb-16 md:pb-0">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/movies" element={<Movies />} />
-              <Route path="/tv-shows" element={<TVShows />} />
-              <Route path="/anime" element={<Anime />} />
-              <Route path="/manga" element={<Manga />} />
-              <Route path="/manga/:mangaId" element={<MangaDetails />} />
-              <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
-              <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
-              <Route path="/live-tv" element={<LiveTV />} />
-              <Route path="/live/:channelId" element={<WatchLive />} />
-              <Route path="/watch/:type/:id" element={<Watch />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/my-list" element={<MyList />} />
-              <Route path="/continue-watching" element={<ContinueWatching />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <BottomNav />
-          </div>
-          <FloatingChat />
-        </BrowserRouter>
+        <AppContent />
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
