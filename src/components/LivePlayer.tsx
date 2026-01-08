@@ -5,6 +5,23 @@ import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar } from '@capacitor/status-bar';
+
+// Helper to hide/show status bar on native platforms
+const setImmersiveMode = async (enabled: boolean) => {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      if (enabled) {
+        await StatusBar.hide();
+      } else {
+        await StatusBar.show();
+      }
+    } catch (e) {
+      // Status bar plugin not available or failed
+    }
+  }
+};
 
 interface LivePlayerProps {
   channel: Channel;
@@ -191,6 +208,19 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
     };
   }, [channel]);
+
+  // Handle fullscreen changes for immersive mode
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const inFullscreen = !!document.fullscreenElement;
+      
+      // Enable/disable immersive mode (hide status bar on Android)
+      setImmersiveMode(inFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   return (
     <>
