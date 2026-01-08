@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Server } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Server, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoPlayerProps {
@@ -13,9 +13,52 @@ const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
+
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      
+      // Try to lock orientation to landscape when entering fullscreen
+      const orientation = screen.orientation as any;
+      if (document.fullscreenElement && orientation?.lock) {
+        orientation.lock('landscape').catch(() => {
+          // Orientation lock not supported or failed, that's okay
+        });
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (!containerRef.current) return;
+    const orientation = screen.orientation as any;
+
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current.requestFullscreen();
+        // Try to lock to landscape
+        if (orientation?.lock) {
+          await orientation.lock('landscape').catch(() => {});
+        }
+      } else {
+        await document.exitFullscreen();
+        // Unlock orientation when exiting
+        if (orientation?.unlock) {
+          orientation.unlock();
+        }
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -40,7 +83,12 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
       </div>
 
       {/* Video Frame */}
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
+      <div 
+        ref={containerRef}
+        className={`relative w-full rounded-xl overflow-hidden bg-card border border-border ${
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none' : 'aspect-video'
+        }`}
+      >
         {useSandbox ? (
           <iframe
             key={`sandboxed-${activeServer}`}
@@ -63,8 +111,17 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             referrerPolicy="origin"
           />
         )}
-      </div>
 
+        {/* Custom Fullscreen Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleFullscreen}
+          className="absolute bottom-3 right-3 z-10 bg-black/50 hover:bg-black/70 text-white"
+        >
+          {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+        </Button>
+      </div>
     </div>
   );
 };
