@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useImmersiveFullscreen } from '@/hooks/useImmersiveFullscreen';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -14,9 +13,6 @@ const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const { isFullscreen } = useImmersiveFullscreen({ containerRef });
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
@@ -44,12 +40,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
       </div>
 
       {/* Video Frame */}
-      <div 
-        ref={containerRef}
-        className={`aspect-video w-full rounded-xl overflow-hidden bg-card border border-border ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none aspect-auto' : ''
-        }`}
-      >
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
         {useSandbox ? (
           <iframe
             key={`sandboxed-${activeServer}`}
@@ -73,6 +64,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
           />
         )}
       </div>
+
     </div>
   );
 };

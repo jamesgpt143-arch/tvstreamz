@@ -23,14 +23,11 @@ import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
-import { useDevToolsProtection } from "./hooks/useDevToolsProtection";
 
 const queryClient = new QueryClient();
 
-const AppContent = () => {
-  useDevToolsProtection();
-  
-  return (
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
         <Toaster />
@@ -62,12 +59,6 @@ const AppContent = () => {
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
-  );
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AppContent />
   </QueryClientProvider>
 );
 

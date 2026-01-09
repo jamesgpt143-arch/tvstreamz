@@ -5,7 +5,6 @@ import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
-import { useImmersiveFullscreen } from '@/hooks/useImmersiveFullscreen';
 
 interface LivePlayerProps {
   channel: Channel;
@@ -226,17 +225,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 };
 
 export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { isFullscreen } = useImmersiveFullscreen({ containerRef });
-
   if (channel.type === 'youtube') {
     return (
-      <div 
-        ref={containerRef}
-        className={`aspect-video w-full rounded-xl overflow-hidden bg-card border border-border ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none aspect-auto' : ''
-        }`}
-      >
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
         <iframe
           src={`${channel.embedUrl}&autoplay=1`}
           title={channel.name}
@@ -249,12 +240,7 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className={`aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none aspect-auto' : ''
-      }`}
-    >
+    <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
       <PlayerCore 
         key={channel.id} 
         channel={channel} 
