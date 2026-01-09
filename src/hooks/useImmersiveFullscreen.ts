@@ -1,62 +1,136 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useEffect, useState, useCallback, RefObject } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { StatusBar } from '@capacitor/status-bar';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 
-interface UseImmersiveFullscreenProps {
+interface UseImmersiveFullscreenOptions {
   containerRef: RefObject<HTMLElement>;
 }
 
-export const useImmersiveFullscreen = ({ containerRef }: UseImmersiveFullscreenProps) => {
+export const useImmersiveFullscreen = ({ containerRef }: UseImmersiveFullscreenOptions) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
 
-  useEffect(() => {
-    const handleFullscreenChange = async () => {
-      // Check kung naka-fullscreen ba ngayon ang browser/webview
-      const isDocFullscreen = document.fullscreenElement !== null;
-      setIsFullscreen(isDocFullscreen);
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const container = containerRef.current;
+      if (!container) return;
 
-      if (isDocFullscreen) {
-        // --- KAPAG NAG-FULLSCREEN (LANDSCAPE MODE) ---
+      if (container.requestFullscreen) {
+        await container.requestFullscreen();
+      } else if ((container as any).webkitRequestFullscreen) {
+        await (container as any).webkitRequestFullscreen();
+      }
+
+      // Hide status bar on native Android/iOS
+      if (Capacitor.isNativePlatform()) {
         try {
-          // 1. Payagan ang overlay (para sumagad sa notch)
-          await StatusBar.setOverlaysWebView({ overlay: true });
-          // 2. Itago ang status bar
           await StatusBar.hide();
-          // 3. I-force Landscape
-          await ScreenOrientation.lock({ orientation: 'landscape' });
-        } catch (error) {
-          console.error('Error entering immersive mode:', error);
+        } catch (e) {
+          console.log('StatusBar hide error:', e);
+        }
+      }
+
+      setIsFullscreen(true);
+    } catch (err) {
+      console.log('Fullscreen error:', err);
+    }
+  }, [containerRef]);
+
+  const exitFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen();
+      }
+
+      // Show status bar on native Android/iOS
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await StatusBar.show();
+        } catch (e) {
+          console.log('StatusBar show error:', e);
+        }
+      }
+
+      setIsFullscreen(false);
+    } catch (err) {
+      console.log('Exit fullscreen error:', err);
+    }
+  }, []);
+
+  // Listen to orientation changes
+  useEffect(() => {
+    const handleOrientationChange = async () => {
+      let landscape = false;
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const orientation = await ScreenOrientation.orientation();
+          landscape = orientation.type.includes('landscape');
+        } catch {
+          // Fallback to window check
+          landscape = window.innerWidth > window.innerHeight;
         }
       } else {
-        // --- KAPAG NAG-EXIT FULLSCREEN (PORTRAIT MODE) ---
-        try {
-          // 1. I-lock ulit sa Portrait
-          await ScreenOrientation.lock({ orientation: 'portrait' });
-          // 2. Ipakita ang Status Bar
-          await StatusBar.show();
-          // 3. I-off ang overlay (para bumaba ulit ang content at di matakpan)
-          await StatusBar.setOverlaysWebView({ overlay: false });
-        } catch (error) {
-          console.error('Error exiting immersive mode:', error);
+        // Web fallback
+        if (screen.orientation) {
+          landscape = screen.orientation.type.includes('landscape');
+        } else {
+          landscape = window.innerWidth > window.innerHeight;
+        }
+      }
+
+      setIsLandscape(landscape);
+
+      // Auto fullscreen on landscape, exit on portrait
+      if (landscape && !document.fullscreenElement) {
+        enterFullscreen();
+      } else if (!landscape && document.fullscreenElement) {
+        exitFullscreen();
+      }
+    };
+
+    // Initial check
+    handleOrientationChange();
+
+    // Listen to orientation changes
+    if (Capacitor.isNativePlatform()) {
+      ScreenOrientation.addListener('screenOrientationChange', handleOrientationChange);
+    }
+
+    // Web fallback listeners
+    window.addEventListener('resize', handleOrientationChange);
+    screen.orientation?.addEventListener('change', handleOrientationChange);
+
+    // Listen to fullscreen changes
+    const handleFullscreenChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+
+      if (Capacitor.isNativePlatform()) {
+        if (isFs) {
+          StatusBar.hide().catch(() => {});
+        } else {
+          StatusBar.show().catch(() => {});
         }
       }
     };
 
-    // Makinig sa pagbabago ng fullscreen status
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Support for older webviews
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
-    // Cleanup function
     return () => {
+      if (Capacitor.isNativePlatform()) {
+        ScreenOrientation.removeAllListeners();
+      }
+      window.removeEventListener('resize', handleOrientationChange);
+      screen.orientation?.removeEventListener('change', handleOrientationChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      
-      // Siguraduhin na pag-alis dito, balik sa normal
-      StatusBar.show().catch(() => {});
-      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
-      ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
     };
-  }, [containerRef]);
+  }, [enterFullscreen, exitFullscreen]);
 
-  return { isFullscreen };
+  return { isFullscreen, isLandscape, enterFullscreen, exitFullscreen };
 };
