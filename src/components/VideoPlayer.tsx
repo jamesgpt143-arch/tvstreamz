@@ -12,11 +12,17 @@ interface VideoPlayerProps {
 // Server 1 (VidSrc) supports sandbox, others don't
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 
-// Helper to hide/show status bar on native platforms
+// Helper to check if device is in landscape orientation
+const isLandscape = () => {
+  return window.innerWidth > window.innerHeight;
+};
+
+// Helper to hide/show status bar on native platforms - only hide in landscape
 const setImmersiveMode = async (enabled: boolean) => {
   if (Capacitor.isNativePlatform()) {
     try {
-      if (enabled) {
+      // Only hide status bar if in landscape mode
+      if (enabled && isLandscape()) {
         await StatusBar.hide();
       } else {
         await StatusBar.show();
@@ -36,7 +42,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
-  // Handle fullscreen changes
+  // Handle fullscreen and orientation changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
@@ -48,13 +54,27 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
         orientation.lock('landscape').catch(() => {});
       }
       
-      // Enable/disable immersive mode (hide status bar on Android)
+      // Enable/disable immersive mode based on orientation
       setImmersiveMode(inFullscreen);
     };
 
+    const handleOrientationChange = () => {
+      // Update immersive mode based on new orientation
+      if (isFullscreen) {
+        setImmersiveMode(true);
+      }
+    };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [isFullscreen]);
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;

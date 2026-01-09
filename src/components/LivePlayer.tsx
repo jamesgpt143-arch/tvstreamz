@@ -8,11 +8,17 @@ import 'shaka-player/dist/controls.css';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar } from '@capacitor/status-bar';
 
-// Helper to hide/show status bar on native platforms
+// Helper to check if device is in landscape orientation
+const isLandscape = () => {
+  return window.innerWidth > window.innerHeight;
+};
+
+// Helper to hide/show status bar on native platforms - only hide in landscape
 const setImmersiveMode = async (enabled: boolean) => {
   if (Capacitor.isNativePlatform()) {
     try {
-      if (enabled) {
+      // Only hide status bar if in landscape mode
+      if (enabled && isLandscape()) {
         await StatusBar.hide();
       } else {
         await StatusBar.show();
@@ -209,17 +215,32 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
     };
   }, [channel]);
 
-  // Handle fullscreen changes for immersive mode
+  // Handle fullscreen and orientation changes for immersive mode
   useEffect(() => {
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
       
-      // Enable/disable immersive mode (hide status bar on Android)
+      // Enable/disable immersive mode based on orientation
       setImmersiveMode(inFullscreen);
     };
 
+    const handleOrientationChange = () => {
+      // Update immersive mode based on new orientation when in fullscreen
+      const inFullscreen = !!document.fullscreenElement;
+      if (inFullscreen) {
+        setImmersiveMode(true);
+      }
+    };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
   }, []);
 
   return (
