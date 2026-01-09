@@ -13,11 +13,10 @@ const isLandscape = () => {
   return window.innerWidth > window.innerHeight;
 };
 
-// Helper to hide/show status bar on native platforms - only hide in landscape
+// Helper to hide/show status bar on native platforms - only hide in landscape fullscreen
 const setImmersiveMode = async (enabled: boolean) => {
   if (Capacitor.isNativePlatform()) {
     try {
-      // Only hide status bar if in landscape mode
       if (enabled && isLandscape()) {
         await StatusBar.hide();
       } else {
@@ -26,6 +25,28 @@ const setImmersiveMode = async (enabled: boolean) => {
     } catch (e) {
       // Status bar plugin not available or failed
     }
+  }
+};
+
+// Auto fullscreen based on orientation
+const handleAutoFullscreen = async (containerRef: React.RefObject<HTMLDivElement>) => {
+  if (!containerRef.current) return;
+  
+  const inFullscreen = !!document.fullscreenElement;
+  const landscape = isLandscape();
+  
+  try {
+    if (landscape && !inFullscreen) {
+      // Enter fullscreen when rotating to landscape
+      await containerRef.current.requestFullscreen();
+      await setImmersiveMode(true);
+    } else if (!landscape && inFullscreen) {
+      // Exit fullscreen when rotating to portrait
+      await document.exitFullscreen();
+      await setImmersiveMode(false);
+    }
+  } catch (err) {
+    // Fullscreen not supported or failed
   }
 };
 
@@ -215,31 +236,27 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
     };
   }, [channel]);
 
-  // Handle fullscreen and orientation changes for immersive mode
+  // Handle orientation changes for auto fullscreen (native apps only)
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handleOrientationChange = () => {
+      handleAutoFullscreen(containerRef);
+    };
+
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
-      
-      // Enable/disable immersive mode based on orientation
       setImmersiveMode(inFullscreen);
     };
 
-    const handleOrientationChange = () => {
-      // Update immersive mode based on new orientation when in fullscreen
-      const inFullscreen = !!document.fullscreenElement;
-      if (inFullscreen) {
-        setImmersiveMode(true);
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
     window.addEventListener('resize', handleOrientationChange);
     window.addEventListener('orientationchange', handleOrientationChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
 
