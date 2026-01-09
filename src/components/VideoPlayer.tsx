@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Server, Maximize, Minimize } from 'lucide-react';
+import { Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar } from '@capacitor/status-bar';
@@ -17,11 +17,10 @@ const isLandscape = () => {
   return window.innerWidth > window.innerHeight;
 };
 
-// Helper to hide/show status bar on native platforms - only hide in landscape
+// Helper to hide/show status bar on native platforms - only hide in landscape fullscreen
 const setImmersiveMode = async (enabled: boolean) => {
   if (Capacitor.isNativePlatform()) {
     try {
-      // Only hide status bar if in landscape mode
       if (enabled && isLandscape()) {
         await StatusBar.hide();
       } else {
@@ -33,75 +32,59 @@ const setImmersiveMode = async (enabled: boolean) => {
   }
 };
 
+// Auto fullscreen based on orientation
+const handleAutoFullscreen = async (containerRef: React.RefObject<HTMLDivElement>) => {
+  if (!containerRef.current) return;
+  
+  const inFullscreen = !!document.fullscreenElement;
+  const landscape = isLandscape();
+  
+  try {
+    if (landscape && !inFullscreen) {
+      // Enter fullscreen when rotating to landscape
+      await containerRef.current.requestFullscreen();
+      await setImmersiveMode(true);
+    } else if (!landscape && inFullscreen) {
+      // Exit fullscreen when rotating to portrait
+      await document.exitFullscreen();
+      await setImmersiveMode(false);
+    }
+  } catch (err) {
+    // Fullscreen not supported or failed
+  }
+};
+
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
-  // Handle fullscreen and orientation changes
+  // Handle orientation changes for auto fullscreen (native apps only)
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handleOrientationChange = () => {
+      handleAutoFullscreen(containerRef);
+    };
+
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(inFullscreen);
-      
-      // Try to lock orientation to landscape when entering fullscreen
-      const orientation = screen.orientation as any;
-      if (inFullscreen && orientation?.lock) {
-        orientation.lock('landscape').catch(() => {});
-      }
-      
-      // Enable/disable immersive mode based on orientation
       setImmersiveMode(inFullscreen);
     };
 
-    const handleOrientationChange = () => {
-      // Update immersive mode based on new orientation
-      if (isFullscreen) {
-        setImmersiveMode(true);
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
     window.addEventListener('resize', handleOrientationChange);
     window.addEventListener('orientationchange', handleOrientationChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [isFullscreen]);
-
-  const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-    const orientation = screen.orientation as any;
-
-    try {
-      if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
-        // Try to lock to landscape
-        if (orientation?.lock) {
-          await orientation.lock('landscape').catch(() => {});
-        }
-        // Hide status bar for immersive experience
-        await setImmersiveMode(true);
-      } else {
-        await document.exitFullscreen();
-        // Unlock orientation when exiting
-        if (orientation?.unlock) {
-          orientation.unlock();
-        }
-        // Show status bar again
-        await setImmersiveMode(false);
-      }
-    } catch (err) {
-      console.error('Fullscreen error:', err);
-    }
-  };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -128,9 +111,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
       {/* Video Frame */}
       <div 
         ref={containerRef}
-        className={`relative w-full rounded-xl overflow-hidden bg-card border border-border ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none' : 'aspect-video'
-        }`}
+        className="relative w-full rounded-xl overflow-hidden bg-card border border-border aspect-video"
       >
         {useSandbox ? (
           <iframe
@@ -154,16 +135,6 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             referrerPolicy="origin"
           />
         )}
-
-        {/* Custom Fullscreen Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleFullscreen}
-          className="absolute bottom-3 right-3 z-10 bg-black/50 hover:bg-black/70 text-white"
-        >
-          {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-        </Button>
       </div>
     </div>
   );
