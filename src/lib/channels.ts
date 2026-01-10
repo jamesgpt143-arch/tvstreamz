@@ -18,6 +18,13 @@ export const liveChannels: Channel[] = [
     logo: 'https://philippines.mom-gmr.org/uploads/_processed_/0/4/csm_1011-167_import_5fdc5c345c.png'
   },
   {
+    id: 'alltv',
+    name: 'alltv',
+    manifestUri: 'https://content.ganbaruby23.xyz/memfs/d6927af0-df7c-4847-9193-7cb80882d139.m3u8',
+    type: 'hls',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ALLTV_Logo_2023.svg/250px-ALLTV_Logo_2023.svg.png'
+  },
+  {
     id: 'a2z',
     name: 'A2Z',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd',
