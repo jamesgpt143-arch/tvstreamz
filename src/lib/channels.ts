@@ -20,8 +20,11 @@ export const liveChannels: Channel[] = [
   {
     id: 'alltv',
     name: 'alltv',
-    manifestUri: 'https://content.ganbaruby23.xyz/memfs/d6927af0-df7c-4847-9193-7cb80882d139.m3u8',
-    type: 'hls',
+    manifestUri: 'https://converse.nathcreqtives.com/1179/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjgwMjg5MzUsImV4cCI6MTc2ODQ2MDkzNSwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY4NDYwOTM1fQ.18zqVuqgV9BI3vQolQ_EvYCEcg_xe5VpRJo_2y3Ixw0',
+    clearKey: {
+      '31363233323238353336303333363036': '367662564c69425947353948374f4553'
+    },
+    type: 'mpd',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ALLTV_Logo_2023.svg/250px-ALLTV_Logo_2023.svg.png'
   },
   {
