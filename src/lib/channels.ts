@@ -25,7 +25,7 @@ export const liveChannels: Channel[] = [
       '31363232353335323435353337353331': '35416a68643065697575493337566135'
     },
     type: 'mpd',
-    logo: 'https://static.wikia.nocookie.net/philippinetelevision/images/9/93/GTV_Logo_2021.png/revision/latest/scale-to-width-down/268?cb=20230516234653'
+    logo: 'https://contents.pep.ph/images2/images2/2021/02/10/gtv-2-1612942731.jpg'
   },
   {
     id: 'alltv',
