@@ -18,6 +18,16 @@ export const liveChannels: Channel[] = [
     logo: 'https://philippines.mom-gmr.org/uploads/_processed_/0/4/csm_1011-167_import_5fdc5c345c.png'
   },
   {
+    id: 'GTV',
+    name: 'GTV',
+    manifestUri: 'https://converse.nathcreqtives.com/1143/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjgwMjg5MzUsImV4cCI6MTc2ODQ2MDkzNSwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY4NDYwOTM1fQ.18zqVuqgV9BI3vQolQ_EvYCEcg_xe5VpRJo_2y3Ixw0',
+    clearKey: {
+      '31363232353335323435353337353331': '35416a68643065697575493337566135'
+    },
+    type: 'mpd',
+    logo: 'https://static.wikia.nocookie.net/philippinetelevision/images/9/93/GTV_Logo_2021.png/revision/latest/scale-to-width-down/268?cb=20230516234653'
+  },
+  {
     id: 'alltv',
     name: 'alltv',
     manifestUri: 'https://converse.nathcreqtives.com/1179/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjgwMjg5MzUsImV4cCI6MTc2ODQ2MDkzNSwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY4NDYwOTM1fQ.18zqVuqgV9BI3vQolQ_EvYCEcg_xe5VpRJo_2y3Ixw0',
