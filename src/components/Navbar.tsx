@@ -231,6 +231,27 @@ export const Navbar = () => {
                     </div>
                   </Link>
 
+                  {/* Free IPTV Player */}
+                  <a
+                    href="https://allplay-video-player.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <Tv className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Free IPTV Player</p>
+                        <p className="text-sm text-muted-foreground">
+                          Play M3U8 & MPD streams
+                        </p>
+                      </div>
+                    </div>
+                  </a>
+
                   {/* Install App */}
                   <button
                     onClick={() => {
