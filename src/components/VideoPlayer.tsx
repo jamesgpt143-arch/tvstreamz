@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Server } from 'lucide-react';
+import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoPlayerProps {
@@ -13,9 +13,16 @@ const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
+
+  const handlePlay = () => {
+    // Open Shopee link when play is clicked
+    window.open('https://s.shopee.ph/9pY6GawaMi', '_blank');
+    setIsPlaying(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -30,10 +37,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             size="sm"
             onClick={() => {
               setActiveServer(name);
-              // Open Shopee link when Server 1 is clicked
-              if (name === 'Server 1') {
-                window.open('https://s.shopee.ph/9pY6GawaMi', '_blank');
-              }
+              setIsPlaying(false); // Reset play state when switching servers
             }}
             className="gap-2"
           >
@@ -46,31 +50,47 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
       </div>
 
       {/* Video Frame */}
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
-        {useSandbox ? (
-          <iframe
-            key={`sandboxed-${activeServer}`}
-            src={currentUrl}
-            title={title}
-            className="w-full h-full"
-            allowFullScreen
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            referrerPolicy="origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
-          />
-        ) : (
-          <iframe
-            key={`normal-${activeServer}`}
-            src={currentUrl}
-            title={title}
-            className="w-full h-full"
-            allowFullScreen
-            allow="autoplay; encrypted-media; picture-in-picture"
-            referrerPolicy="origin"
-          />
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
+        {!isPlaying ? (
+          // Play button overlay
+          <div 
+            className="absolute inset-0 flex items-center justify-center bg-black/60 cursor-pointer z-10"
+            onClick={handlePlay}
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors hover:scale-105 transform">
+                <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
+              </div>
+              <span className="text-white font-medium">Click to Play</span>
+            </div>
+          </div>
+        ) : null}
+
+        {isPlaying && (
+          useSandbox ? (
+            <iframe
+              key={`sandboxed-${activeServer}`}
+              src={currentUrl}
+              title={title}
+              className="w-full h-full"
+              allowFullScreen
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              referrerPolicy="origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation"
+            />
+          ) : (
+            <iframe
+              key={`normal-${activeServer}`}
+              src={currentUrl}
+              title={title}
+              className="w-full h-full"
+              allowFullScreen
+              allow="autoplay; encrypted-media; picture-in-picture"
+              referrerPolicy="origin"
+            />
+          )
         )}
       </div>
-
     </div>
   );
 };
