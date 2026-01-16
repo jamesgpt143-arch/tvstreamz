@@ -28,7 +28,13 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             key={name}
             variant={activeServer === name ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveServer(name)}
+            onClick={() => {
+              setActiveServer(name);
+              // Open Shopee link when Server 1 is clicked
+              if (name === 'Server 1') {
+                window.open('https://s.shopee.ph/9pY6GawaMi', '_blank');
+              }
+            }}
             className="gap-2"
           >
             {name}
