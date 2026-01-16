@@ -28,6 +28,20 @@ export const liveChannels: Channel[] = [
     logo: 'https://contents.pep.ph/images2/images2/2021/02/10/gtv-2-1612942731.jpg'
   },
   {
+    id: 'I Heart Movies',
+    name: 'I Heart Movies',
+    manifestUri: 'https://hls.nathcreqtives.com/playlist.m3u8?id=2&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3Njg0NDQ0NTgsImV4cCI6MTc2OTMwODQ1OCwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY5MzA4NDU4fQ.9dl-698RxGuhJMNNmVTuCUtU5aN-b8TpLL9aXXfaK_I',
+    type: 'hls',
+    logo: 'https://gmanetwork.fandom.com/wiki/I_Heart_Movies?file=I_Heart_Movies.png'
+  },
+  {
+    id: 'Heart Of Asia',
+    name: 'Heart Of Asia',
+    manifestUri: 'http://hls.nathcreqtives.com/playlist.m3u8?id=1&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3Njg0NDQ0NTgsImV4cCI6MTc2OTMwODQ1OCwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY5MzA4NDU4fQ.9dl-698RxGuhJMNNmVTuCUtU5aN-b8TpLL9aXXfaK_I',
+    type: 'hls',
+    logo: 'https://gmanetwork.fandom.com/wiki/Heart_of_Asia_(TV_channel)?file=Heart_of_Asia.png'
+  },
+  {
     id: 'alltv',
     name: 'alltv',
     manifestUri: 'https://converse.nathcreqtives.com/1179/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjgwMjg5MzUsImV4cCI6MTc2ODQ2MDkzNSwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY4NDYwOTM1fQ.18zqVuqgV9BI3vQolQ_EvYCEcg_xe5VpRJo_2y3Ixw0',
