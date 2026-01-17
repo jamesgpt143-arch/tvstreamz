@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { liveChannels } from '@/lib/channels';
 import { Radio } from 'lucide-react';
 
 const LiveTV = () => {
+  useEffect(() => {
+    window.open('https://s.shopee.ph/8fMAzjQUZz', '_blank');
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
