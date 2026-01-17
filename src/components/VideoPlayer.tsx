@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShareButton } from '@/components/ShareButton';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -90,6 +91,11 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             />
           )
         )}
+      </div>
+
+      {/* Share Button */}
+      <div className="flex justify-start">
+        <ShareButton title={title} />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
+import { ShareButton } from '@/components/ShareButton';
 import { liveChannels } from '@/lib/channels';
 import { ChevronLeft, Radio, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,11 @@ const WatchLive = () => {
                 channel={channel} 
                 onStatusChange={handleStatusChange}
               />
+
+              {/* Share Button */}
+              <div className="flex justify-start mt-3">
+                <ShareButton title={`Watch ${channel.name} - Live TV`} />
+              </div>
             </div>
 
             {/* Other Channels - Separate Scrollable Section */}
