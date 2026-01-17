@@ -6,7 +6,7 @@ import { Radio } from 'lucide-react';
 
 const LiveTV = () => {
   useEffect(() => {
-    window.open('https://s.shopee.ph/8fMAzjQUZz', '_blank');
+    window.open('https://s.shopee.ph/4AtlxG0ock', '_blank');
   }, []);
 
   return (
