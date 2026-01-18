@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Unlock } from "lucide-react";
 
-const GATEWAY_URL = "https://cuty.io/DpgGd";
+const GATEWAY_URL = "https://cuty.io/LdrbJEQiJ";
 const STORAGE_KEY = "site_access_token";
 
 interface GatekeeperProps {
