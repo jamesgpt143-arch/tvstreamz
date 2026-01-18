@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchSuggestions } from './SearchSuggestions';
+import { AccessTimer } from './AccessTimer';
 import {
   Sheet,
   SheetContent,
@@ -135,6 +136,9 @@ export const Navbar = () => {
               </span>
               <span className="text-[10px] text-muted-foreground hidden sm:inline">online</span>
             </div>
+
+            {/* Access Timer */}
+            <AccessTimer />
           </div>
 
           {/* Desktop Navigation */}
