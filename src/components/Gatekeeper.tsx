@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ExternalLink, Unlock } from "lucide-react";
 
 const GATEWAY_URL = "https://cuty.io/DpgGd";
 const STORAGE_KEY = "site_access_token";
@@ -12,6 +21,7 @@ interface GatekeeperProps {
 export const Gatekeeper = ({ children }: GatekeeperProps) => {
   const location = useLocation();
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [showGatewayDialog, setShowGatewayDialog] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -61,16 +71,59 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
         localStorage.removeItem(STORAGE_KEY);
       }
 
-      // No valid token, redirect to gateway
-      window.location.href = GATEWAY_URL;
+      // No valid token, show gateway dialog instead of redirecting
+      setShowGatewayDialog(true);
+      setIsVerified(false);
     };
 
     checkAccess();
   }, [location.search]);
 
+  const handleUnlockClick = () => {
+    // Open the gateway URL in the same tab
+    window.location.href = GATEWAY_URL;
+  };
+
   // Show nothing while checking verification
   if (isVerified === null) {
     return null;
+  }
+
+  // Show gateway dialog if not verified
+  if (!isVerified && showGatewayDialog) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Dialog open={true} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Unlock className="h-5 w-5 text-primary" />
+                Unlock Access
+              </DialogTitle>
+              <DialogDescription className="text-base pt-2">
+                To access TVStreamz and enjoy unlimited streaming of movies, TV shows, anime, and live TV, please complete a quick verification.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to verify your access. After completing the verification, you'll be redirected back and have <strong>6 hours</strong> of unlimited access.
+              </p>
+              <Button 
+                onClick={handleUnlockClick} 
+                className="w-full gap-2"
+                size="lg"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Unlock Now
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                This helps us keep the service free for everyone.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
   }
 
   return <>{children}</>;
