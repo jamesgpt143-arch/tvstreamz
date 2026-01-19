@@ -31,9 +31,25 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
       const hasVerifiedParam = urlParams.get("verified") === "true";
 
       if (hasVerifiedParam) {
-        // Calculate expiry time (6 hours from now)
-        const expiryTime = Date.now() + 6 * 60 * 60 * 1000;
-        localStorage.setItem(STORAGE_KEY, expiryTime.toString());
+        // Check if user already has existing time and add 6 hours to it
+        const existingExpiry = localStorage.getItem(STORAGE_KEY);
+        let newExpiryTime: number;
+        
+        if (existingExpiry) {
+          const currentExpiry = parseInt(existingExpiry, 10);
+          // If current expiry is still in the future, add 6 hours to it
+          if (currentExpiry > Date.now()) {
+            newExpiryTime = currentExpiry + 6 * 60 * 60 * 1000;
+          } else {
+            // Expired, start fresh with 6 hours from now
+            newExpiryTime = Date.now() + 6 * 60 * 60 * 1000;
+          }
+        } else {
+          // No existing token, set 6 hours from now
+          newExpiryTime = Date.now() + 6 * 60 * 60 * 1000;
+        }
+        
+        localStorage.setItem(STORAGE_KEY, newExpiryTime.toString());
 
         // Remove the ?verified=true parameter from URL
         urlParams.delete("verified");
