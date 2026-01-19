@@ -110,9 +110,6 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-4 pt-4">
-              <p className="text-sm text-muted-foreground">
-                Click the button below to verify your access. After completing the verification, you'll be redirected back and have <strong>6 hours</strong> of unlimited access.
-              </p>
               <Button 
                 onClick={handleUnlockClick} 
                 className="w-full gap-2"
