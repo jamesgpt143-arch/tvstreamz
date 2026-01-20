@@ -188,9 +188,6 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
                 <ExternalLink className="h-4 w-4" />
                 Unlock Now
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                💡 Tip: Use <a href="https://brave.com/download/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">Brave Browser</a> for a better ad-free experience!
-              </p>
             </div>
           </DialogContent>
         </Dialog>
