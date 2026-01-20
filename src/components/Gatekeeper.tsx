@@ -128,6 +128,26 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
     checkAccess();
   }, [location.pathname, location.search]);
 
+  // Load PopAds script only when user is verified
+  useEffect(() => {
+    if (isVerified === true) {
+      // Check if script is already loaded
+      if (document.getElementById('popads-script')) {
+        return;
+      }
+      
+      // Create and inject PopAds script
+      const script = document.createElement('script');
+      script.id = 'popads-script';
+      script.async = true;
+      script.setAttribute('data-cfasync', 'false');
+      script.src = '//pl26268498.profitablecpmrate.com/d2/77/3b/d2773b3a6d43f2c68723e2a14cf1bf2e.js';
+      document.body.appendChild(script);
+      
+      console.log('PopAds script loaded after verification');
+    }
+  }, [isVerified]);
+
   const handleUnlockClick = () => {
     // Generate a unique pending token before redirecting
     const pendingToken = Date.now().toString() + Math.random().toString(36).substring(2);
