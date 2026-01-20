@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Unlock } from "lucide-react";
 
 const GATEWAY_URL = "https://cuty.io/LdrbJEQiJ";
+const PENDING_TOKEN_KEY = "site_pending_token";
 const STORAGE_KEY = "site_access_token";
 
 interface GatekeeperProps {
@@ -29,8 +30,15 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
       // Check URL params directly from window.location for reliability
       const urlParams = new URLSearchParams(window.location.search);
       const hasVerifiedParam = urlParams.get("verified") === "true";
+      
+      // Check if there's a pending token (user clicked Unlock button before)
+      const pendingToken = localStorage.getItem(PENDING_TOKEN_KEY);
 
-      if (hasVerifiedParam) {
+      if (hasVerifiedParam && pendingToken) {
+        // Valid verification - user clicked Unlock and completed gateway
+        // Remove the pending token
+        localStorage.removeItem(PENDING_TOKEN_KEY);
+        
         // Check if user already has existing time and add 3 hours to it
         const existingExpiry = localStorage.getItem(STORAGE_KEY);
         let newExpiryTime: number;
@@ -60,6 +68,12 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
         setIsVerified(true);
         setShowGatewayDialog(false);
         return;
+      } else if (hasVerifiedParam && !pendingToken) {
+        // Someone tried to bypass by typing URL directly - remove the param
+        urlParams.delete("verified");
+        const newSearch = urlParams.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+        window.history.replaceState({}, "", newUrl);
       }
 
       // Check localStorage for existing valid token
@@ -101,6 +115,10 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
   }, [location.pathname, location.search]);
 
   const handleUnlockClick = () => {
+    // Generate a unique pending token before redirecting
+    const pendingToken = Date.now().toString() + Math.random().toString(36).substring(2);
+    localStorage.setItem(PENDING_TOKEN_KEY, pendingToken);
+    
     // Open the gateway URL in the same tab
     window.location.href = GATEWAY_URL;
   };
