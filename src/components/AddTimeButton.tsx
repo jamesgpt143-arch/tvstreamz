@@ -7,6 +7,7 @@ const ADD_TIME_URL = "https://cuty.io/LdrbJEQiJ";
 const STORAGE_KEY = "site_access_token";
 const PENDING_TOKEN_KEY = "site_pending_token";
 const ADD_TIME_HOURS = 3;
+const TOKEN_EXPIRY_MINUTES = 10; // Pending token expires after 10 minutes
 
 export const AddTimeButton = () => {
   const [isAdding, setIsAdding] = useState(false);
@@ -35,13 +36,26 @@ export const AddTimeButton = () => {
     window.location.href = ADD_TIME_URL;
   };
 
-  // Check URL for verified parameter and add time if pending token exists
+  // Check URL for verified parameter and add time if pending token exists and is valid
   if (typeof window !== "undefined") {
     const urlParams = new URLSearchParams(window.location.search);
     const pendingToken = localStorage.getItem(PENDING_TOKEN_KEY);
     
-    if (urlParams.get("verified") === "true" && pendingToken) {
-      // Valid verification - user clicked Add Time and completed gateway
+    // Validate pending token - check if it exists and hasn't expired (10 minutes)
+    let isValidPendingToken = false;
+    if (pendingToken) {
+      const tokenTimestamp = parseInt(pendingToken.split(/[^0-9]/)[0], 10);
+      const tokenAge = Date.now() - tokenTimestamp;
+      isValidPendingToken = tokenAge < TOKEN_EXPIRY_MINUTES * 60 * 1000;
+      
+      // Clean up expired token
+      if (!isValidPendingToken) {
+        localStorage.removeItem(PENDING_TOKEN_KEY);
+      }
+    }
+    
+    if (urlParams.get("verified") === "true" && isValidPendingToken) {
+      // Valid verification - user clicked Add Time and completed gateway within time limit
       localStorage.removeItem(PENDING_TOKEN_KEY);
       
       const storedExpiry = localStorage.getItem(STORAGE_KEY);
