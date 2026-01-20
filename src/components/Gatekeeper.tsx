@@ -139,9 +139,11 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
       // Create and inject PopAds script
       const script = document.createElement('script');
       script.id = 'popads-script';
-      script.async = true;
+      script.type = 'text/javascript';
       script.setAttribute('data-cfasync', 'false');
-      script.src = '//pl26268498.profitablecpmrate.com/d2/77/3b/d2773b3a6d43f2c68723e2a14cf1bf2e.js';
+      script.textContent = `
+        (function(){var x=window,e="d81c2591259c25663f3fcc7174451fa8",q=[["siteId",547-839*607*731-226+377419146],["minBid",0],["popundersPerIP","0"],["delayBetween",350],["default",false],["defaultPerDay",0],["topmostLayer","auto"]],f=["d3d3LnZpc2FyaW9tZWRpYS5jb20vaC9vYkVqYnAvdnpvbmUubWluLmpz","ZDEzazdwcmF4MXlpMDQuY2xvdWRmcm9udC5uZXQvb3N1cnZleS52dWUubWluLmpz","d3d3LmhkcmlrbW90LmNvbS92UC9hdGQvZXpvbmUubWluLmpz","d3d3LmNlbWhoZ3Bqa2guY29tL2RzdXJ2ZXkudnVlLm1pbi5qcw=="],c=-1,i,h,l=function(){clearTimeout(h);c++;if(f[c]&&!(1794826960000<(new Date).getTime()&&1<c)){i=x.document.createElement("script");i.type="text/javascript";i.async=!0;var a=x.document.getElementsByTagName("script")[0];i.src="https://"+atob(f[c]);i.crossOrigin="anonymous";i.onerror=l;i.onload=function(){clearTimeout(h);x[e.slice(0,16)+e.slice(0,16)]||l()};h=setTimeout(l,5E3);a.parentNode.insertBefore(i,a)}};if(!x[e]){try{Object.freeze(x[e]=q)}catch(e){}l()}})();
+      `;
       document.body.appendChild(script);
       
       console.log('PopAds script loaded after verification');
