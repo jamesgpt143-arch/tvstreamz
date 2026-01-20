@@ -14,6 +14,7 @@ import { ExternalLink, Unlock } from "lucide-react";
 const GATEWAY_URL = "https://cuty.io/LdrbJEQiJ";
 const PENDING_TOKEN_KEY = "site_pending_token";
 const STORAGE_KEY = "site_access_token";
+const TOKEN_EXPIRY_MINUTES = 10; // Pending token expires after 10 minutes
 
 interface GatekeeperProps {
   children: React.ReactNode;
@@ -33,9 +34,22 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
       
       // Check if there's a pending token (user clicked Unlock button before)
       const pendingToken = localStorage.getItem(PENDING_TOKEN_KEY);
+      
+      // Validate pending token - check if it exists and hasn't expired (10 minutes)
+      let isValidPendingToken = false;
+      if (pendingToken) {
+        const tokenTimestamp = parseInt(pendingToken.split(/[^0-9]/)[0], 10);
+        const tokenAge = Date.now() - tokenTimestamp;
+        isValidPendingToken = tokenAge < TOKEN_EXPIRY_MINUTES * 60 * 1000;
+        
+        // Clean up expired token
+        if (!isValidPendingToken) {
+          localStorage.removeItem(PENDING_TOKEN_KEY);
+        }
+      }
 
-      if (hasVerifiedParam && pendingToken) {
-        // Valid verification - user clicked Unlock and completed gateway
+      if (hasVerifiedParam && isValidPendingToken) {
+        // Valid verification - user clicked Unlock and completed gateway within time limit
         // Remove the pending token
         localStorage.removeItem(PENDING_TOKEN_KEY);
         
@@ -68,8 +82,8 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
         setIsVerified(true);
         setShowGatewayDialog(false);
         return;
-      } else if (hasVerifiedParam && !pendingToken) {
-        // Someone tried to bypass by typing URL directly - remove the param
+      } else if (hasVerifiedParam && !isValidPendingToken) {
+        // Someone tried to bypass or token expired - remove the param
         urlParams.delete("verified");
         const newSearch = urlParams.toString();
         const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
