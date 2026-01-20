@@ -31,22 +31,22 @@ export const Gatekeeper = ({ children }: GatekeeperProps) => {
       const hasVerifiedParam = urlParams.get("verified") === "true";
 
       if (hasVerifiedParam) {
-        // Check if user already has existing time and add 6 hours to it
+        // Check if user already has existing time and add 3 hours to it
         const existingExpiry = localStorage.getItem(STORAGE_KEY);
         let newExpiryTime: number;
         
         if (existingExpiry) {
           const currentExpiry = parseInt(existingExpiry, 10);
-          // If current expiry is still in the future, add 6 hours to it
+          // If current expiry is still in the future, add 3 hours to it
           if (currentExpiry > Date.now()) {
-            newExpiryTime = currentExpiry + 6 * 60 * 60 * 1000;
+            newExpiryTime = currentExpiry + 3 * 60 * 60 * 1000;
           } else {
-            // Expired, start fresh with 6 hours from now
-            newExpiryTime = Date.now() + 6 * 60 * 60 * 1000;
+            // Expired, start fresh with 3 hours from now
+            newExpiryTime = Date.now() + 3 * 60 * 60 * 1000;
           }
         } else {
-          // No existing token, set 6 hours from now
-          newExpiryTime = Date.now() + 6 * 60 * 60 * 1000;
+          // No existing token, set 3 hours from now
+          newExpiryTime = Date.now() + 3 * 60 * 60 * 1000;
         }
         
         localStorage.setItem(STORAGE_KEY, newExpiryTime.toString());
