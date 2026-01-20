@@ -165,18 +165,22 @@ export const Navbar = () => {
 
           {/* Hamburger Menu, Search & Theme Toggle */}
           <div className="flex items-center gap-1">
-            {isSearchOpen ? (
-              <SearchSuggestions isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(true)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Search className="w-5 h-5" />
-              </Button>
-            )}
+            {/* Expandable Search Bar */}
+            <div className={`flex items-center transition-all duration-300 ease-in-out ${isSearchOpen ? 'w-64 md:w-80' : 'w-10'}`}>
+              {isSearchOpen ? (
+                <SearchSuggestions isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsSearchOpen(true)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Open search"
+                >
+                  <Search className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
 
             <ThemeToggle />
 
