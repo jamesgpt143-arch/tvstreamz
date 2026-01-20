@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 const ADD_TIME_URL = "https://cuty.io/LdrbJEQiJ";
 const STORAGE_KEY = "site_access_token";
+const PENDING_TOKEN_KEY = "site_pending_token";
 const ADD_TIME_HOURS = 3;
 
 export const AddTimeButton = () => {
@@ -26,32 +27,37 @@ export const AddTimeButton = () => {
       return;
     }
 
-    // Store current path to return after verification
-    const returnUrl = `${window.location.origin}${window.location.pathname}?add_time=true`;
+    // Generate a unique pending token before redirecting
+    const pendingToken = Date.now().toString() + Math.random().toString(36).substring(2);
+    localStorage.setItem(PENDING_TOKEN_KEY, pendingToken);
     
     // Open the gateway URL
     window.location.href = ADD_TIME_URL;
   };
 
-  // Check URL for add_time parameter and add time if present
+  // Check URL for verified parameter and add time if pending token exists
   if (typeof window !== "undefined") {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("add_time") === "true" && urlParams.get("verified") === "true") {
+    const pendingToken = localStorage.getItem(PENDING_TOKEN_KEY);
+    
+    if (urlParams.get("verified") === "true" && pendingToken) {
+      // Valid verification - user clicked Add Time and completed gateway
+      localStorage.removeItem(PENDING_TOKEN_KEY);
+      
       const storedExpiry = localStorage.getItem(STORAGE_KEY);
       if (storedExpiry) {
         const currentExpiry = parseInt(storedExpiry, 10);
         const newExpiry = currentExpiry + (ADD_TIME_HOURS * 60 * 60 * 1000);
         localStorage.setItem(STORAGE_KEY, newExpiry.toString());
         
-        // Remove the parameters from URL
-        urlParams.delete("add_time");
-        urlParams.delete("verified");
-        const newSearch = urlParams.toString();
-        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
-        window.history.replaceState({}, "", newUrl);
-        
         toast.success(`Added ${ADD_TIME_HOURS} hours to your access time!`);
       }
+      
+      // Remove the verified parameter from URL
+      urlParams.delete("verified");
+      const newSearch = urlParams.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+      window.history.replaceState({}, "", newUrl);
     }
   }
 
