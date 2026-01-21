@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
@@ -11,27 +10,14 @@ interface VideoPlayerProps {
 
 // Server 1 (VidSrc) supports sandbox, others don't
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
-const POPADS_SCRIPT_URL = 'https://www.popads.net/api/website_code?key=e0a433d7f68a370dfc15e557ac8516b57954ffc9&website_id=5140904&db=300&tl=auto&aab=1&of=1';
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [popAdsLoaded, setPopAdsLoaded] = useState(false);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
-
-  // Load PopAds script once on mount
-  useEffect(() => {
-    if (!popAdsLoaded) {
-      const script = document.createElement('script');
-      script.src = POPADS_SCRIPT_URL;
-      script.async = true;
-      script.onload = () => setPopAdsLoaded(true);
-      document.body.appendChild(script);
-    }
-  }, [popAdsLoaded]);
 
   const handlePlay = () => {
     // For all servers, just play the video (PopAds handles monetization)
