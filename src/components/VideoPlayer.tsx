@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
@@ -10,8 +11,13 @@ interface VideoPlayerProps {
 
 // Server 1 (VidSrc) supports sandbox, others don't
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
+const PENDING_VIDEO_PLAY_KEY = 'pending_video_play';
+const TOKEN_EXPIRY_MINUTES = 10;
+const CUTY_IO_URL = 'https://cuty.io/LdrbJEQiJ';
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -19,8 +25,63 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
+  // Check for verified return from cuty.io
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const isVerified = params.get('verified') === 'true';
+    
+    if (isVerified) {
+      const pendingPlayData = localStorage.getItem(PENDING_VIDEO_PLAY_KEY);
+      
+      if (pendingPlayData) {
+        try {
+          const pendingPlay = JSON.parse(pendingPlayData);
+          const tokenAge = (Date.now() - pendingPlay.timestamp) / 1000 / 60; // in minutes
+          
+          // Check if token is still valid (within 10 minutes)
+          if (tokenAge <= TOKEN_EXPIRY_MINUTES && pendingPlay.server === 'Server 1') {
+            // Auto-play the video
+            setActiveServer('Server 1');
+            setIsPlaying(true);
+            
+            // Clear pending play data
+            localStorage.removeItem(PENDING_VIDEO_PLAY_KEY);
+          }
+        } catch (e) {
+          console.error('Error parsing pending play data:', e);
+        }
+      }
+      
+      // Clean up URL by removing verified parameter
+      params.delete('verified');
+      const newSearch = params.toString();
+      const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+      navigate(newUrl, { replace: true });
+    }
+  }, [location.search, navigate, location.pathname]);
+
+  // Clear pending play when switching servers
+  useEffect(() => {
+    if (activeServer !== 'Server 1') {
+      localStorage.removeItem(PENDING_VIDEO_PLAY_KEY);
+    }
+  }, [activeServer]);
+
   const handlePlay = () => {
-    // Open Shopee link when play is clicked
+    if (activeServer === 'Server 1') {
+      // Store pending play info for Server 1
+      const pendingPlay = {
+        server: 'Server 1',
+        timestamp: Date.now()
+      };
+      localStorage.setItem(PENDING_VIDEO_PLAY_KEY, JSON.stringify(pendingPlay));
+      
+      // Redirect to cuty.io
+      window.location.href = CUTY_IO_URL;
+      return;
+    }
+    
+    // For other servers, open Shopee link and play
     window.open('https://s.shopee.ph/9pY6GawaMi', '_blank');
     setIsPlaying(true);
   };
