@@ -1,1 +1,7 @@
 project_id = "wmjebiejrjgfafsniqlx"
+
+[functions.mangadex-proxy]
+verify_jwt = false
+
+[functions.cuty-shorten]
+verify_jwt = false
