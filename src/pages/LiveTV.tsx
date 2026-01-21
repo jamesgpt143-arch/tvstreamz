@@ -13,12 +13,17 @@ const LiveTV = () => {
     window.open('https://s.shopee.ph/4AtlxG0ock', '_blank');
   }, []);
 
-  // Combine DB channels with hardcoded channels as fallback
+  // Merge DB channels with hardcoded channels (DB channels take priority by name)
   const channels: Channel[] = useMemo(() => {
-    if (dbChannels && dbChannels.length > 0) {
-      return dbChannels.map(toAppChannel);
-    }
-    return liveChannels;
+    const dbConverted = (dbChannels || []).map(toAppChannel);
+    const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
+    
+    // Include all DB channels + hardcoded channels that don't exist in DB
+    const hardcodedNotInDb = liveChannels.filter(
+      c => !dbNames.has(c.name.toLowerCase())
+    );
+    
+    return [...dbConverted, ...hardcodedNotInDb];
   }, [dbChannels]);
 
   return (
