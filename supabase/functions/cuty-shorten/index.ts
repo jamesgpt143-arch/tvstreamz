@@ -36,21 +36,20 @@ serve(async (req) => {
     // Call cuty.io API
     const cutyUrl = `https://cuty.io/api?api=${apiKey}&url=${encodeURIComponent(destinationUrl)}`;
     const response = await fetch(cutyUrl);
-    const result = await response.text();
+    const result = await response.json();
 
-    console.log('Cuty.io response:', result);
+    console.log('Cuty.io response:', JSON.stringify(result));
 
-    // cuty.io returns the short URL directly as text on success
-    // or an error message on failure
-    if (result.startsWith('https://cuty.io/')) {
+    // Check for success status
+    if (result.status === 'success' && result.shortenedUrl) {
       return new Response(
-        JSON.stringify({ shortUrl: result }),
+        JSON.stringify({ shortUrl: result.shortenedUrl }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      console.error('Cuty.io error:', result);
+      console.error('Cuty.io error:', result.message || 'Unknown error');
       return new Response(
-        JSON.stringify({ error: result }),
+        JSON.stringify({ error: result.message || 'Failed to create short link' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
