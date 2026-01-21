@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Server, Play } from 'lucide-react';
+import { Server, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -13,7 +15,6 @@ interface VideoPlayerProps {
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 const PENDING_VIDEO_PLAY_KEY = 'pending_video_play';
 const TOKEN_EXPIRY_MINUTES = 10;
-const CUTY_IO_URL = 'https://cuty.io/LdrbJEQiJ';
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const location = useLocation();
@@ -21,6 +22,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
@@ -67,17 +69,40 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
     }
   }, [activeServer]);
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (activeServer === 'Server 1') {
-      // Store pending play info for Server 1
-      const pendingPlay = {
-        server: 'Server 1',
-        timestamp: Date.now()
-      };
-      localStorage.setItem(PENDING_VIDEO_PLAY_KEY, JSON.stringify(pendingPlay));
+      setIsLoading(true);
       
-      // Redirect to cuty.io
-      window.location.href = CUTY_IO_URL;
+      try {
+        // Build the return URL with verified=true
+        const returnUrl = `${window.location.origin}${location.pathname}?verified=true`;
+        
+        // Call edge function to create cuty.io short link
+        const { data, error } = await supabase.functions.invoke('cuty-shorten', {
+          body: { destinationUrl: returnUrl }
+        });
+
+        if (error || !data?.shortUrl) {
+          console.error('Failed to create short link:', error || data?.error);
+          toast.error('Failed to create link. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Store pending play info for Server 1
+        const pendingPlay = {
+          server: 'Server 1',
+          timestamp: Date.now()
+        };
+        localStorage.setItem(PENDING_VIDEO_PLAY_KEY, JSON.stringify(pendingPlay));
+        
+        // Redirect to dynamic cuty.io link
+        window.location.href = data.shortUrl;
+      } catch (err) {
+        console.error('Error creating cuty link:', err);
+        toast.error('Something went wrong. Please try again.');
+        setIsLoading(false);
+      }
       return;
     }
     
@@ -116,14 +141,20 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
         {!isPlaying ? (
           // Play button overlay
           <div 
-            className="absolute inset-0 flex items-center justify-center bg-black/60 cursor-pointer z-10"
-            onClick={handlePlay}
+            className={`absolute inset-0 flex items-center justify-center bg-black/60 z-10 ${isLoading ? '' : 'cursor-pointer'}`}
+            onClick={isLoading ? undefined : handlePlay}
           >
             <div className="flex flex-col items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors hover:scale-105 transform">
-                <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
+                {isLoading ? (
+                  <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
+                ) : (
+                  <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
+                )}
               </div>
-              <span className="text-white font-medium">Click to Play</span>
+              <span className="text-white font-medium">
+                {isLoading ? 'Preparing...' : 'Click to Play'}
+              </span>
             </div>
           </div>
         ) : null}
