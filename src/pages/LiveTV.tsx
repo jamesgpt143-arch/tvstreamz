@@ -13,7 +13,7 @@ const LiveTV = () => {
     window.open('https://s.shopee.ph/4AtlxG0ock', '_blank');
   }, []);
 
-  // Merge DB channels with hardcoded channels (DB channels take priority by name)
+  // Merge DB channels with hardcoded channels, sorted alphabetically
   const channels: Channel[] = useMemo(() => {
     const dbConverted = (dbChannels || []).map(toAppChannel);
     const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
@@ -23,7 +23,10 @@ const LiveTV = () => {
       c => !dbNames.has(c.name.toLowerCase())
     );
     
-    return [...dbConverted, ...hardcodedNotInDb];
+    // Combine and sort alphabetically by name
+    return [...dbConverted, ...hardcodedNotInDb].sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
   }, [dbChannels]);
 
   return (
