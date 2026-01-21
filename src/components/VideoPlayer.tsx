@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Server, Play, Loader2 } from 'lucide-react';
+import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -13,101 +11,30 @@ interface VideoPlayerProps {
 
 // Server 1 (VidSrc) supports sandbox, others don't
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
-const PENDING_VIDEO_PLAY_KEY = 'pending_video_play';
-const TOKEN_EXPIRY_MINUTES = 10;
+const POPADS_SCRIPT_URL = 'https://www.popads.net/api/website_code?key=e0a433d7f68a370dfc15e557ac8516b57954ffc9&website_id=5140904&db=300&tl=auto&aab=1&of=1';
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [popAdsLoaded, setPopAdsLoaded] = useState(false);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
-  // Check for verified return from cuty.io
+  // Load PopAds script once on mount
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const isVerified = params.get('verified') === 'true';
-    
-    if (isVerified) {
-      const pendingPlayData = localStorage.getItem(PENDING_VIDEO_PLAY_KEY);
-      
-      if (pendingPlayData) {
-        try {
-          const pendingPlay = JSON.parse(pendingPlayData);
-          const tokenAge = (Date.now() - pendingPlay.timestamp) / 1000 / 60; // in minutes
-          
-          // Check if token is still valid (within 10 minutes)
-          if (tokenAge <= TOKEN_EXPIRY_MINUTES && pendingPlay.server === 'Server 1') {
-            // Auto-play the video
-            setActiveServer('Server 1');
-            setIsPlaying(true);
-            
-            // Clear pending play data
-            localStorage.removeItem(PENDING_VIDEO_PLAY_KEY);
-          }
-        } catch (e) {
-          console.error('Error parsing pending play data:', e);
-        }
-      }
-      
-      // Clean up URL by removing verified parameter
-      params.delete('verified');
-      const newSearch = params.toString();
-      const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
-      navigate(newUrl, { replace: true });
+    if (!popAdsLoaded) {
+      const script = document.createElement('script');
+      script.src = POPADS_SCRIPT_URL;
+      script.async = true;
+      script.onload = () => setPopAdsLoaded(true);
+      document.body.appendChild(script);
     }
-  }, [location.search, navigate, location.pathname]);
+  }, [popAdsLoaded]);
 
-  // Clear pending play when switching servers
-  useEffect(() => {
-    if (activeServer !== 'Server 1') {
-      localStorage.removeItem(PENDING_VIDEO_PLAY_KEY);
-    }
-  }, [activeServer]);
-
-  const handlePlay = async () => {
-    if (activeServer === 'Server 1') {
-      setIsLoading(true);
-      
-      try {
-        // Build the return URL with verified=true
-        const returnUrl = `${window.location.origin}${location.pathname}?verified=true`;
-        
-        // Call edge function to create cuty.io short link
-        const { data, error } = await supabase.functions.invoke('cuty-shorten', {
-          body: { destinationUrl: returnUrl }
-        });
-
-        if (error || !data?.shortUrl) {
-          console.error('Failed to create short link:', error || data?.error);
-          toast.error('Failed to create link. Please try again.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Store pending play info for Server 1
-        const pendingPlay = {
-          server: 'Server 1',
-          timestamp: Date.now()
-        };
-        localStorage.setItem(PENDING_VIDEO_PLAY_KEY, JSON.stringify(pendingPlay));
-        
-        // Redirect to dynamic cuty.io link
-        window.location.href = data.shortUrl;
-      } catch (err) {
-        console.error('Error creating cuty link:', err);
-        toast.error('Something went wrong. Please try again.');
-        setIsLoading(false);
-      }
-      return;
-    }
-    
-    // For other servers, open Shopee link and play
-    window.open('https://s.shopee.ph/9pY6GawaMi', '_blank');
+  const handlePlay = () => {
+    // For all servers, just play the video (PopAds handles monetization)
     setIsPlaying(true);
   };
 
@@ -141,20 +68,14 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
         {!isPlaying ? (
           // Play button overlay
           <div 
-            className={`absolute inset-0 flex items-center justify-center bg-black/60 z-10 ${isLoading ? '' : 'cursor-pointer'}`}
-            onClick={isLoading ? undefined : handlePlay}
+            className="absolute inset-0 flex items-center justify-center bg-black/60 z-10 cursor-pointer"
+            onClick={handlePlay}
           >
             <div className="flex flex-col items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors hover:scale-105 transform">
-                {isLoading ? (
-                  <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
-                ) : (
-                  <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
-                )}
+                <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
               </div>
-              <span className="text-white font-medium">
-                {isLoading ? 'Preparing...' : 'Click to Play'}
-              </span>
+              <span className="text-white font-medium">Click to Play</span>
             </div>
           </div>
         ) : null}
