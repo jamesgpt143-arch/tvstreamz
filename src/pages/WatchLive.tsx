@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
 import { ShareButton } from '@/components/ShareButton';
-import { liveChannels } from '@/lib/channels';
-import { ChevronLeft, Radio, WifiOff } from 'lucide-react';
+import { liveChannels, type Channel } from '@/lib/channels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
+import { ChevronLeft, Radio, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -13,7 +14,17 @@ const WatchLive = () => {
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
   
-  const channel = liveChannels.find((c) => c.id === channelId);
+  const { data: dbChannels, isLoading } = useChannels();
+
+  // Combine DB channels with hardcoded channels as fallback
+  const allChannels: Channel[] = useMemo(() => {
+    if (dbChannels && dbChannels.length > 0) {
+      return dbChannels.map(toAppChannel);
+    }
+    return liveChannels;
+  }, [dbChannels]);
+  
+  const channel = allChannels.find((c) => c.id === channelId);
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
@@ -22,6 +33,14 @@ const WatchLive = () => {
   const handleStatusChange = useCallback((online: boolean) => {
     setIsOnline(online);
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!channel) {
     return (
@@ -37,7 +56,7 @@ const WatchLive = () => {
     );
   }
 
-  const otherChannels = liveChannels.filter((c) => c.id !== channelId);
+  const otherChannels = allChannels.filter((c) => c.id !== channelId);
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">

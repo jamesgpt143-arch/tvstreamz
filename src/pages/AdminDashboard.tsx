@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -20,6 +21,7 @@ import {
   Cell,
 } from "recharts";
 import { format, subDays } from "date-fns";
+import { ChannelManager } from "@/components/admin/ChannelManager";
 
 interface DailyStats {
   date: string;
@@ -229,7 +231,19 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
         </div>
 
-        {/* Stats Cards */}
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="channels" className="gap-2">
+              <Tv className="h-4 w-4" />
+              Channels
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="analytics" className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -450,6 +464,13 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+          </TabsContent>
+
+          <TabsContent value="channels">
+            <ChannelManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
