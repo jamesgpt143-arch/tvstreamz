@@ -16,7 +16,7 @@ const WatchLive = () => {
   
   const { data: dbChannels, isLoading } = useChannels();
 
-  // Merge DB channels with hardcoded channels (DB channels take priority by name)
+  // Merge DB channels with hardcoded channels, sorted alphabetically
   const allChannels: Channel[] = useMemo(() => {
     const dbConverted = (dbChannels || []).map(toAppChannel);
     const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
@@ -26,7 +26,10 @@ const WatchLive = () => {
       c => !dbNames.has(c.name.toLowerCase())
     );
     
-    return [...dbConverted, ...hardcodedNotInDb];
+    // Combine and sort alphabetically by name
+    return [...dbConverted, ...hardcodedNotInDb].sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
   }, [dbChannels]);
   
   const channel = allChannels.find((c) => c.id === channelId);
