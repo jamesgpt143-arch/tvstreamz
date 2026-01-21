@@ -1,13 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
-import { liveChannels } from '@/lib/channels';
-import { Radio } from 'lucide-react';
+import { liveChannels, type Channel } from '@/lib/channels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
+import { Radio, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const LiveTV = () => {
+  const { data: dbChannels, isLoading } = useChannels();
+
   useEffect(() => {
     window.open('https://s.shopee.ph/4AtlxG0ock', '_blank');
   }, []);
+
+  // Combine DB channels with hardcoded channels as fallback
+  const channels: Channel[] = useMemo(() => {
+    if (dbChannels && dbChannels.length > 0) {
+      return dbChannels.map(toAppChannel);
+    }
+    return liveChannels;
+  }, [dbChannels]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,11 +38,19 @@ const LiveTV = () => {
           </div>
 
           {/* Channels Grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-            {liveChannels.map((channel) => (
-              <ChannelCard key={channel.id} channel={channel} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+              {[...Array(8)].map((_, i) => (
+                <Skeleton key={i} className="aspect-video rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+              {channels.map((channel) => (
+                <ChannelCard key={channel.id} channel={channel} />
+              ))}
+            </div>
+          )}
 
           {/* Info */}
           <div className="mt-12 p-6 rounded-xl bg-card border border-border">

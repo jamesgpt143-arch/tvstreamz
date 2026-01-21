@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      channels: {
+        Row: {
+          category: string | null
+          created_at: string
+          drm_key: string | null
+          drm_key_id: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          sort_order: number | null
+          stream_type: string
+          stream_url: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          drm_key?: string | null
+          drm_key_id?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          sort_order?: number | null
+          stream_type?: string
+          stream_url: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          drm_key?: string | null
+          drm_key_id?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          sort_order?: number | null
+          stream_type?: string
+          stream_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       live_chat_messages: {
         Row: {
           avatar_url: string | null

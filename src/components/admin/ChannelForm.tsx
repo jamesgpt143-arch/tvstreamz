@@ -1,0 +1,222 @@
+import { useState } from 'react';
+import { X, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useCreateChannel, useUpdateChannel, type DbChannel, type ChannelInput } from '@/hooks/useChannels';
+import { toast } from 'sonner';
+
+interface ChannelFormProps {
+  channel?: DbChannel | null;
+  onClose: () => void;
+}
+
+export function ChannelForm({ channel, onClose }: ChannelFormProps) {
+  const createChannel = useCreateChannel();
+  const updateChannel = useUpdateChannel();
+  const isEditing = !!channel;
+
+  const [formData, setFormData] = useState<ChannelInput>({
+    name: channel?.name || '',
+    logo_url: channel?.logo_url || '',
+    stream_url: channel?.stream_url || '',
+    stream_type: channel?.stream_type || 'hls',
+    drm_key_id: channel?.drm_key_id || '',
+    drm_key: channel?.drm_key || '',
+    category: channel?.category || 'general',
+    is_active: channel?.is_active ?? true,
+    sort_order: channel?.sort_order ?? 0,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim() || !formData.stream_url.trim()) {
+      toast.error('Name and Stream URL are required');
+      return;
+    }
+
+    try {
+      if (isEditing && channel) {
+        await updateChannel.mutateAsync({
+          id: channel.id,
+          ...formData,
+          drm_key_id: formData.drm_key_id || null,
+          drm_key: formData.drm_key || null,
+        });
+        toast.success('Channel updated');
+      } else {
+        await createChannel.mutateAsync({
+          ...formData,
+          drm_key_id: formData.drm_key_id || null,
+          drm_key: formData.drm_key || null,
+        });
+        toast.success('Channel created');
+      }
+      onClose();
+    } catch (error) {
+      toast.error(isEditing ? 'Failed to update channel' : 'Failed to create channel');
+    }
+  };
+
+  const isPending = createChannel.isPending || updateChannel.isPending;
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? 'Edit Channel' : 'Add New Channel'}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="name">Channel Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="GMA 7"
+            />
+          </div>
+
+          {/* Stream URL */}
+          <div className="space-y-2">
+            <Label htmlFor="stream_url">Stream URL *</Label>
+            <Input
+              id="stream_url"
+              value={formData.stream_url}
+              onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
+              placeholder="https://example.com/stream.m3u8"
+            />
+          </div>
+
+          {/* Stream Type */}
+          <div className="space-y-2">
+            <Label htmlFor="stream_type">Stream Type</Label>
+            <Select
+              value={formData.stream_type}
+              onValueChange={(value: 'mpd' | 'hls' | 'youtube') =>
+                setFormData({ ...formData, stream_type: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hls">HLS (.m3u8)</SelectItem>
+                <SelectItem value="mpd">DASH (.mpd)</SelectItem>
+                <SelectItem value="youtube">YouTube Embed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Logo URL */}
+          <div className="space-y-2">
+            <Label htmlFor="logo_url">Logo URL</Label>
+            <Input
+              id="logo_url"
+              value={formData.logo_url || ''}
+              onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+              placeholder="https://example.com/logo.png"
+            />
+          </div>
+
+          {/* Category */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Input
+              id="category"
+              value={formData.category || ''}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="news, entertainment, sports..."
+            />
+          </div>
+
+          {/* DRM Keys (for MPD streams) */}
+          {formData.stream_type === 'mpd' && (
+            <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
+              <p className="text-sm font-medium">DRM ClearKey (Optional)</p>
+              <div className="space-y-2">
+                <Label htmlFor="drm_key_id">Key ID</Label>
+                <Input
+                  id="drm_key_id"
+                  value={formData.drm_key_id || ''}
+                  onChange={(e) => setFormData({ ...formData, drm_key_id: e.target.value })}
+                  placeholder="31363232353335323435353337353331"
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="drm_key">Key</Label>
+                <Input
+                  id="drm_key"
+                  value={formData.drm_key || ''}
+                  onChange={(e) => setFormData({ ...formData, drm_key: e.target.value })}
+                  placeholder="35416a68643065697575493337566135"
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Sort Order */}
+          <div className="space-y-2">
+            <Label htmlFor="sort_order">Sort Order</Label>
+            <Input
+              id="sort_order"
+              type="number"
+              value={formData.sort_order ?? 0}
+              onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+              placeholder="0"
+            />
+          </div>
+
+          {/* Active Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div>
+              <Label htmlFor="is_active">Active</Label>
+              <p className="text-xs text-muted-foreground">Channel will be visible to users</p>
+            </div>
+            <Switch
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1" disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isEditing ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
