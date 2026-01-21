@@ -7,7 +7,6 @@ import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
-import { AddTimeButton } from '@/components/AddTimeButton';
 import { liveChannels } from '@/lib/channels';
 import { trackPageView } from '@/lib/analytics';
 import {
@@ -69,12 +68,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Add Time Button */}
-      <div className="container mx-auto px-4 pt-20 pb-4 flex justify-end">
-        <AddTimeButton />
-      </div>
-
-      <main>
+      <main className="pt-20">
         <HeroSection items={trending} />
 
         <div className="relative -mt-20 z-10">
