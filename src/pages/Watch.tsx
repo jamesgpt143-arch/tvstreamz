@@ -344,24 +344,7 @@ const Watch = () => {
                     Watch Trailer
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => setShowProgressDialog(true)}
-                  className="gap-2"
-                >
-                  <Bookmark className="w-4 h-4" />
-                  Save Progress
-                </Button>
               </div>
-
-              {/* Progress Dialog */}
-              <SaveProgressDialog
-                open={showProgressDialog}
-                onOpenChange={setShowProgressDialog}
-                onSave={handleSaveProgress}
-                currentTime={savedProgress?.currentTime}
-                duration={savedProgress?.duration || (runtime * 60)}
-              />
 
               {/* Video Player */}
               <VideoPlayer servers={servers} title={title} />
