@@ -553,12 +553,12 @@ export const liveChannels: Channel[] = [
   {
     id: 'jeepney-tv',
     name: 'Jeepney TV',
-    manifestUri: 'https://abslive.akamaized.net/dash/live/2028025/jeepneytv/manifest.mpd',
+    manifestUri: 'https://converse.nathcreqtives.com/1250/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3Njg0NDQ0NTgsImV4cCI6MTc2OTMwODQ1OCwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY5MzA4NDU4fQ.9dl-698RxGuhJMNNmVTuCUtU5aN-b8TpLL9aXXfaK_I',
     clearKey: {
-      '90ea4079e02f418db7b170e8763e65f0': '1bfe2d166e31d03eee86ee568bd6c272'
+      '31363331363735363832333531363036': '723548436f6e34333961586150756649'
     },
     type: 'mpd',
-    logo: 'https://th.bing.com/th/id/OIP.PNeE4yWz4_Tp1O-dCdY_xAHaEP?rs=1&pid=ImgDetMain'
+    logo: 'https://dxs.fandom.com/wiki/Jeepney_TV_Logos?file=Jeepney_TV_Logo_2015.png'
   },
   {
     id: 'jungo-pinoy-tv',
