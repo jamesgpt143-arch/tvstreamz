@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,34 @@ import {
 } from '@/components/ui/dialog';
 import { useCreateChannel, useUpdateChannel, type DbChannel, type ChannelInput } from '@/hooks/useChannels';
 import { toast } from 'sonner';
+
+// Helper to convert YouTube URLs to embed format
+const convertToYouTubeEmbed = (url: string): string => {
+  if (!url) return url;
+  
+  // Already an embed URL
+  if (url.includes('youtube.com/embed/')) return url;
+  
+  let videoId: string | null = null;
+  
+  // Match youtube.com/watch?v=VIDEO_ID
+  const watchMatch = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+  if (watchMatch) videoId = watchMatch[1];
+  
+  // Match youtu.be/VIDEO_ID
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+  if (shortMatch) videoId = shortMatch[1];
+  
+  // Match youtube.com/live/VIDEO_ID
+  const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
+  if (liveMatch) videoId = liveMatch[1];
+  
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  }
+  
+  return url;
+};
 
 interface ChannelFormProps {
   channel?: DbChannel | null;
@@ -100,9 +128,23 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             <Input
               id="stream_url"
               value={formData.stream_url}
-              onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
-              placeholder="https://example.com/stream.m3u8"
+              onChange={(e) => {
+                let url = e.target.value;
+                // Auto-convert YouTube URLs when stream type is youtube
+                if (formData.stream_type === 'youtube') {
+                  url = convertToYouTubeEmbed(url);
+                }
+                setFormData({ ...formData, stream_url: url });
+              }}
+              placeholder={formData.stream_type === 'youtube' 
+                ? "Paste any YouTube URL (auto-converts to embed)" 
+                : "https://example.com/stream.m3u8"}
             />
+            {formData.stream_type === 'youtube' && (
+              <p className="text-xs text-muted-foreground">
+                Supports: youtube.com/watch?v=..., youtu.be/..., youtube.com/live/...
+              </p>
+            )}
           </div>
 
           {/* Stream Type */}
