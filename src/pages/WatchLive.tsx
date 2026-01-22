@@ -1,22 +1,43 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
 import { ShareButton } from '@/components/ShareButton';
 import { liveChannels, type Channel } from '@/lib/channels';
-import { useChannels, toAppChannel } from '@/hooks/useChannels';
-import { ChevronLeft, Radio, WifiOff, Loader2 } from 'lucide-react';
+import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
+import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
+import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type SortOption = 'a-z' | 'popular' | 'recent';
 
 const WatchLive = () => {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('a-z');
   
   const { data: dbChannels, isLoading } = useChannels();
+  const { data: viewCounts } = useChannelViews();
 
-  // Merge DB channels with hardcoded channels, sorted alphabetically
+  // Create a map of channel creation dates from DB for "recent" sorting
+  const dbChannelMap = useMemo(() => {
+    const map = new Map<string, DbChannel>();
+    (dbChannels || []).forEach(ch => {
+      map.set(ch.name.toLowerCase(), ch);
+    });
+    return map;
+  }, [dbChannels]);
+
+  // Merge DB channels with hardcoded channels
   const allChannels: Channel[] = useMemo(() => {
     const dbConverted = (dbChannels || []).map(toAppChannel);
     const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
@@ -26,13 +47,47 @@ const WatchLive = () => {
       c => !dbNames.has(c.name.toLowerCase())
     );
     
-    // Combine and sort alphabetically by name
-    return [...dbConverted, ...hardcodedNotInDb].sort((a, b) => 
-      a.name.localeCompare(b.name)
-    );
+    return [...dbConverted, ...hardcodedNotInDb];
   }, [dbChannels]);
   
   const channel = allChannels.find((c) => c.id === channelId);
+
+  // Track channel view
+  useEffect(() => {
+    if (channel) {
+      trackChannelView(channel.id, channel.name);
+    }
+  }, [channel?.id, channel?.name]);
+
+  // Sort other channels based on selected option
+  const sortedOtherChannels = useMemo(() => {
+    const others = allChannels.filter((c) => c.id !== channelId);
+    
+    switch (sortBy) {
+      case 'a-z':
+        return others.sort((a, b) => a.name.localeCompare(b.name));
+      case 'popular':
+        return others.sort((a, b) => {
+          const aViews = viewCounts?.[a.id] || 0;
+          const bViews = viewCounts?.[b.id] || 0;
+          if (bViews !== aViews) return bViews - aViews;
+          return a.name.localeCompare(b.name);
+        });
+      case 'recent':
+        return others.sort((a, b) => {
+          const aDb = dbChannelMap.get(a.name.toLowerCase());
+          const bDb = dbChannelMap.get(b.name.toLowerCase());
+          if (aDb && bDb) {
+            return new Date(bDb.created_at).getTime() - new Date(aDb.created_at).getTime();
+          }
+          if (aDb && !bDb) return -1;
+          if (!aDb && bDb) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      default:
+        return others;
+    }
+  }, [allChannels, channelId, viewCounts, dbChannelMap, sortBy]);
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
@@ -63,8 +118,6 @@ const WatchLive = () => {
       </div>
     );
   }
-
-  const otherChannels = allChannels.filter((c) => c.id !== channelId);
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -124,13 +177,43 @@ const WatchLive = () => {
             </div>
 
             {/* Other Channels - Separate Scrollable Section */}
-            {otherChannels.length > 0 && (
+            {sortedOtherChannels.length > 0 && (
               <div className="mt-6 max-w-4xl mx-auto w-full">
-                <h2 className="text-sm font-semibold mb-3">Other Channels</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold">Other Channels</h2>
+                  
+                  {/* Sort Dropdown */}
+                  <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                    <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="a-z">
+                        <div className="flex items-center gap-2">
+                          <ArrowUpAZ className="w-3 h-3" />
+                          <span>A-Z</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="popular">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-3 h-3" />
+                          <span>Popular</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="recent">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          <span>Recent</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <div className="border border-border rounded-xl bg-card/50 p-3">
                   <ScrollArea className="h-[280px]">
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 pr-3">
-                      {otherChannels.map((ch) => (
+                      {sortedOtherChannels.map((ch) => (
                         <button
                           key={ch.id}
                           onClick={() => handleChannelSwitch(ch.id)}

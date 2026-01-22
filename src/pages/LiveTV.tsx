@@ -3,6 +3,7 @@ import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { liveChannels, type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
+import { useChannelViews } from '@/hooks/useChannelViews';
 import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -17,6 +18,7 @@ type SortOption = 'a-z' | 'popular' | 'recent';
 
 const LiveTV = () => {
   const { data: dbChannels, isLoading } = useChannels();
+  const { data: viewCounts } = useChannelViews();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
 
   useEffect(() => {
@@ -49,18 +51,11 @@ const LiveTV = () => {
       case 'a-z':
         return combined.sort((a, b) => a.name.localeCompare(b.name));
       case 'popular':
-        // DB channels first (assumed popular), then hardcoded by sort_order
+        // Sort by view counts (highest first)
         return combined.sort((a, b) => {
-          const aInDb = dbNames.has(a.name.toLowerCase());
-          const bInDb = dbNames.has(b.name.toLowerCase());
-          if (aInDb && !bInDb) return -1;
-          if (!aInDb && bInDb) return 1;
-          // Both in DB or both hardcoded - sort by sort_order or name
-          const aDb = dbChannelMap.get(a.name.toLowerCase());
-          const bDb = dbChannelMap.get(b.name.toLowerCase());
-          if (aDb && bDb) {
-            return (aDb.sort_order ?? 999) - (bDb.sort_order ?? 999);
-          }
+          const aViews = viewCounts?.[a.id] || 0;
+          const bViews = viewCounts?.[b.id] || 0;
+          if (bViews !== aViews) return bViews - aViews;
           return a.name.localeCompare(b.name);
         });
       case 'recent':
@@ -78,7 +73,7 @@ const LiveTV = () => {
       default:
         return combined;
     }
-  }, [dbChannels, dbChannelMap, sortBy]);
+  }, [dbChannels, dbChannelMap, viewCounts, sortBy]);
 
   return (
     <div className="min-h-screen bg-background">
