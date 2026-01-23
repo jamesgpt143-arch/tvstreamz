@@ -7,6 +7,7 @@ import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
+import { WelcomePopup } from '@/components/WelcomePopup';
 import { liveChannels } from '@/lib/channels';
 import { trackPageView } from '@/lib/analytics';
 import {
@@ -66,6 +67,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <WelcomePopup />
       <Navbar />
 
       <main className="pt-20">
