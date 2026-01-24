@@ -80,6 +80,8 @@ export const WelcomePopup = () => {
   };
 
   const handleClose = () => {
+    // Trigger PopAds by opening a new interaction
+    window.open('about:blank', '_blank');
     setIsOpen(false);
   };
 
