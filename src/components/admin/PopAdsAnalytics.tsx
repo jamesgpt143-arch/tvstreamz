@@ -107,31 +107,39 @@ export const PopAdsAnalytics = () => {
         .gte("created_at", last30Days.toISOString());
 
       // Process daily stats
-      const dailyMap = new Map<string, { impressions: number; clicks: number }>();
+      const dailyMap = new Map<string, { dateObj: Date; impressions: number; clicks: number }>();
       
       impressionData?.forEach((item) => {
-        const date = format(new Date(item.created_at), "MMM dd");
-        if (!dailyMap.has(date)) {
-          dailyMap.set(date, { impressions: 0, clicks: 0 });
+        const dateObj = new Date(item.created_at);
+        const dateKey = format(dateObj, "yyyy-MM-dd");
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, { dateObj, impressions: 0, clicks: 0 });
         }
-        dailyMap.get(date)!.impressions++;
+        dailyMap.get(dateKey)!.impressions++;
       });
 
       clickData?.forEach((item) => {
-        const date = format(new Date(item.created_at), "MMM dd");
-        if (!dailyMap.has(date)) {
-          dailyMap.set(date, { impressions: 0, clicks: 0 });
+        const dateObj = new Date(item.created_at);
+        const dateKey = format(dateObj, "yyyy-MM-dd");
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, { dateObj, impressions: 0, clicks: 0 });
         }
-        dailyMap.get(date)!.clicks++;
+        dailyMap.get(dateKey)!.clicks++;
       });
 
       const dailyStatsArray: DailyPopAdsStats[] = [];
-      dailyMap.forEach((value, key) => {
+      dailyMap.forEach((value) => {
         dailyStatsArray.push({
-          date: key,
+          date: format(value.dateObj, "MMM dd"),
           impressions: value.impressions,
           clicks: value.clicks,
         });
+      });
+      // Sort chronologically
+      dailyStatsArray.sort((a, b) => {
+        const dateA = new Date(a.date + " 2025");
+        const dateB = new Date(b.date + " 2025");
+        return dateA.getTime() - dateB.getTime();
       });
       setDailyStats(dailyStatsArray);
 
