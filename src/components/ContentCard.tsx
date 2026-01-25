@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom';
 import { Star, Play } from 'lucide-react';
 import { Movie, TVShow, getImageUrl } from '@/lib/tmdb';
+import { trackPopAdsClick } from '@/lib/analytics';
 
 interface ContentCardProps {
   item: Movie | TVShow;
   type?: 'movie' | 'tv';
 }
+
+const handleCardClick = (title: string) => {
+  trackPopAdsClick(`content_card_${title.substring(0, 20)}`);
+};
 
 const getRatingColor = (rating: number) => {
   if (rating >= 8) return 'text-green-400 bg-green-400/20';
@@ -24,6 +29,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
     <Link
       to={`/watch/${mediaType}/${item.id}`}
       className="group relative block rounded-xl overflow-hidden card-hover"
+      onClick={() => handleCardClick(title)}
     >
       <div className="aspect-[2/3] relative">
         <img
