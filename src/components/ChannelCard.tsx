@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Radio, Play } from 'lucide-react';
 import { Channel } from '@/lib/channels';
+import { trackPopAdsClick } from '@/lib/analytics';
 
 interface ChannelCardProps {
   channel: Channel;
@@ -11,6 +12,7 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
     <Link
       to={`/live/${channel.id}`}
       className="group relative block rounded-xl overflow-hidden card-hover bg-card border border-border"
+      onClick={() => trackPopAdsClick(`channel_card_${channel.name}`)}
     >
       <div className="aspect-square sm:aspect-video relative">
         <img

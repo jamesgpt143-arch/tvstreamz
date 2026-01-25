@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
+import { trackPopAdsClick } from '@/lib/analytics';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -20,6 +21,8 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
   const handlePlay = () => {
+    // Track PopAds click
+    trackPopAdsClick('video_player_play_button');
     // For all servers, just play the video (PopAds handles monetization)
     setIsPlaying(true);
   };

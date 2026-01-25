@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Play, Info, Star, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Movie, getImageUrl } from '@/lib/tmdb';
+import { trackPopAdsClick } from '@/lib/analytics';
 
 interface HeroSectionProps {
   items: Movie[];
@@ -68,13 +69,13 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
           </p>
 
           <div className="flex flex-wrap gap-3">
-            <Button asChild size="lg" className="gap-2">
+            <Button asChild size="lg" className="gap-2" onClick={() => trackPopAdsClick('hero_watch_now_button')}>
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Play className="w-5 h-5" fill="currentColor" />
                 Watch Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="gap-2 border-border">
+            <Button asChild variant="outline" size="lg" className="gap-2 border-border" onClick={() => trackPopAdsClick('hero_more_info_button')}>
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Info className="w-5 h-5" />
                 More Info
