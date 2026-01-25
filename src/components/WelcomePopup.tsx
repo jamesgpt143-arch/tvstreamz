@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { trackPopAdsClick } from '@/lib/analytics';
 
 interface WelcomePopupData {
   enabled: boolean;
@@ -73,6 +74,8 @@ export const WelcomePopup = () => {
   }, []);
 
   const handleStartWatching = () => {
+    // Track PopAds click
+    trackPopAdsClick('welcome_popup_start_button');
     // Trigger PopAds by opening a new interaction
     window.open('about:blank', '_blank');
     // Close the popup
@@ -80,6 +83,8 @@ export const WelcomePopup = () => {
   };
 
   const handleClose = () => {
+    // Track PopAds click
+    trackPopAdsClick('welcome_popup_close_button');
     // Trigger PopAds by opening a new interaction
     window.open('about:blank', '_blank');
     setIsOpen(false);

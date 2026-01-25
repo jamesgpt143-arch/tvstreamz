@@ -46,6 +46,36 @@ export const trackContentView = async (
   }
 };
 
+// Track PopAds impression (when script loads)
+export const trackPopAdsImpression = async () => {
+  try {
+    const visitorId = getVisitorId();
+    await supabase.from('site_analytics').insert({
+      event_type: 'popads_impression',
+      page_path: window.location.pathname,
+      visitor_id: visitorId,
+    });
+  } catch (error) {
+    console.error('Failed to track PopAds impression:', error);
+  }
+};
+
+// Track PopAds click (when user triggers popunder)
+export const trackPopAdsClick = async (source: string) => {
+  try {
+    const visitorId = getVisitorId();
+    await supabase.from('site_analytics').insert({
+      event_type: 'popads_click',
+      page_path: window.location.pathname,
+      content_type: 'popads',
+      content_title: source,
+      visitor_id: visitorId,
+    });
+  } catch (error) {
+    console.error('Failed to track PopAds click:', error);
+  }
+};
+
 // Get analytics stats
 export const getAnalyticsStats = async () => {
   try {
