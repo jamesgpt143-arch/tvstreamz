@@ -20,7 +20,7 @@ export const liveChannels: Channel[] = [
   {
     id: 'GTV',
     name: 'GTV',
-    manifestUri: 'https://converse.nathcreqtives.com/1143/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3Njg0NDQ0NTgsImV4cCI6MTc2OTMwODQ1OCwiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzY5MzA4NDU4fQ.9dl-698RxGuhJMNNmVTuCUtU5aN-b8TpLL9aXXfaK_I',
+    manifestUri: 'https://converse.nathcreqtives.com/1143/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjkxNjM3MTcsImV4cCI6MTc3MDAyNzcxNywiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzcwMDI3NzE3fQ.K1-8AV1nHuKVEUe8kE0SqLfLrqk1n4Ng0WBkX18zGI4',
     clearKey: {
       '31363232353335323435353337353331': '35416a68643065697575493337566135'
     },
