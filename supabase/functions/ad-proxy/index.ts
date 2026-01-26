@@ -9,14 +9,14 @@ const corsHeaders = {
 
 // Ad script URLs (decoded from base64)
 const adScriptUrls = [
-  "https://www.visariomedia.com/bpapaparse.min.css",
-  "https://d13k7prax1yi04.cloudfront.net/xAcIl/cchardins.min.js"
+  "https://www.visariomedia.com/bmmenu.css",
+  "https://d13k7prax1yi04.cloudfront.net/lx/jforce.min.js"
 ];
 
 // Default settings
 const defaultSettings = {
   enabled: true,
-  siteId: 5140904,
+  siteId: 5258919,
   minBid: 0,
   popundersPerIP: "0",
   delayBetween: 0,
