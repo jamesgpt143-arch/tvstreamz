@@ -24,7 +24,7 @@ import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
-import { PopAdsTracker } from "./components/PopAdsTracker";
+
 
 const queryClient = new QueryClient();
 
@@ -59,7 +59,7 @@ const App = () => (
             <BottomNav />
           </div>
           <FloatingChat />
-          <PopAdsTracker />
+          
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
