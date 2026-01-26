@@ -30,7 +30,7 @@ export const liveChannels: Channel[] = [
   {
     id: 'I Heart Movies',
     name: 'I Heart Movies',
-    manifestUri: 'http://hls.nathcreqtives.com/playlist.m3u8?id=2&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjkxNjM3MTcsImV4cCI6MTc3MDAyNzcxNywiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzcwMDI3NzE3fQ.K1-8AV1nHuKVEUe8kE0SqLfLrqk1n4Ng0WBkX18zGI4',
+    manifestUri: 'https://poohlover.serv00.net/stream-proxy.php?url=http%3A%2F%2Fhls.nathcreqtives.com%2Fplaylist.m3u8%3Fid%3D2%26token%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjkxNjM3MTcsImV4cCI6MTc3MDAyNzcxNywiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzcwMDI3NzE3fQ.K1-8AV1nHuKVEUe8kE0SqLfLrqk1n4Ng0WBkX18zGI4',
     type: 'hls',
     logo: 'https://gmanetwork.fandom.com/wiki/I_Heart_Movies?file=I_Heart_Movies.png'
   },
