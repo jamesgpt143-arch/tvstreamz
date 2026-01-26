@@ -93,11 +93,11 @@ serve(async (req) => {
     }
     
     // Return the main loader script with dynamic settings
-    const projectUrl = Deno.env.get('SUPABASE_URL') || '';
+    // Use relative paths so scripts appear to come from same domain (via Vercel rewrite)
     const loaderScript = `
 (function(){
   var x=window,j="c9b6cb59c84ff56aa7ad154505a16417",m=[["siteId",${settings.siteId}],["minBid",${settings.minBid}],["popundersPerIP","${settings.popundersPerIP}"],["delayBetween",${settings.delayBetween}],["default",false],["defaultPerDay",${settings.defaultPerDay}],["topmostLayer","${settings.topmostLayer}"]];
-  var v=-1,h,f,k=["${projectUrl}/functions/v1/ad-proxy?s=0","${projectUrl}/functions/v1/ad-proxy?s=1"];
+  var v=-1,h,f,k=["/api/ad-proxy/0","/api/ad-proxy/1"];
   var l=function(){clearTimeout(f);v++;if(k[v]&&!(1795297669000<(new Date).getTime()&&1<v)){h=x.document.createElement("script");h.type="text/javascript";h.async=!0;var b=x.document.getElementsByTagName("script")[0];h.src=k[v];h.crossOrigin="anonymous";h.onerror=l;h.onload=function(){clearTimeout(f);x[j.slice(0,16)+j.slice(0,16)]||l()};f=setTimeout(l,5E3);b.parentNode.insertBefore(h,b)}};
   if(!x[j]){try{Object.freeze(x[j]=m)}catch(e){}l()}
 })();`;

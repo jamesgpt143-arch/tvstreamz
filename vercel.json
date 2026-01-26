@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/ad-proxy", "destination": "https://wmjebiejrjgfafsniqlx.supabase.co/functions/v1/ad-proxy" },
+    { "source": "/api/ad-proxy/:path*", "destination": "https://wmjebiejrjgfafsniqlx.supabase.co/functions/v1/ad-proxy?s=:path*" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
