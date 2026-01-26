@@ -24,6 +24,7 @@ import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
 import { PopAdsAnalytics } from "@/components/admin/PopAdsAnalytics";
+import { PopAdsSettings } from "@/components/admin/PopAdsSettings";
 
 interface DailyStats {
   date: string;
@@ -488,7 +489,8 @@ export default function AdminDashboard() {
             <ChannelManager />
           </TabsContent>
 
-          <TabsContent value="popads">
+          <TabsContent value="popads" className="space-y-6">
+            <PopAdsSettings />
             <PopAdsAnalytics />
           </TabsContent>
 
