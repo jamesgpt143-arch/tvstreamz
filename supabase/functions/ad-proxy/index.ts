@@ -16,7 +16,7 @@ const adScriptUrls = [
 // Default settings
 const defaultSettings = {
   enabled: true,
-  siteId: 4983507,
+  siteId: 5140904,
   minBid: 0,
   popundersPerIP: "0",
   delayBetween: 0,
