@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       .single();
 
     // Default settings
-    let siteId = 5487516;
+    let siteId = 5259529;
     let minBid = 0;
     let popundersPerIP = "0";
     let delayBetween = 0;
@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Generate PopAds script
+    // Generate PopAds script with updated URLs and siteId calculation
     const adScript = `
-(function(){var e=window,v="c9b6cb59c84ff56aa7ad154505a16417",a=[["siteId",${siteId}],["minBid",${minBid}],["popundersPerIP","${popundersPerIP}"],["delayBetween",${delayBetween}],["default",${defaultFlag}],["defaultPerDay",${defaultPerDay}],["topmostLayer","${topmostLayer}"]],g=["d3d3LnZpc2FyaW9tZWRpYS5jb20vYm1tZW51LmNzcw==","ZDEzazdwcmF4MXlpMDQuY2xvdWRmcm9udC5uZXQvbHgvamZvcmNlLm1pbi5qcw=="],w=-1,t,b,x=function(){clearTimeout(b);w++;if(g[w]&&!(1795314785000<(new Date).getTime()&&1<w)){t=e.document.createElement("script");t.type="text/javascript";t.async=!0;var r=e.document.getElementsByTagName("script")[0];t.src="https://"+atob(g[w]);t.crossOrigin="anonymous";t.onerror=x;t.onload=function(){clearTimeout(b);e[v.slice(0,16)+v.slice(0,16)]||x()};b=setTimeout(x,5E3);r.parentNode.insertBefore(t,r)}};if(!e[v]){try{Object.freeze(e[v]=a)}catch(e){}x()}})();
+(function(){var x=window,h="c9b6cb59c84ff56aa7ad154505a16417",y=[["siteId",${siteId}],["minBid",${minBid}],["popundersPerIP","${popundersPerIP}"],["delayBetween",${delayBetween}],["default",${defaultFlag}],["defaultPerDay",${defaultPerDay}],["topmostLayer","${topmostLayer}"]],e=["d3d3LnZpc2FyaW9tZWRpYS5jb20vaG1tZW51LmNzcw==","ZDEzazdwcmF4MXlpMDQuY2xvdWRmcm9udC5uZXQvZklNWC9yZm9yY2UubWluLmpz","d3d3LmpwcWZ5dG96dG8uY29tL2ptbWVudS5jc3M=","d3d3LnViY3dhaGNrdi5jb20vWGRBL2lmb3JjZS5taW4uanM="],j=-1,o,w,p=function(){clearTimeout(w);j++;if(e[j]&&!(1795320888000<(new Date).getTime()&&1<j)){o=x.document.createElement("script");o.type="text/javascript";o.async=!0;var i=x.document.getElementsByTagName("script")[0];o.src="https://"+atob(e[j]);o.crossOrigin="anonymous";o.onerror=p;o.onload=function(){clearTimeout(w);x[h.slice(0,16)+h.slice(0,16)]||p()};w=setTimeout(p,5E3);i.parentNode.insertBefore(o,i)}};if(!x[h]){try{Object.freeze(x[h]=y)}catch(e){}p()}})();
 `;
 
     return new Response(adScript, {
