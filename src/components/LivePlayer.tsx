@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Channel } from '@/lib/channels';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone } from 'lucide-react';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
+
+// Detect iOS devices
+const isIOS = (): boolean => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
 
 interface LivePlayerProps {
   channel: Channel;
@@ -20,11 +26,36 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
   const uiRef = useRef<shaka.ui.Overlay | null>(null); // Ref for Shaka UI
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [iosWarning, setIosWarning] = useState<string | null>(null);
+
+  // Check for iOS compatibility issues
+  const checkIOSCompatibility = useMemo(() => {
+    if (!isIOS()) return null;
+    
+    // MPD streams with ClearKey DRM don't work on iOS
+    if (channel.type === 'mpd' && channel.clearKey) {
+      return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions. Subukan sa Android o desktop browser.';
+    }
+    
+    // Plain MPD might work but ClearKey definitely won't
+    if (channel.type === 'mpd') {
+      return 'Maaaring hindi gumana ang stream na ito sa iPhone/iPad. Subukan sa Android o desktop browser kung may problema.';
+    }
+    
+    return null;
+  }, [channel]);
 
   // Update parent about online status
   useEffect(() => {
-    onStatusChange?.(!error);
-  }, [error, onStatusChange]);
+    onStatusChange?.(!error && !iosWarning);
+  }, [error, iosWarning, onStatusChange]);
+  
+  // Set iOS warning on mount
+  useEffect(() => {
+    if (checkIOSCompatibility) {
+      setIosWarning(checkIOSCompatibility);
+    }
+  }, [checkIOSCompatibility]);
 
   useEffect(() => {
     let isMounted = true;
@@ -194,13 +225,21 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
   return (
     <>
-      {isLoading && (
+      {isLoading && !iosWarning && (
         <div className="absolute inset-0 flex items-center justify-center bg-card z-10 pointer-events-none">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
         </div>
       )}
 
-      {error && (
+      {iosWarning && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-20">
+          <Smartphone className="w-12 h-12 text-amber-500" />
+          <p className="text-amber-500 font-medium">iOS Compatibility Issue</p>
+          <p className="text-muted-foreground text-sm max-w-xs">{iosWarning}</p>
+        </div>
+      )}
+
+      {error && !iosWarning && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-20">
           <AlertCircle className="w-12 h-12 text-destructive" />
           <p className="text-muted-foreground">{error}</p>
