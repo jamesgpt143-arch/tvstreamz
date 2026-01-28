@@ -4,10 +4,13 @@ import { ContentCard } from '@/components/ContentCard';
 import { fetchAnimeTV, fetchAnimeMovies, fetchTopRatedAnime, TVShow, Movie } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { usePagePopup } from '@/hooks/usePagePopup';
 
 type Category = 'popular_tv' | 'movies' | 'top_rated';
 
 const Anime = () => {
+  // Trigger page popup if enabled
+  usePagePopup('anime');
   const [items, setItems] = useState<(TVShow | Movie)[]>([]);
   const [category, setCategory] = useState<Category>('popular_tv');
   const [page, setPage] = useState(1);

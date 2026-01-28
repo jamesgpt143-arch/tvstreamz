@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { liveChannels, type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
+import { usePagePopup } from '@/hooks/usePagePopup';
 import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -20,10 +21,9 @@ const LiveTV = () => {
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
-
-  useEffect(() => {
-    window.open('https://s.shopee.ph/4AtlxG0ock', '_blank');
-  }, []);
+  
+  // Trigger page popup if enabled
+  usePagePopup('livetv');
 
   // Create a map of channel creation dates from DB for "recent" sorting
   const dbChannelMap = useMemo(() => {
