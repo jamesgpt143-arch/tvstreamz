@@ -323,7 +323,9 @@ export default function AdminDashboard() {
           {/* Views Trend Chart */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Views Trend (Last 30 Days)</CardTitle>
+              <CardTitle className="text-foreground">
+                Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-72 overflow-x-auto">
@@ -366,7 +368,9 @@ export default function AdminDashboard() {
           {/* Visitors Trend Chart */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Daily Visitors</CardTitle>
+              <CardTitle className="text-foreground">
+                Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-72 overflow-x-auto">
