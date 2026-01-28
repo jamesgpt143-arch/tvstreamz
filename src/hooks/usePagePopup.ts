@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
+import { toast } from 'sonner';
 
 interface PagePopupConfig {
   enabled: boolean;
@@ -42,8 +43,22 @@ export function usePagePopup(pageId: string) {
   // Trigger popup when config is loaded and enabled
   useEffect(() => {
     if (config.enabled && config.url && !hasTriggered) {
-      window.open(config.url, '_blank');
       setHasTriggered(true);
+      
+      // Try to open popup directly first
+      const popup = window.open(config.url, '_blank');
+      
+      // If blocked by browser, show a toast with clickable link
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        toast('🎁 May special offer para sayo!', {
+          description: 'I-click para buksan',
+          action: {
+            label: 'Buksan',
+            onClick: () => window.open(config.url, '_blank'),
+          },
+          duration: 8000,
+        });
+      }
     }
   }, [config, hasTriggered]);
 
