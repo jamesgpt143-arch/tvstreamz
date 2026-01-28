@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -23,6 +23,7 @@ import {
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
+import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
 
 interface DailyStats {
   date: string;
@@ -252,6 +253,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="settings" className="gap-2">
               <MessageSquare className="h-4 w-4" />
               Welcome Popup
+            </TabsTrigger>
+            <TabsTrigger value="page-popups" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Page Popups
             </TabsTrigger>
           </TabsList>
 
@@ -486,6 +491,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="settings">
             <WelcomePopupSettings />
+          </TabsContent>
+
+          <TabsContent value="page-popups">
+            <PagePopupSettings />
           </TabsContent>
         </Tabs>
       </div>
