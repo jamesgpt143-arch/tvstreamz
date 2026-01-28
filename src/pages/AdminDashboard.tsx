@@ -326,33 +326,39 @@ export default function AdminDashboard() {
               <CardTitle className="text-foreground">Views Trend (Last 30 Days)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dailyStats}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
-                    />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="views"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary) / 0.3)"
-                      name="Views"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="h-72 overflow-x-auto">
+                <div style={{ minWidth: Math.max(600, dailyStats.length * 40) }}>
+                  <ResponsiveContainer width="100%" height={288}>
+                    <AreaChart data={dailyStats}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={11}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={0}
+                      />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="views"
+                        stroke="hsl(var(--primary))"
+                        fill="hsl(var(--primary) / 0.3)"
+                        name="Views"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -363,32 +369,38 @@ export default function AdminDashboard() {
               <CardTitle className="text-foreground">Daily Visitors</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyStats}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
-                    />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
-                      }}
-                    />
-                    <Bar
-                      dataKey="visitors"
-                      fill="hsl(var(--primary))"
-                      name="Unique Visitors"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="h-72 overflow-x-auto">
+                <div style={{ minWidth: Math.max(600, dailyStats.length * 40) }}>
+                  <ResponsiveContainer width="100%" height={288}>
+                    <BarChart data={dailyStats}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={11}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={0}
+                      />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                      />
+                      <Bar
+                        dataKey="visitors"
+                        fill="hsl(var(--primary))"
+                        name="Unique Visitors"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </CardContent>
           </Card>
