@@ -81,11 +81,17 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
 
       try {
+        // Build the stream URL - use proxy for Widevine HLS to bypass CORS
+        const getProxiedUrl = (url: string) => {
+          const proxyBase = import.meta.env.VITE_SUPABASE_URL;
+          return `${proxyBase}/functions/v1/hls-proxy?url=${encodeURIComponent(url)}`;
+        };
+
         // ==========================================
         // HLS LOGIC - Check if DRM is needed
         // ==========================================
         if (channel.type === 'hls') {
-          // If HLS has Widevine DRM, use Shaka Player
+          // If HLS has Widevine DRM, use Shaka Player with proxy
           if (channel.widevineUrl) {
             videoRef.current.controls = false;
 
@@ -116,8 +122,11 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               },
             });
 
+            // Use proxied URL to bypass CORS
+            const proxiedManifest = getProxiedUrl(channel.manifestUri);
+
             try {
-              await player.load(channel.manifestUri);
+              await player.load(proxiedManifest);
               if (isMounted) {
                 setIsLoading(false);
                 videoRef.current?.play().catch(() => {});
