@@ -63,8 +63,10 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     logo_url: channel?.logo_url || '',
     stream_url: channel?.stream_url || '',
     stream_type: channel?.stream_type || 'hls',
+    license_type: channel?.license_type || null,
     drm_key_id: channel?.drm_key_id || '',
     drm_key: channel?.drm_key || '',
+    license_url: channel?.license_url || '',
     category: channel?.category || 'general',
     is_active: channel?.is_active ?? true,
     sort_order: channel?.sort_order ?? 0,
@@ -85,6 +87,8 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           ...formData,
           drm_key_id: formData.drm_key_id || null,
           drm_key: formData.drm_key || null,
+          license_type: formData.license_type || null,
+          license_url: formData.license_url || null,
         });
         toast.success('Channel updated');
       } else {
@@ -92,6 +96,8 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           ...formData,
           drm_key_id: formData.drm_key_id || null,
           drm_key: formData.drm_key || null,
+          license_type: formData.license_type || null,
+          license_url: formData.license_url || null,
         });
         toast.success('Channel created');
       }
@@ -189,30 +195,73 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
           </div>
 
-          {/* DRM Keys (for MPD streams) */}
-          {formData.stream_type === 'mpd' && (
+          {/* DRM Configuration (for MPD/HLS streams) */}
+          {(formData.stream_type === 'mpd' || formData.stream_type === 'hls') && (
             <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
-              <p className="text-sm font-medium">DRM ClearKey (Optional)</p>
+              <p className="text-sm font-medium">DRM Configuration (Optional)</p>
+              
+              {/* DRM Type Selection */}
               <div className="space-y-2">
-                <Label htmlFor="drm_key_id">Key ID</Label>
-                <Input
-                  id="drm_key_id"
-                  value={formData.drm_key_id || ''}
-                  onChange={(e) => setFormData({ ...formData, drm_key_id: e.target.value })}
-                  placeholder="31363232353335323435353337353331"
-                  className="font-mono text-sm"
-                />
+                <Label htmlFor="license_type">DRM Type</Label>
+                <Select
+                  value={formData.license_type || 'none'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, license_type: value === 'none' ? null : value as 'clearkey' | 'widevine' })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select DRM type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No DRM</SelectItem>
+                    <SelectItem value="clearkey">ClearKey</SelectItem>
+                    <SelectItem value="widevine">Widevine</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="drm_key">Key</Label>
-                <Input
-                  id="drm_key"
-                  value={formData.drm_key || ''}
-                  onChange={(e) => setFormData({ ...formData, drm_key: e.target.value })}
-                  placeholder="35416a68643065697575493337566135"
-                  className="font-mono text-sm"
-                />
-              </div>
+
+              {/* ClearKey Fields */}
+              {formData.license_type === 'clearkey' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="drm_key_id">Key ID</Label>
+                    <Input
+                      id="drm_key_id"
+                      value={formData.drm_key_id || ''}
+                      onChange={(e) => setFormData({ ...formData, drm_key_id: e.target.value })}
+                      placeholder="31363232353335323435353337353331"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="drm_key">Key</Label>
+                    <Input
+                      id="drm_key"
+                      value={formData.drm_key || ''}
+                      onChange={(e) => setFormData({ ...formData, drm_key: e.target.value })}
+                      placeholder="35416a68643065697575493337566135"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Widevine Fields */}
+              {formData.license_type === 'widevine' && (
+                <div className="space-y-2">
+                  <Label htmlFor="license_url">Widevine License URL</Label>
+                  <Input
+                    id="license_url"
+                    value={formData.license_url || ''}
+                    onChange={(e) => setFormData({ ...formData, license_url: e.target.value })}
+                    placeholder="https://license-server.com/license"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the Widevine license server URL
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
