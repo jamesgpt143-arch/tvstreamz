@@ -32,12 +32,12 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
   const checkIOSCompatibility = useMemo(() => {
     if (!isIOS()) return null;
     
-    // MPD streams with ClearKey DRM don't work on iOS
-    if (channel.type === 'mpd' && channel.clearKey) {
+    // DRM streams don't work on iOS
+    if (channel.clearKey || channel.widevineUrl) {
       return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions. Subukan sa Android o desktop browser.';
     }
     
-    // Plain MPD might work but ClearKey definitely won't
+    // Plain MPD might work but could have issues
     if (channel.type === 'mpd') {
       return 'Maaaring hindi gumana ang stream na ito sa iPhone/iPad. Subukan sa Android o desktop browser kung may problema.';
     }
@@ -82,47 +82,93 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
       try {
         // ==========================================
-        // HLS LOGIC (using hls.js or native)
+        // HLS LOGIC - Check if DRM is needed
         // ==========================================
         if (channel.type === 'hls') {
-          // Use native browser controls for HLS since we aren't using Shaka UI for it
-          videoRef.current.controls = true; 
+          // If HLS has Widevine DRM, use Shaka Player
+          if (channel.widevineUrl) {
+            videoRef.current.controls = false;
 
-          if (Hls.isSupported()) {
-            const hls = new Hls({
-              enableWorker: true,
-              lowLatencyMode: true,
+            shaka.polyfill.installAll();
+            
+            if (!shaka.Player.isBrowserSupported()) {
+              if (isMounted) {
+                setError('Your browser does not support this stream format.');
+                setIsLoading(false);
+              }
+              return;
+            }
+
+            const player = new shaka.Player(videoRef.current);
+            shakaRef.current = player;
+
+            const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
+            uiRef.current = ui;
+
+            ui.configure({
+              overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'],
+              addBigPlayButton: true,
             });
-            hlsRef.current = hls;
-            
-            hls.loadSource(channel.manifestUri);
-            hls.attachMedia(videoRef.current);
-            
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+
+            player.configure({
+              drm: {
+                servers: { 'com.widevine.alpha': channel.widevineUrl },
+              },
+            });
+
+            try {
+              await player.load(channel.manifestUri);
               if (isMounted) {
                 setIsLoading(false);
                 videoRef.current?.play().catch(() => {});
               }
-            });
-            
-            hls.on(Hls.Events.ERROR, (_, data) => {
-              if (data.fatal && isMounted) {
-                setError('Failed to load stream. The channel may be offline.');
-                setIsLoading(false);
-              }
-            });
-          } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari)
-            videoRef.current.src = channel.manifestUri;
-            const handleLoaded = () => {
+            } catch (err) {
+              console.error('Shaka error:', err);
               if (isMounted) {
+                setError('Failed to load stream. The channel may require different DRM or is offline.');
                 setIsLoading(false);
-                videoRef.current?.play().catch(() => {});
               }
-            };
-            videoRef.current.addEventListener('loadedmetadata', handleLoaded);
+            }
+          } else {
+            // Standard HLS without DRM - use hls.js or native
+            videoRef.current.controls = true; 
+
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+              });
+              hlsRef.current = hls;
+              
+              hls.loadSource(channel.manifestUri);
+              hls.attachMedia(videoRef.current);
+              
+              hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                if (isMounted) {
+                  setIsLoading(false);
+                  videoRef.current?.play().catch(() => {});
+                }
+              });
+              
+              hls.on(Hls.Events.ERROR, (_, data) => {
+                if (data.fatal && isMounted) {
+                  setError('Failed to load stream. The channel may be offline.');
+                  setIsLoading(false);
+                }
+              });
+            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+              // Native HLS support (Safari)
+              videoRef.current.src = channel.manifestUri;
+              const handleLoaded = () => {
+                if (isMounted) {
+                  setIsLoading(false);
+                  videoRef.current?.play().catch(() => {});
+                }
+              };
+              videoRef.current.addEventListener('loadedmetadata', handleLoaded);
+            }
           }
-        } 
+        }
         // ==========================================
         // DASH/MPD LOGIC (using Shaka Player + UI)
         // ==========================================

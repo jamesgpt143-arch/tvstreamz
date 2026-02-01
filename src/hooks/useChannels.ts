@@ -9,6 +9,8 @@ export interface DbChannel {
   stream_type: 'mpd' | 'hls' | 'youtube';
   drm_key_id: string | null;
   drm_key: string | null;
+  license_type: 'clearkey' | 'widevine' | null;
+  license_url: string | null;
   category: string | null;
   is_active: boolean;
   sort_order: number | null;
@@ -23,6 +25,8 @@ export interface ChannelInput {
   stream_type: 'mpd' | 'hls' | 'youtube';
   drm_key_id?: string | null;
   drm_key?: string | null;
+  license_type?: 'clearkey' | 'widevine' | null;
+  license_url?: string | null;
   category?: string | null;
   is_active?: boolean;
   sort_order?: number | null;
@@ -35,8 +39,11 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   manifestUri: dbChannel.stream_url,
   type: dbChannel.stream_type,
   logo: dbChannel.logo_url || '',
-  clearKey: dbChannel.drm_key_id && dbChannel.drm_key 
+  clearKey: dbChannel.license_type === 'clearkey' && dbChannel.drm_key_id && dbChannel.drm_key 
     ? { [dbChannel.drm_key_id]: dbChannel.drm_key } 
+    : undefined,
+  widevineUrl: dbChannel.license_type === 'widevine' && dbChannel.license_url 
+    ? dbChannel.license_url 
     : undefined,
   embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
 });

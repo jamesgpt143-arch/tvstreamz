@@ -22,6 +22,8 @@ export type Database = {
           drm_key_id: string | null
           id: string
           is_active: boolean
+          license_type: string | null
+          license_url: string | null
           logo_url: string | null
           name: string
           sort_order: number | null
@@ -36,6 +38,8 @@ export type Database = {
           drm_key_id?: string | null
           id?: string
           is_active?: boolean
+          license_type?: string | null
+          license_url?: string | null
           logo_url?: string | null
           name: string
           sort_order?: number | null
@@ -50,6 +54,8 @@ export type Database = {
           drm_key_id?: string | null
           id?: string
           is_active?: boolean
+          license_type?: string | null
+          license_url?: string | null
           logo_url?: string | null
           name?: string
           sort_order?: number | null
