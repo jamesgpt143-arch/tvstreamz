@@ -315,7 +315,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="max-h-72 overflow-y-auto space-y-2">
+              <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
                 {dailyStats.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No data yet</p>
                 ) : (
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="max-h-72 overflow-y-auto space-y-2">
+              <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
                 {dailyStats.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No data yet</p>
                 ) : (
