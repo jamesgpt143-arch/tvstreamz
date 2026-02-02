@@ -241,6 +241,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_daily_analytics_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          stat_date: string
+          view_count: number
+          visitor_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

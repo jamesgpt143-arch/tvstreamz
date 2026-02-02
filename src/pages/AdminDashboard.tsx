@@ -116,35 +116,16 @@ export default function AdminDashboard() {
       weeklyVisitors,
     });
 
-    // Get daily stats for last 30 days - use aggregation approach to avoid row limits
+    // Get daily stats for last 30 days using aggregated function
     const { data: dailyData } = await supabase
-      .from("site_analytics")
-      .select("created_at, visitor_id")
-      .gte("created_at", last30Days.toISOString())
-      .order("created_at", { ascending: true })
-      .limit(50000);
+      .rpc('get_daily_analytics_stats', { days_back: 30 });
 
-    // Process daily stats
-    const dailyMap = new Map<string, { dateKey: string; dateObj: Date; views: number; visitors: Set<string> }>();
-    dailyData?.forEach((item) => {
-      const dateObj = new Date(item.created_at);
-      const dateKey = format(dateObj, "yyyy-MM-dd"); // Use sortable date format as key
-      if (!dailyMap.has(dateKey)) {
-        dailyMap.set(dateKey, { dateKey, dateObj, views: 0, visitors: new Set() });
-      }
-      const stat = dailyMap.get(dateKey)!;
-      stat.views++;
-      stat.visitors.add(item.visitor_id);
-    });
-
-    // Convert to array and sort by dateKey (yyyy-MM-dd format sorts correctly)
-    const dailyStatsArray: DailyStats[] = Array.from(dailyMap.values())
-      .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
-      .map((value) => ({
-        date: format(value.dateObj, "MMM dd"),
-        views: value.views,
-        visitors: value.visitors.size,
-      }));
+    // Process daily stats from aggregated data
+    const dailyStatsArray: DailyStats[] = (dailyData || []).map((item: { stat_date: string; view_count: number; visitor_count: number }) => ({
+      date: format(new Date(item.stat_date), "MMM dd"),
+      views: Number(item.view_count),
+      visitors: Number(item.visitor_count),
+    }));
     
     setDailyStats(dailyStatsArray);
 
