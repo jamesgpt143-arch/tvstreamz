@@ -6,20 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
@@ -42,7 +28,7 @@ interface PageStats {
   count: number;
 }
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -318,93 +304,58 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Charts Row */}
+        {/* Daily Stats Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Views Trend Chart */}
+          {/* Views Trend - Text List */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Eye className="h-5 w-5" />
                 Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-72 overflow-x-auto">
-                <div style={{ minWidth: Math.max(600, dailyStats.length * 40) }}>
-                  <ResponsiveContainer width="100%" height={288}>
-                    <AreaChart data={dailyStats}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis
-                        dataKey="date"
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={11}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                        interval={0}
-                      />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="views"
-                        stroke="hsl(var(--primary))"
-                        fill="hsl(var(--primary) / 0.3)"
-                        name="Views"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="max-h-72 overflow-y-auto space-y-2">
+                {dailyStats.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No data yet</p>
+                ) : (
+                  dailyStats.slice().reverse().map((stat, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                    >
+                      <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                      <span className="text-sm font-bold text-primary">{stat.views.toLocaleString()} views</span>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Visitors Trend Chart */}
+          {/* Daily Visitors - Text List */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Users className="h-5 w-5" />
                 Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-72 overflow-x-auto">
-                <div style={{ minWidth: Math.max(600, dailyStats.length * 40) }}>
-                  <ResponsiveContainer width="100%" height={288}>
-                    <BarChart data={dailyStats}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis
-                        dataKey="date"
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={11}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                        interval={0}
-                      />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                      <Bar
-                        dataKey="visitors"
-                        fill="hsl(var(--primary))"
-                        name="Unique Visitors"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="max-h-72 overflow-y-auto space-y-2">
+                {dailyStats.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No data yet</p>
+                ) : (
+                  dailyStats.slice().reverse().map((stat, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                    >
+                      <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                      <span className="text-sm font-bold text-primary">{stat.visitors.toLocaleString()} visitors</span>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -455,38 +406,22 @@ export default function AdminDashboard() {
               <CardTitle className="text-foreground">Top Pages</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
+              <div className="space-y-3">
                 {topPages.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No page views yet</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={topPages}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="count"
-                        nameKey="path"
-                        label={({ path, percent }) =>
-                          `${path} (${(percent * 100).toFixed(0)}%)`
-                        }
-                        labelLine={false}
-                      >
-                        {topPages.map((_, index) => (
-                          <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  topPages.map((page, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                        <p className="font-medium text-foreground">{page.path}</p>
+                      </div>
+                      <span className="font-bold text-foreground">{page.count} views</span>
+                    </div>
+                  ))
                 )}
               </div>
             </CardContent>
