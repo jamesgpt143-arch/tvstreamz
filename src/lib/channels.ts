@@ -18,26 +18,6 @@ export const liveChannels: Channel[] = [
     logo: 'https://philippines.mom-gmr.org/uploads/_processed_/0/4/csm_1011-167_import_5fdc5c345c.png'
   },
   {
-    id: 'GTV',
-    name: 'GTV',
-    manifestUri: 'https://converse.nathcreqtives.com/1143/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjkxNjM3MTcsImV4cCI6MTc3MDAyNzcxNywiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzcwMDI3NzE3fQ.K1-8AV1nHuKVEUe8kE0SqLfLrqk1n4Ng0WBkX18zGI4',
-    clearKey: {
-      '31363232353335323435353337353331': '35416a68643065697575493337566135'
-    },
-    type: 'mpd',
-    logo: 'https://contents.pep.ph/images2/images2/2021/02/10/gtv-2-1612942731.jpg'
-  },
-  {
-    id: 'alltv',
-    name: 'alltv',
-    manifestUri: 'https://converse.nathcreqtives.com/1179/manifest.mpd?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJHYW1heXBvdG90b3kiLCJpYXQiOjE3NjkxNjM3MTcsImV4cCI6MTc3MDAyNzcxNywiYWNjb3VudEV4cGlyZWQiOmZhbHNlLCJhY2NvdW50RXhwaXJlc0F0IjoxNzcwMDI3NzE3fQ.K1-8AV1nHuKVEUe8kE0SqLfLrqk1n4Ng0WBkX18zGI4',
-    clearKey: {
-      '31363233323238353336303333363036': '367662564c69425947353948374f4553'
-    },
-    type: 'mpd',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ALLTV_Logo_2023.svg/250px-ALLTV_Logo_2023.svg.png'
-  },
-  {
     id: 'a2z',
     name: 'A2Z',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd',
