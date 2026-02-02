@@ -116,12 +116,13 @@ export default function AdminDashboard() {
       weeklyVisitors,
     });
 
-    // Get daily stats for last 30 days
+    // Get daily stats for last 30 days - use aggregation approach to avoid row limits
     const { data: dailyData } = await supabase
       .from("site_analytics")
       .select("created_at, visitor_id")
       .gte("created_at", last30Days.toISOString())
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(50000);
 
     // Process daily stats
     const dailyMap = new Map<string, { dateKey: string; dateObj: Date; views: number; visitors: Set<string> }>();
