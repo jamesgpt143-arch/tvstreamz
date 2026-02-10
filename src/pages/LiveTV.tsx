@@ -7,6 +7,7 @@ import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
 import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CATEGORIES, type ChannelCategory, getChannelCategory } from '@/lib/channelCategories';
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ const LiveTV = () => {
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
+  const [selectedCategory, setSelectedCategory] = useState<ChannelCategory>('All');
   
   // Trigger page popup if enabled
   usePagePopup('livetv');
@@ -46,21 +48,24 @@ const LiveTV = () => {
     
     const combined = [...dbConverted, ...hardcodedNotInDb];
 
+    // Filter by category
+    const filtered = selectedCategory === 'All'
+      ? combined
+      : combined.filter(c => getChannelCategory(c.id) === selectedCategory);
+
     // Sort based on selected option
     switch (sortBy) {
       case 'a-z':
-        return combined.sort((a, b) => a.name.localeCompare(b.name));
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
       case 'popular':
-        // Sort by view counts (highest first)
-        return combined.sort((a, b) => {
+        return filtered.sort((a, b) => {
           const aViews = viewCounts?.[a.id] || 0;
           const bViews = viewCounts?.[b.id] || 0;
           if (bViews !== aViews) return bViews - aViews;
           return a.name.localeCompare(b.name);
         });
       case 'recent':
-        // Sort by created_at descending (newest first), hardcoded at end
-        return combined.sort((a, b) => {
+        return filtered.sort((a, b) => {
           const aDb = dbChannelMap.get(a.name.toLowerCase());
           const bDb = dbChannelMap.get(b.name.toLowerCase());
           if (aDb && bDb) {
@@ -71,9 +76,9 @@ const LiveTV = () => {
           return a.name.localeCompare(b.name);
         });
       default:
-        return combined;
+        return filtered;
     }
-  }, [dbChannels, dbChannelMap, viewCounts, sortBy]);
+  }, [dbChannels, dbChannelMap, viewCounts, sortBy, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,6 +123,23 @@ const LiveTV = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                  selectedCategory === category
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
           </div>
 
           {/* Channels Grid */}
