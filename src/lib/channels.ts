@@ -336,7 +336,7 @@ export const liveChannels: Channel[] = [
     name: 'Dreamworks HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_dreamworks_hd1/default/index.mpd',
     clearKey: {
-      '4ab9645a2a0a47edbd65e8479c2b9669': '8cb209f1828431ce9b50b593d1f44079'
+      '7b1e9c4d5a2f4d8c9f106d3a8b2c1e77': '8b2904224c6cee13d2d4e06c0a3b2887'
     },
     type: 'mpd',
     logo: 'https://logos-world.net/wp-content/uploads/2020/12/DreamWorks-Animation-Logo.png'
@@ -441,7 +441,7 @@ export const liveChannels: Channel[] = [
     name: 'HBO HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_hbohd/default/index.mpd',
     clearKey: {
-      'd47ebabf7a21430b83a8c4b82d9ef6b1': '54c213b2b5f885f1e0290ee4131d425b'
+      'c2b7a1e95d4f4c3a8e617f9d0a2b6c18': '27fca1ab042998b0c2f058b0764d7ed4'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.lY5V2M3D9jtBFJNbOAI8swHaDt?rs=1&pid=ImgDetMain'
