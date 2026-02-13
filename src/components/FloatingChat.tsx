@@ -377,6 +377,10 @@ export const FloatingChat = () => {
                               {msg.username}
                             </span>
                             <span className="text-muted-foreground text-[10px]">
+                              {new Date(msg.created_at).toLocaleDateString('en-PH', { 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}{' '}
                               {new Date(msg.created_at).toLocaleTimeString('en-PH', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
