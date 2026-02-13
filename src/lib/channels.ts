@@ -49,7 +49,7 @@ export const liveChannels: Channel[] = [
     name: 'Animal Planet',
     manifestUri: 'https://qp-pldt-live-grp-02-prod.akamaized.net/out/u/cg_animal_planet_sd.mpd',
     clearKey: {
-      '436b69f987924fcbbc06d40a69c2799a': 'c63d5b0d7e52335b61aeba4f6537d54d'
+      '1c9f7a6d3b2e4e5d8a61f4d0c2b9e813': 'b8f52451c67a2b54f272543eef45b621'
     },
     type: 'mpd',
     logo: 'https://api.discovery.com/v1/images/5bc91c366b66d1494068339e?aspectRatio=1x1&width=192&key=3020a40c2356a645b4b4'
@@ -59,7 +59,7 @@ export const liveChannels: Channel[] = [
     name: 'Animax',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/cg_animax_sd_new/default/index.mpd',
     clearKey: {
-      '92032b0e41a543fb9830751273b8debd': '03f8b65e2af785b10d6634735dbe6c11'
+      '1e7b9d2c6a4f4d8c9f33b5c1a8d7e260': '67336c0c5b24fb4b8caac248dad3c55d'
     },
     type: 'mpd',
     logo: 'https://i.imgur.com/VLlyHhT.png'
@@ -100,7 +100,7 @@ export const liveChannels: Channel[] = [
     name: 'AXN',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_axn_sd/default/index.mpd',
     clearKey: {
-      'fd5d928f5d974ca4983f6e9295dfe410': '3aaa001ddc142fedbb9d5557be43792f'
+      '8a6c2f1e9d7b4c5aa1f04d2b7e9c1f88': '05e6bfa4b6805c46b772f35326b26b36'
     },
     type: 'mpd',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/AXN_Logo_2015.png'
@@ -713,7 +713,7 @@ export const liveChannels: Channel[] = [
     name: 'PBA Rush',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_pbarush_hd1/default/index.mpd',
     clearKey: {
-      '76dc29dd87a244aeab9e8b7c5da1e5f3': '95b2f2ffd4e14073620506213b62ac82'
+      'd7f1a9c36b2e4f8d9a441c5e7b2d8f60': 'fb83c86f600ab945e7e9afed8376eb1e'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.dDzYufwVTWroitJQy9pfXQAAAA?rs=1&pid=ImgDetMain'
