@@ -22,7 +22,7 @@ export const liveChannels: Channel[] = [
     name: 'A2Z',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd',
     clearKey: {
-      'f703e4c8ec9041eeb5028ab4248fa094': 'c22f2162e176eee6273a5d0b68d19530'
+      '3f6d8a2c1b7e4c9f8d52a7e1b0c6f93d': '4019f9269b9054a2b9e257b114ebbaf2'
     },
     type: 'mpd',
     logo: 'https://i.imgur.com/pRwyOMP.png'
@@ -39,7 +39,7 @@ export const liveChannels: Channel[] = [
     name: 'ABC Australia',
     manifestUri: 'https://qp-pldt-live-grp-10-prod.akamaized.net/out/u/dr_abc_aus.mpd',
     clearKey: {
-      '389497f9f8584a57b234e27e430e04b7': '3b85594c7f88604adf004e45c03511c0'
+      'd6f1a8c29b7e4d5a8f332c1e9d7b6a90': '790bd17b9e623e832003a993a2de1d87'
     },
     type: 'mpd',
     logo: 'https://i.imgur.com/480rU5C.png'
