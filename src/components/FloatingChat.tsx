@@ -96,15 +96,16 @@ export const FloatingChat = () => {
     if (!isOpen) return;
 
     const fetchMessages = async () => {
+      // Fetch latest 200 messages (descending) then reverse for display
       const { data } = await supabase
         .from('live_chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(200);
       
       if (data) {
-        setMessages(data);
+        setMessages(data.reverse());
       }
     };
 
