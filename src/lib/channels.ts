@@ -37,7 +37,7 @@ export const liveChannels: Channel[] = [
   {
     id: 'abc-australia',
     name: 'ABC Australia',
-    manifestUri: 'https://qp-pldt-live-grp-10-prod.akamaized.net/out/u/dr_abc_aus.mpd',
+    manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/abc_aus/default/index.mpd',
     clearKey: {
       'd6f1a8c29b7e4d5a8f332c1e9d7b6a90': '790bd17b9e623e832003a993a2de1d87'
     },
@@ -47,7 +47,7 @@ export const liveChannels: Channel[] = [
   {
     id: 'animal-planet',
     name: 'Animal Planet',
-    manifestUri: 'https://qp-pldt-live-grp-02-prod.akamaized.net/out/u/cg_animal_planet_sd.mpd',
+    manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/cg_animal_planet_sd/default/index.mpd',
     clearKey: {
       '1c9f7a6d3b2e4e5d8a61f4d0c2b9e813': 'b8f52451c67a2b54f272543eef45b621'
     },
@@ -161,7 +161,7 @@ export const liveChannels: Channel[] = [
     name: 'Bloomberg',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/bloomberg_sd/default/index.mpd',
     clearKey: {
-      'ef7d9dcfb99b406cb79fb9f675cba426': 'b24094f6ca136af25600e44df5987af4'
+      '3b8e6d1f2c9a4f7d9a556c1e7b2d8f90': '09f0bd803966c4befbd239cfa75efe23'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.ayx_C9FL75IKjIl408wLagHaFj?rs=1&pid=ImgDetMain'
@@ -246,9 +246,9 @@ export const liveChannels: Channel[] = [
   {
     id: 'cctv4',
     name: 'CCTV4',
-    manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_cctv4/default/index.mpd',
+    manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cgtn/default/index.mpd',
     clearKey: {
-      '0f8541ec412b11edb8780242ac120002': '6cf16c272b7357c48cd47061799a4963'
+      '0f854ee4412b11edb8780242ac120002': '9f2c82a74e727deadbda389e18798d55'
     },
     type: 'mpd',
     logo: 'https://w7.pngwing.com/pngs/976/161/png-transparent-china-central-television-cctv-4-cgtn-russian-cctv-channels-television-channel-others-miscellaneous-television-text.png'
@@ -356,7 +356,7 @@ export const liveChannels: Channel[] = [
     name: 'Fashion TV HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/fashiontvhd/default/index.mpd',
     clearKey: {
-      '971ebbe2d887476398e97c37e0c5c591': '472aa631b1e671070a4bf198f43da0c7'
+      '9d7c1f2a6b4e4a8d8f33c1e5b7d2a960': '3a18c535c52db7c79823f59036a9d195'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.fRG_3Wx6qmssHxgeN5leBQHaD4?rs=1&pid=ImgDetMain'
@@ -366,7 +366,7 @@ export const liveChannels: Channel[] = [
     name: 'Food Network HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_foodnetwork_hd1/default/index.mpd',
     clearKey: {
-      'b7299ea0af8945479cd2f287ee7d530e': 'b8ae7679cf18e7261303313b18ba7a14'
+      '4a9d2f7c1e6b4c8d8a55d7b1e3f0c926': '2e62531bdb450480a18197b14f4ebc77'
     },
     type: 'mpd',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Food_Network_New_Logo.png'
@@ -376,7 +376,7 @@ export const liveChannels: Channel[] = [
     name: 'Global Trekker',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/globaltrekker/default/index.mpd',
     clearKey: {
-      '5c26c24bce2942078cf6e35216632c2d': '445887a1c0832ff457263d8bcadc993f'
+      'b7a6c5d23f1e4a9d8c721e5d9f4a6b13': '63ca9ad0d88fccb8c667b028f47287ba'
     },
     type: 'mpd',
     logo: 'https://cdn2.ettoday.net/images/6892/e6892888.jpg'
@@ -451,7 +451,7 @@ export const liveChannels: Channel[] = [
     name: 'HGTV HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/hgtv_hd1/default/index.mpd',
     clearKey: {
-      'f0e3ab943318471abc8b47027f384f5a': '13802a79b19cc3485d2257165a7ef62a'
+      'f1e8c2d97a3b4f5d8c669d1a2b7e4c30': '03aaa7dcf893e6b934aeb3c46f9df5b9'
     },
     type: 'mpd',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/0/05/HGTV_logo.png'
@@ -461,7 +461,7 @@ export const liveChannels: Channel[] = [
     name: 'History HD',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_historyhd/default/index.mpd',
     clearKey: {
-      'a7724b7ca2604c33bb2e963a0319968a': '6f97e3e2eb2bade626e0281ec01d3675'
+      'e2a8c7d15b9f4d6a9c101f7e3b2d8a44': '397ca914a73b1e00bc94ed9eccf9c258'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.Yx9hYOFfO03taYL2CZd6FAHaE8?rs=1&pid=ImgDetMain'
@@ -471,7 +471,7 @@ export const liveChannels: Channel[] = [
     name: 'Hits HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/hits_hd1/default/index.mpd',
     clearKey: {
-      'dac605bc197e442c93f4f08595a95100': '975e27ffc1b7949721ee3ccb4b7fd3e5'
+      '6d2f8a1c9b5e4c7da1f03e7b9d6c2a55': '37c9835795779f8d848a6119d3270c69'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.x2dQgh_yGBdnttScluIGYAHaCp?w=900&h=322&rs=1&pid=ImgDetMain'
@@ -481,7 +481,7 @@ export const liveChannels: Channel[] = [
     name: 'Hits Movies',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_hitsmovies/default/index.mpd',
     clearKey: {
-      'f56b57b32d7e4b2cb21748c0b56761a7': '3df06a89aa01b32655a77d93e09e266f'
+      '2c8a5f1e7b9d4c6a9e55f1d7b2a8c360': 'c9f622dff27e9e1c1f78617ba3b81a62'
     },
     type: 'mpd',
     logo: 'https://tse2.mm.bing.net/th/id/OIP.IVTdT_KbbSE3puMAYpFGaQAAAA?cb=12&w=434&h=284&rs=1&pid=ImgDetMain&o=7&rm=3'
@@ -491,7 +491,7 @@ export const liveChannels: Channel[] = [
     name: 'Hits Now',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_hitsnow/default/index.mpd',
     clearKey: {
-      '14439a1b7afc4527bb0ebc51cf11cbc1': '92b0287c7042f271b266cc11ab7541f1'
+      'f9c3d6b18a2e4d7f9e453b1a8c6d2f70': 'ce8874347ec428c624558dcdc3575dd4'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.cM1HO2isouoNessbj31CcgAAAA?rs=1&pid=ImgDetMain'
@@ -501,7 +501,7 @@ export const liveChannels: Channel[] = [
     name: 'IBC13',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/ibc13_sd_new/default1/index.mpd',
     clearKey: {
-      '04e292bc99bd4ccba89e778651914254': 'ff0a62bdf8920ce453fe680330b563a5'
+      '16ecd238c0394592b8d3559c06b1faf5': '05b47ae3be1368912ebe28f87480fc84'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.sJNkdFUalhzRyZT4SJ9HBAHaEc?rs=1&pid=ImgDetMain'
@@ -556,7 +556,7 @@ export const liveChannels: Channel[] = [
     name: 'Kix HD',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/kix_hd1/default/index.mpd',
     clearKey: {
-      'a8d5712967cd495ca80fdc425bc61d6b': 'f248c29525ed4c40cc39baeee9634735'
+      'c9d4b7a18e2f4d6c9a103f5b7e1c2d88': '7f3139092bf87d8aa51ee40e6294d376'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.tGUjHFJqDIFUuKfn-31TxAHaEN?rs=1&pid=ImgDetMain'
@@ -566,7 +566,7 @@ export const liveChannels: Channel[] = [
     name: 'Knowledge Channel',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/knowledge_channel/default/index.mpd',
     clearKey: {
-      '0f856fa0412b11edb8780242ac120002': '783374273ef97ad3bc992c1d63e091e7'
+      'c7d2b1e94f8a4d6c8a106b3d1f9c2e55': '2052f6b844aa53144bb32f0e41295106'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.ix5ReWijxZg8uPcKrk2GHwHaGd?rs=1&pid=ImgDetMain'
@@ -603,20 +603,20 @@ export const liveChannels: Channel[] = [
     name: 'Lotus Macau',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/lotusmacau_prd/default/index.mpd',
     clearKey: {
-      '60dc692e64ea443a8fb5ac186c865a9b': '01bdbe22d59b2a4504b53adc2f606cc1'
+      '9a7c2d1f4e8b4a6d8f301b5c9e7d2a44': 'ca88469cabc18aa33d1f2e46a6efb4f7'
     },
     type: 'mpd',
     logo: 'https://i.imgur.com/5G72qjx.png'
   },
   {
-    id: 'mptv',
+    id: 'Kapatid HD',
     name: 'MPTV',
-    manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/cg_mptv/default/index.mpd',
+    manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/kapatid_hd/default/index.mpd',
     clearKey: {
-      '6aab8f40536f4ea98e7c97b8f3aa7d4e': '139aa5a55ade471faaddacc4f4de8807'
+      '045d103180f64562b1db7c932741c3ba': 'c3380548b9075c767a6ae2006ef4bff8'
     },
     type: 'mpd',
-    logo: 'https://cms.cignal.tv/Upload/Images/MPTV%20-%20Rev.png'
+    logo: 'https://via.placeholder.com/150?text=KAPATID+HD'
   },
   {
     id: 'myx',
@@ -633,7 +633,7 @@ export const liveChannels: Channel[] = [
     name: 'NBA TV Philippines',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cgnl_nba/default/index.mpd',
     clearKey: {
-      'c5e51f41ceac48709d0bdcd9c13a4d88': '20b91609967e472c27040716ef6a8b9a'
+      'd1f8a0c97b3d4e529a6f2c4b8d7e1f90': '58ab331d14b66bf31aca4284e0a3e536'
     },
     type: 'mpd',
     logo: 'https://cms.cignal.tv/Upload/Images/NBA-TV-Philippines.jpg'
@@ -673,7 +673,7 @@ export const liveChannels: Channel[] = [
     name: 'One News HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/onenews_hd1/default/index.mpd',
     clearKey: {
-      'd39eb201ae494a0b98583df4d110e8dd': '6797066880d344422abd3f5eda41f45f'
+      '2e6a9d7c1f4b4c8a8d33c7b1f0a5e924': '4c71e178d090332fbfe72e023b59f6d2'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.x5VzEESkd4_1pVGulNU43gHaGN?rs=1&pid=ImgDetMain'
@@ -683,7 +683,7 @@ export const liveChannels: Channel[] = [
     name: 'One PH',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/oneph_sd/default/index.mpd',
     clearKey: {
-      '92834ab4a7e1499b90886c5d49220e46': 'a7108d9a6cfcc1b7939eb111daf09ab3'
+      'b1c7e9d24f8a4d6c9e337a2f1c5b8d60': '8ff2e524cc1e028f2a4d4925e860c796'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.uz-f8yhdILIhdUj56NO6YAAAAA?rs=1&pid=ImgDetMain'
@@ -703,7 +703,7 @@ export const liveChannels: Channel[] = [
     name: 'One Sports Plus HD',
     manifestUri: 'https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_onesportsplus_hd1/default/index.mpd',
     clearKey: {
-      '322d06e9326f4753a7ec0908030c13d8': '1e3e0ca32d421fbfec86feced0efefda'
+      'f00bd0122a8a4da1a49ea6c49f7098ad': 'a4079f3667ba4c2bcfdeb13e45a6e9c6'
     },
     type: 'mpd',
     logo: 'https://yt3.ggpht.com/a/AATXAJxL2nOhPRXCDKBEK-ccmTRM0G5r24tnVWUraw=s900-c-k-c0xffffffff-no-rj-mo'
@@ -804,7 +804,7 @@ export const liveChannels: Channel[] = [
     name: 'Rock Action',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_rockextreme/default/index.mpd',
     clearKey: {
-      '0f852fb8412b11edb8780242ac120002': '4cbc004d8c444f9f996db42059ce8178'
+      '8d2a6f1c9b7e4c3da5f01e7b9c6d2f44': '23841651ebf49fa03fdfcd7b43337f87'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.0c6d3hoH5evqsJVNnbhVNwHaC3?rs=1&pid=ImgDetMain'
@@ -814,7 +814,7 @@ export const liveChannels: Channel[] = [
     name: 'Rock Entertainment',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_rockentertainment/default/index.mpd',
     clearKey: {
-      'e4ee0cf8ca9746f99af402ca6eed8dc7': 'be2a096403346bc1d0bb0f812822bb62'
+      'a8b2d6f14c9e4d7a8f552c1e9b7d6a30': 'b61a33a4281e7c8e68b24b9af466f7b4'
     },
     type: 'mpd',
     logo: 'https://assets-global.website-files.com/64e81e52acfdaa1696fd623f/652f763c600497122b122df0_logo_ent_red_web.png'
@@ -879,7 +879,7 @@ export const liveChannels: Channel[] = [
     name: 'TAP Sports',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/dr_tapsports/default/index.mpd',
     clearKey: {
-      'eabd2d95c89e42f2b0b0b40ce4179ea0': '0e7e35a07e2c12822316c0dc4873903f'
+      '5e7c1b9a2d8f4a6c9f30b1d6e2a8c744': '6178d9d177689eec5028e2dd608ae7b6'
     },
     type: 'mpd',
     logo: 'https://tapdmv.com/logo-tapSPORTS-2021.png'
@@ -899,7 +899,7 @@ export const liveChannels: Channel[] = [
     name: 'TAP TV',
     manifestUri: 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/cg_taptv_sd/default/index.mpd',
     clearKey: {
-      'f6804251e90b4966889b7df94fdc621e': '55c3c014f2bd12d6bd62349658f24566'
+      '5c1e7b9d2f6a4d8c8a55e9d2c7b1a344': 'e72d21a22e89660ff0ec33627eb4ef35'
     },
     type: 'mpd',
     logo: 'https://th.bing.com/th/id/OIP.6ypmkyHr4CsiHriWt327pgHaHc?rs=1&pid=ImgDetMain'
