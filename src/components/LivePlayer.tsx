@@ -114,6 +114,11 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               drm: {
                 servers: { 'com.widevine.alpha': channel.widevineUrl },
               },
+              abr: {
+                enabled: true,
+                defaultBandwidthEstimate: 1500000,
+              },
+              preferredVideoResolution: { maxHeight: 1080, maxWidth: 1920 },
             });
 
             try {
@@ -137,6 +142,11 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               const hls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: true,
+                startLevel: -1, // Auto-select best quality
+                capLevelToPlayerSize: true, // Don't load higher than display size
+                abrEwmaDefaultEstimate: 1500000, // Start assuming decent bandwidth
+                abrBandWidthUpFactor: 0.7, // Switch up to HD quickly
+                abrBandWidthFactor: 0.8, // Switch down less aggressively
               });
               hlsRef.current = hls;
               
@@ -208,6 +218,11 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                 ? { 'com.widevine.alpha': channel.widevineUrl }
                 : {},
             },
+            abr: {
+              enabled: true,
+              defaultBandwidthEstimate: 1500000,
+            },
+            preferredVideoResolution: { maxHeight: 1080, maxWidth: 1920 },
           });
 
           try {
