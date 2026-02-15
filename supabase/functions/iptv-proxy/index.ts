@@ -143,12 +143,29 @@ function xtreamGetStreamUrl(serverUrl: string, username: string, password: strin
 
 // ─── Proxy Helper ───
 
-async function proxyStream(reqUrl: URL, streamUrl: string): Promise<Response> {
-  const response = await fetch(streamUrl, {
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-  });
+async function proxyStream(reqUrl: URL, streamUrl: string, customHeaders?: Record<string, string>): Promise<Response> {
+  const fetchHeaders: Record<string, string> = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  };
+  // Apply custom headers (Stalker UA, cookie, referer) if provided
+  if (customHeaders) {
+    if (customHeaders.ua) fetchHeaders["User-Agent"] = customHeaders.ua;
+    if (customHeaders.cookie) fetchHeaders["Cookie"] = customHeaders.cookie;
+    if (customHeaders.referer) fetchHeaders["Referer"] = customHeaders.referer;
+  }
 
-  if (!response.ok) {
+  // Use manual redirect to preserve custom headers across redirects
+  let response = await fetch(streamUrl, { headers: fetchHeaders, redirect: "manual" });
+  let redirectCount = 0;
+  while ([301, 302, 303, 307, 308].includes(response.status) && redirectCount < 5) {
+    const location = response.headers.get("location");
+    if (!location) break;
+    const redirectUrl = location.startsWith("http") ? location : new URL(location, streamUrl).href;
+    response = await fetch(redirectUrl, { headers: fetchHeaders, redirect: "manual" });
+    redirectCount++;
+  }
+
+  if (!response.ok && response.status !== 206) {
     return new Response(JSON.stringify({ error: `Upstream error: ${response.status}` }), {
       status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -156,6 +173,14 @@ async function proxyStream(reqUrl: URL, streamUrl: string): Promise<Response> {
 
   const contentType = response.headers.get("content-type") || "application/octet-stream";
   const body = await response.arrayBuffer();
+
+  // Carry forward custom header params in proxy URLs so sub-requests also use them
+  let proxyExtra = "";
+  if (customHeaders) {
+    if (customHeaders.ua) proxyExtra += `&ua=${encodeURIComponent(customHeaders.ua)}`;
+    if (customHeaders.cookie) proxyExtra += `&cookie=${encodeURIComponent(customHeaders.cookie)}`;
+    if (customHeaders.referer) proxyExtra += `&referer=${encodeURIComponent(customHeaders.referer)}`;
+  }
 
   if (streamUrl.includes(".m3u8") || contentType.includes("mpegurl")) {
     const text = new TextDecoder().decode(body);
@@ -166,12 +191,12 @@ async function proxyStream(reqUrl: URL, streamUrl: string): Promise<Response> {
       const trimmed = line.trim();
       if (trimmed && !trimmed.startsWith("#")) {
         const fullUrl = trimmed.startsWith("http") ? trimmed : baseUrl + trimmed;
-        return proxyBase + encodeURIComponent(fullUrl);
+        return proxyBase + encodeURIComponent(fullUrl) + proxyExtra;
       }
       if (trimmed.includes('URI="')) {
         return trimmed.replace(/URI="([^"]+)"/g, (_m, uri) => {
           const fullUri = uri.startsWith("http") ? uri : baseUrl + uri;
-          return `URI="${proxyBase}${encodeURIComponent(fullUri)}"`;
+          return `URI="${proxyBase}${encodeURIComponent(fullUri)}${proxyExtra}"`;
         });
       }
       return line;
@@ -206,7 +231,15 @@ serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return proxyStream(url, streamUrl);
+      // Parse custom headers from query params
+      const customHeaders: Record<string, string> = {};
+      const ua = url.searchParams.get("ua");
+      const cookie = url.searchParams.get("cookie");
+      const referer = url.searchParams.get("referer");
+      if (ua) customHeaders.ua = ua;
+      if (cookie) customHeaders.cookie = cookie;
+      if (referer) customHeaders.referer = referer;
+      return proxyStream(url, streamUrl, Object.keys(customHeaders).length > 0 ? customHeaders : undefined);
     }
 
     const config = await getIptvConfig();
@@ -258,7 +291,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ...result, cloudflare_proxy_url: config.cloudflare_proxy_url || "" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === "stream") {
+    if (action === "stream" || action === "play") {
       const cmd = url.searchParams.get("cmd");
       if (!cmd) return new Response(JSON.stringify({ error: "Missing cmd" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -269,7 +302,6 @@ serve(async (req) => {
 
       // Fix: If create_link returns empty stream=, inject stream ID from original cmd
       if (streamUrl.includes("stream=&") || streamUrl.endsWith("stream=")) {
-        // Extract stream ID from original channel cmd
         const origMatch = cmd.match(/stream[=\/](\d+)/);
         if (origMatch) {
           streamUrl = streamUrl.replace(/stream=(&|$)/, `stream=${origMatch[1]}$1`);
@@ -277,7 +309,18 @@ serve(async (req) => {
         }
       }
 
-      // Return stream URL along with proxy headers needed for Stalker portals
+      // "play" action: directly proxy the stream in the same invocation (same IP)
+      if (action === "play") {
+        console.log(`[play] Proxying stream directly: ${streamUrl}`);
+        const stalkerHeaders: Record<string, string> = {
+          ua: "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+          cookie: `mac=${encodeURIComponent(config.mac_address)}; stb_lang=en; timezone=UTC`,
+          referer: portalUrl,
+        };
+        return proxyStream(url, streamUrl, stalkerHeaders);
+      }
+
+      // "stream" action: return URL for external proxy
       return new Response(JSON.stringify({ 
         url: streamUrl,
         proxy_headers: {
