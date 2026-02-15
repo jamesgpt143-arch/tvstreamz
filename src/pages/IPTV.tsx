@@ -96,10 +96,17 @@ const IPTV = () => {
       }
 
       let url = data.url;
-      // Route through Cloudflare Worker proxy for HTTP streams
+      // Route through Cloudflare Worker proxy with custom headers for Stalker portals
       if (url && cloudflareProxyUrl) {
         const proxyBase = cloudflareProxyUrl.replace(/\/+$/, "");
-        url = `${proxyBase}?url=${encodeURIComponent(url)}`;
+        let proxyUrl = `${proxyBase}?url=${encodeURIComponent(url)}`;
+        // Append proxy headers if provided by edge function (Stalker UA + MAC cookie)
+        if (data.proxy_headers) {
+          if (data.proxy_headers.ua) proxyUrl += `&ua=${encodeURIComponent(data.proxy_headers.ua)}`;
+          if (data.proxy_headers.cookie) proxyUrl += `&cookie=${encodeURIComponent(data.proxy_headers.cookie)}`;
+          if (data.proxy_headers.referer) proxyUrl += `&referer=${encodeURIComponent(data.proxy_headers.referer)}`;
+        }
+        url = proxyUrl;
       } else if (url && url.startsWith("http://")) {
         // Fallback to edge function proxy if no Cloudflare URL
         url = `${supabaseUrl}/functions/v1/iptv-proxy?action=proxy&url=${encodeURIComponent(url)}`;
