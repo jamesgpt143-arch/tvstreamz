@@ -73,12 +73,26 @@ export default {
         upstreamHeaders.set('Range', rangeHeader);
       }
 
-      // Fetch the resource
-      const response = await fetch(targetUrl, {
+      // Fetch the resource - use manual redirect to preserve custom headers
+      let response = await fetch(targetUrl, {
         method: request.method,
         headers: upstreamHeaders,
-        redirect: 'follow',
+        redirect: 'manual',
       });
+
+      // Manually follow redirects (up to 5) to preserve custom headers
+      let redirectCount = 0;
+      while ([301, 302, 303, 307, 308].includes(response.status) && redirectCount < 5) {
+        const location = response.headers.get('location');
+        if (!location) break;
+        const redirectUrl = location.startsWith('http') ? location : new URL(location, targetUrl).href;
+        response = await fetch(redirectUrl, {
+          method: request.method,
+          headers: upstreamHeaders,
+          redirect: 'manual',
+        });
+        redirectCount++;
+      }
 
       if (!response.ok && response.status !== 206) {
         return new Response(JSON.stringify({ error: `Upstream error: ${response.status}` }), {
