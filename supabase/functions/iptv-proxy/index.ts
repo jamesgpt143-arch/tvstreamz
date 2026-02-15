@@ -42,11 +42,26 @@ function buildHeaders(mac: string, token?: string): Record<string, string> {
   return headers;
 }
 
+// Safe JSON parse from response
+async function safeJsonParse(resp: Response, label: string): Promise<any> {
+  const text = await resp.text();
+  console.log(`[${label}] Status: ${resp.status}, Body preview: ${text.substring(0, 500)}`);
+  if (!text || text.trim().length === 0) {
+    throw new Error(`${label}: Empty response from portal`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${label}: Invalid JSON response - ${text.substring(0, 200)}`);
+  }
+}
+
 // Stalker middleware handshake
 async function handshake(portalUrl: string, mac: string): Promise<string> {
   const url = `${portalUrl}/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml`;
+  console.log(`[handshake] Fetching: ${url}`);
   const resp = await fetch(url, { headers: buildHeaders(mac) });
-  const data = await resp.json();
+  const data = await safeJsonParse(resp, "handshake");
   return data?.js?.token || "";
 }
 
@@ -54,7 +69,7 @@ async function handshake(portalUrl: string, mac: string): Promise<string> {
 async function doAuth(portalUrl: string, mac: string, token: string): Promise<boolean> {
   const url = `${portalUrl}/server/load.php?type=stb&action=do_auth&login=&password=&device_id=&device_id2=&JsHttpRequest=1-xml`;
   const resp = await fetch(url, { headers: buildHeaders(mac, token) });
-  const data = await resp.json();
+  const data = await safeJsonParse(resp, "doAuth");
   return !!data?.js;
 }
 
@@ -62,7 +77,7 @@ async function doAuth(portalUrl: string, mac: string, token: string): Promise<bo
 async function getChannels(portalUrl: string, mac: string, token: string): Promise<any[]> {
   const url = `${portalUrl}/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`;
   const resp = await fetch(url, { headers: buildHeaders(mac, token) });
-  const data = await resp.json();
+  const data = await safeJsonParse(resp, "getChannels");
   return data?.js?.data || [];
 }
 
@@ -70,7 +85,7 @@ async function getChannels(portalUrl: string, mac: string, token: string): Promi
 async function getGenres(portalUrl: string, mac: string, token: string): Promise<any[]> {
   const url = `${portalUrl}/server/load.php?type=itv&action=get_genres&JsHttpRequest=1-xml`;
   const resp = await fetch(url, { headers: buildHeaders(mac, token) });
-  const data = await resp.json();
+  const data = await safeJsonParse(resp, "getGenres");
   return data?.js || [];
 }
 
@@ -78,7 +93,7 @@ async function getGenres(portalUrl: string, mac: string, token: string): Promise
 async function createLink(portalUrl: string, mac: string, token: string, cmd: string): Promise<string> {
   const url = `${portalUrl}/server/load.php?type=itv&action=create_link&cmd=${encodeURIComponent(cmd)}&series=&forced_storage=undefined&disable_ad=0&download=0&JsHttpRequest=1-xml`;
   const resp = await fetch(url, { headers: buildHeaders(mac, token) });
-  const data = await resp.json();
+  const data = await safeJsonParse(resp, "createLink");
   return data?.js?.cmd || "";
 }
 
@@ -106,8 +121,11 @@ serve(async (req) => {
       });
     }
 
+    // Normalize portal URL - remove trailing slash to avoid double slashes
+    const portalUrl = config.portal_url.replace(/\/+$/, "");
+
     // 1. Handshake to get token
-    const token = await handshake(config.portal_url, config.mac_address);
+    const token = await handshake(portalUrl, config.mac_address);
     if (!token) {
       return new Response(JSON.stringify({ error: "Failed to authenticate with portal" }), {
         status: 502,
@@ -115,14 +133,18 @@ serve(async (req) => {
       });
     }
 
-    // 2. Auth
-    await doAuth(config.portal_url, config.mac_address, token);
+    // 2. Auth (non-fatal - some portals return empty for this)
+    try {
+      await doAuth(portalUrl, config.mac_address, token);
+    } catch (e) {
+      console.log("[doAuth] Skipping auth (non-fatal):", e instanceof Error ? e.message : e);
+    }
 
     // Handle different actions
     if (action === "channels") {
       const [channels, genres] = await Promise.all([
-        getChannels(config.portal_url, config.mac_address, token),
-        getGenres(config.portal_url, config.mac_address, token),
+        getChannels(portalUrl, config.mac_address, token),
+        getGenres(portalUrl, config.mac_address, token),
       ]);
 
       // Build genre map
@@ -156,7 +178,7 @@ serve(async (req) => {
         });
       }
 
-      const streamCmd = await createLink(config.portal_url, config.mac_address, token, cmd);
+      const streamCmd = await createLink(portalUrl, config.mac_address, token, cmd);
       
       // Extract actual URL from cmd (format: "ffmpeg http://... ..." or just URL)
       let streamUrl = streamCmd;
