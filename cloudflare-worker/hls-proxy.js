@@ -50,7 +50,22 @@ export default {
 
       // Build headers for the upstream request
       const upstreamHeaders = new Headers();
-      upstreamHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Check for custom User-Agent via query param
+      const customUA = url.searchParams.get('ua');
+      upstreamHeaders.set('User-Agent', customUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Check for custom Cookie via query param
+      const customCookie = url.searchParams.get('cookie');
+      if (customCookie) {
+        upstreamHeaders.set('Cookie', customCookie);
+      }
+      
+      // Check for custom Referer via query param
+      const customReferer = url.searchParams.get('referer');
+      if (customReferer) {
+        upstreamHeaders.set('Referer', customReferer);
+      }
       
       // Forward Range header for video segments
       const rangeHeader = request.headers.get('Range');

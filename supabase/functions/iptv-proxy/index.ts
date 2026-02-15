@@ -277,7 +277,15 @@ serve(async (req) => {
         }
       }
 
-      return new Response(JSON.stringify({ url: streamUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Return stream URL along with proxy headers needed for Stalker portals
+      return new Response(JSON.stringify({ 
+        url: streamUrl,
+        proxy_headers: {
+          ua: "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+          cookie: `mac=${encodeURIComponent(config.mac_address)}; stb_lang=en; timezone=UTC`,
+          referer: portalUrl,
+        }
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
