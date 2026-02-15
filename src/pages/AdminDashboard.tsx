@@ -5,11 +5,12 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
 import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
+import { IptvSettings } from "@/components/admin/IptvSettings";
 
 interface DailyStats {
   date: string;
@@ -221,6 +222,10 @@ export default function AdminDashboard() {
               <ExternalLink className="h-4 w-4" />
               Page Popups
             </TabsTrigger>
+            <TabsTrigger value="iptv" className="gap-2">
+              <Wifi className="h-4 w-4" />
+              IPTV
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analytics" className="space-y-6">
@@ -423,6 +428,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="page-popups">
             <PagePopupSettings />
+          </TabsContent>
+
+          <TabsContent value="iptv">
+            <IptvSettings />
           </TabsContent>
         </Tabs>
       </div>

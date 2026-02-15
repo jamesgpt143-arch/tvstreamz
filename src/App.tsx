@@ -22,6 +22,7 @@ import MangaDetails from "./pages/MangaDetails";
 import MangaReader from "./pages/MangaReader";
 import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
+import IPTV from "./pages/IPTV";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
 
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/continue-watching" element={<ContinueWatching />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/iptv" element={<IPTV />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
