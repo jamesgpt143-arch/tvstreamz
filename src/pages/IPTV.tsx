@@ -35,6 +35,7 @@ const IPTV = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState<string>("all");
+  const [cloudflareProxyUrl, setCloudflareProxyUrl] = useState<string>("");
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -62,6 +63,7 @@ const IPTV = () => {
       } else {
         setChannels(data.channels || []);
         setGenres(data.genres || []);
+        setCloudflareProxyUrl(data.cloudflare_proxy_url || "");
       }
     } catch (err) {
       setError("Failed to connect to IPTV service");
@@ -94,8 +96,12 @@ const IPTV = () => {
       }
 
       let url = data.url;
-      // If HTTP stream, proxy it
-      if (url && url.startsWith("http://")) {
+      // Route through Cloudflare Worker proxy for HTTP streams
+      if (url && cloudflareProxyUrl) {
+        const proxyBase = cloudflareProxyUrl.replace(/\/+$/, "");
+        url = `${proxyBase}?url=${encodeURIComponent(url)}`;
+      } else if (url && url.startsWith("http://")) {
+        // Fallback to edge function proxy if no Cloudflare URL
         url = `${supabaseUrl}/functions/v1/iptv-proxy?action=proxy&url=${encodeURIComponent(url)}`;
       }
 

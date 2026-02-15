@@ -9,13 +9,12 @@ const corsHeaders = {
 
 interface IptvConfig {
   type: "stalker" | "xtream";
-  // Stalker fields
   portal_url?: string;
   mac_address?: string;
-  // Xtream fields
   server_url?: string;
   username?: string;
   password?: string;
+  cloudflare_proxy_url?: string;
 }
 
 // Get IPTV config from site_settings
@@ -227,7 +226,7 @@ serve(async (req) => {
 
       if (action === "channels") {
         const result = await xtreamGetChannels(config.server_url, config.username, config.password);
-        return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...result, cloudflare_proxy_url: config.cloudflare_proxy_url || "" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (action === "stream") {
@@ -256,7 +255,7 @@ serve(async (req) => {
 
     if (action === "channels") {
       const result = await stalkerGetChannels(portalUrl, config.mac_address, token);
-      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ...result, cloudflare_proxy_url: config.cloudflare_proxy_url || "" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "stream") {
