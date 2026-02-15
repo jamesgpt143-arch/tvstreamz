@@ -121,13 +121,14 @@ const IPTV = () => {
   const playerChannel: Channel | null = useMemo(() => {
     if (!activeChannel || !streamUrl) return null;
     
-    const isHls = streamUrl.includes(".m3u8") || streamUrl.includes("mpegurl");
+    // IPTV streams are typically TS/HLS - only use mpd if explicitly .mpd
+    const isMpd = streamUrl.includes(".mpd") || streamUrl.includes("dash");
     
     return {
       id: String(activeChannel.id),
       name: activeChannel.name,
       manifestUri: streamUrl,
-      type: isHls ? "hls" : "mpd",
+      type: isMpd ? "mpd" : "hls",
       logo: activeChannel.logo || "",
     };
   }, [activeChannel, streamUrl]);
