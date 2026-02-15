@@ -267,6 +267,16 @@ serve(async (req) => {
       if (streamCmd.startsWith("ffmpeg ")) streamUrl = streamCmd.replace("ffmpeg ", "").split(" ")[0];
       if (streamCmd.startsWith("ffrt ")) streamUrl = streamCmd.replace("ffrt ", "").split(" ")[0];
 
+      // Fix: If create_link returns empty stream=, inject stream ID from original cmd
+      if (streamUrl.includes("stream=&") || streamUrl.endsWith("stream=")) {
+        // Extract stream ID from original channel cmd
+        const origMatch = cmd.match(/stream[=\/](\d+)/);
+        if (origMatch) {
+          streamUrl = streamUrl.replace(/stream=(&|$)/, `stream=${origMatch[1]}$1`);
+          console.log(`[createLink] Fixed empty stream ID: injected ${origMatch[1]}`);
+        }
+      }
+
       return new Response(JSON.stringify({ url: streamUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
