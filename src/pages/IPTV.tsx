@@ -5,6 +5,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Radio, WifiOff, Search, Tv, AlertCircle } from "lucide-react";
 import type { Channel } from "@/lib/channels";
 
@@ -125,13 +126,22 @@ const IPTV = () => {
     };
   }, [activeChannel, streamUrl]);
 
-  // Filter channels
+  // Filter and limit channels for performance
   const filteredChannels = useMemo(() => {
-    return channels.filter((ch) => {
+    const filtered = channels.filter((ch) => {
       const matchesSearch = !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesGenre = selectedGenre === "all" || ch.genre === selectedGenre;
       return matchesSearch && matchesGenre;
     });
+    return filtered.slice(0, 200); // Limit for performance
+  }, [channels, searchQuery, selectedGenre]);
+
+  const totalFiltered = useMemo(() => {
+    return channels.filter((ch) => {
+      const matchesSearch = !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesGenre = selectedGenre === "all" || ch.genre === selectedGenre;
+      return matchesSearch && matchesGenre;
+    }).length;
   }, [channels, searchQuery, selectedGenre]);
 
   if (loading) {
@@ -238,28 +248,20 @@ const IPTV = () => {
                   />
                 </div>
 
-                {/* Genre Filter */}
-                <div className="flex gap-1.5 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant={selectedGenre === "all" ? "default" : "outline"}
-                    onClick={() => setSelectedGenre("all")}
-                    className="text-xs h-7"
-                  >
-                    All
-                  </Button>
-                  {genres.map((g) => (
-                    <Button
-                      key={g.id}
-                      size="sm"
-                      variant={selectedGenre === g.name ? "default" : "outline"}
-                      onClick={() => setSelectedGenre(g.name)}
-                      className="text-xs h-7"
-                    >
-                      {g.name}
-                    </Button>
-                  ))}
-                </div>
+                {/* Genre Filter Dropdown */}
+                <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                  <SelectTrigger className="h-9 text-xs bg-card">
+                    <SelectValue placeholder="All Genres" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover max-h-60">
+                    <SelectItem value="all">All Genres</SelectItem>
+                    {genres.map((g) => (
+                      <SelectItem key={g.id} value={g.name}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 {/* Channels */}
                 <div className="border border-border rounded-xl bg-card/50">
@@ -292,6 +294,12 @@ const IPTV = () => {
 
                       {filteredChannels.length === 0 && (
                         <p className="text-center text-muted-foreground text-sm py-8">No channels found</p>
+                      )}
+
+                      {totalFiltered > 200 && (
+                        <p className="text-center text-muted-foreground text-xs py-3">
+                          Showing 200 of {totalFiltered} channels. Use search or filter to find more.
+                        </p>
                       )}
                     </div>
                   </ScrollArea>
