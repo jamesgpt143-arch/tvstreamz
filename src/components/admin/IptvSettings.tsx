@@ -15,6 +15,7 @@ interface IptvConfig {
   server_url: string;
   username: string;
   password: string;
+  cloudflare_proxy_url: string;
 }
 
 const defaultConfig: IptvConfig = {
@@ -24,6 +25,7 @@ const defaultConfig: IptvConfig = {
   server_url: "",
   username: "",
   password: "",
+  cloudflare_proxy_url: "",
 };
 
 export const IptvSettings = () => {
@@ -53,6 +55,7 @@ export const IptvSettings = () => {
           server_url: (val.server_url as string) || "",
           username: (val.username as string) || "",
           password: (val.password as string) || "",
+          cloudflare_proxy_url: (val.cloudflare_proxy_url as string) || "",
         });
       }
     } catch {
@@ -201,6 +204,20 @@ export const IptvSettings = () => {
             </div>
           </>
         )}
+
+        {/* Cloudflare Proxy URL - shared across both types */}
+        <div className="space-y-2 border-t border-border pt-4">
+          <Label htmlFor="cloudflare_proxy_url">Cloudflare Worker Proxy URL</Label>
+          <Input
+            id="cloudflare_proxy_url"
+            placeholder="https://hls-proxy.your-subdomain.workers.dev"
+            value={config.cloudflare_proxy_url}
+            onChange={(e) => setConfig({ ...config, cloudflare_proxy_url: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground">
+            Required for stream playback. Deploy the Cloudflare Worker from <code>cloudflare-worker/hls-proxy.js</code> and paste the URL here.
+          </p>
+        </div>
 
         <div className="flex gap-2">
           <Button onClick={saveConfig} disabled={saving} className="gap-2">
