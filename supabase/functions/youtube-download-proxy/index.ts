@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com';
+const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,63 +22,75 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const videoId = url.searchParams.get('videoId');
-    const itag = url.searchParams.get('itag');
+    const quality = url.searchParams.get('quality');
+    const type = url.searchParams.get('type') || 'video'; // 'video', 'audio', or 'short'
     const filename = url.searchParams.get('filename') || 'download.mp4';
-    const type = url.searchParams.get('type') || 'video'; // 'video' or 'audio'
 
-    if (!videoId || !itag) {
-      return new Response(JSON.stringify({ error: 'Missing videoId or itag parameter' }), {
+    if (!videoId || !quality) {
+      return new Response(JSON.stringify({ error: 'Missing videoId or quality parameter' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Fetch fresh video details from RapidAPI (URLs will be bound to THIS server's IP)
-    const apiUrl = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${encodeURIComponent(videoId)}`;
-    console.log(`Fetching fresh details for video: ${videoId}, itag: ${itag}`);
+    // Build the download URL based on type
+    let downloadEndpoint = 'download_video';
+    if (type === 'audio') downloadEndpoint = 'download_audio';
+    if (type === 'short') downloadEndpoint = 'download_short';
 
-    const detailsRes = await fetch(apiUrl, {
+    const apiUrl = `https://${RAPIDAPI_HOST}/${downloadEndpoint}/${encodeURIComponent(videoId)}?quality=${encodeURIComponent(quality)}`;
+    console.log(`Requesting download URL: ${apiUrl}`);
+
+    const downloadRes = await fetch(apiUrl, {
       headers: {
         'x-rapidapi-host': RAPIDAPI_HOST,
         'x-rapidapi-key': apiKey,
       },
     });
 
-    const details = await detailsRes.json();
-    if (!detailsRes.ok || details.error) {
-      return new Response(JSON.stringify({ error: details.error || 'Failed to fetch video details' }), {
+    const downloadData = await downloadRes.json();
+    console.log('Download API response:', JSON.stringify(downloadData));
+
+    if (!downloadRes.ok || downloadData.error) {
+      return new Response(JSON.stringify({ error: downloadData.error || 'Failed to get download URL' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Find the matching format by itag
-    const allFormats = [
-      ...(details.videos?.items || []),
-      ...(details.audios?.items || []),
-    ];
+    // The API returns a file URL - may need 15-30s to be ready
+    const fileUrl = downloadData.file || downloadData.url || downloadData.link;
 
-    const format = allFormats.find((f: any) => String(f.itag) === String(itag) && f.url);
-
-    if (!format) {
-      return new Response(JSON.stringify({ error: 'Format not found or no URL available' }), {
+    if (!fileUrl) {
+      return new Response(JSON.stringify({ error: 'No download URL returned', data: downloadData }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log(`Proxying download: ${filename} (itag: ${itag})`);
+    // Try to fetch the file, with retries (file may take 15-30s to become available)
+    let mediaRes: Response | null = null;
+    let attempts = 0;
+    const maxAttempts = 6; // ~30 seconds total
 
-    // Now fetch the actual video/audio using the server-bound URL
-    const mediaRes = await fetch(format.url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.youtube.com/',
-      },
-    });
+    while (attempts < maxAttempts) {
+      mediaRes = await fetch(fileUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      });
 
-    if (!mediaRes.ok) {
-      return new Response(JSON.stringify({ error: `Upstream error: ${mediaRes.status}` }), {
-        status: mediaRes.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      if (mediaRes.ok) break;
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        console.log(`File not ready yet (attempt ${attempts}), waiting 5s...`);
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+
+    if (!mediaRes || !mediaRes.ok) {
+      // Return the direct URL as fallback so frontend can redirect
+      return new Response(JSON.stringify({ redirect: fileUrl }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
