@@ -22,6 +22,7 @@ interface SearchResult {
 
 interface VideoFormat {
   url: string;
+  itag?: string | number;
   quality: string;
   mimeType: string;
   qualityLabel?: string;
@@ -148,15 +149,16 @@ const YouTubeDownloader = () => {
     return mb > 1000 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`;
   };
 
-  const handleDownload = async (url: string, label: string, isAudio?: boolean) => {
-    setDownloadingUrl(url);
+  const handleDownload = async (format: VideoFormat, label: string, isAudio?: boolean) => {
+    const downloadKey = format.url;
+    setDownloadingUrl(downloadKey);
     toast.info('Sinisimulan ang download...');
     try {
       const ext = isAudio ? 'mp3' : 'mp4';
       const filename = `${selectedVideo?.title?.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50) || 'video'}_${label}.${ext}`;
       
-      // Use our proxy to bypass CORS
-      const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-download-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+      // Use proxy with videoId + itag so the server gets fresh URLs bound to its own IP
+      const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-download-proxy?videoId=${encodeURIComponent(selectedVideo?.id || '')}&itag=${encodeURIComponent(String(format.itag || ''))}&filename=${encodeURIComponent(filename)}&type=${isAudio ? 'audio' : 'video'}`;
       
       const response = await fetch(proxyUrl, {
         headers: {
@@ -178,7 +180,7 @@ const YouTubeDownloader = () => {
     } catch (err) {
       console.error(err);
       toast.error('Hindi ma-download. I-try ang long-press sa link.');
-      window.open(url, '_blank');
+      window.open(format.url, '_blank');
     } finally {
       setDownloadingUrl(null);
     }
@@ -259,7 +261,7 @@ const YouTubeDownloader = () => {
                     .map((format, i) => (
                       <button
                         key={i}
-                        onClick={() => handleDownload(format.url, format.qualityLabel || format.quality || 'video')}
+                        onClick={() => handleDownload(format, format.qualityLabel || format.quality || 'video')}
                         disabled={downloadingUrl === format.url}
                         className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors w-full text-left"
                       >
@@ -300,7 +302,7 @@ const YouTubeDownloader = () => {
                     .map((format, i) => (
                       <button
                         key={i}
-                        onClick={() => handleDownload(format.url, format.quality || 'audio', true)}
+                        onClick={() => handleDownload(format, format.quality || 'audio', true)}
                         disabled={downloadingUrl === format.url}
                         className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors w-full text-left"
                       >
