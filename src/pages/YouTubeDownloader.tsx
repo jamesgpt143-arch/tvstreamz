@@ -152,12 +152,21 @@ const YouTubeDownloader = () => {
     setDownloadingUrl(url);
     toast.info('Sinisimulan ang download...');
     try {
-      const response = await fetch(url);
+      const ext = isAudio ? 'mp3' : 'mp4';
+      const filename = `${selectedVideo?.title?.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50) || 'video'}_${label}.${ext}`;
+      
+      // Use our proxy to bypass CORS
+      const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-download-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+      
+      const response = await fetch(proxyUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
+      
       if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const ext = isAudio ? 'mp3' : 'mp4';
-      const filename = `${selectedVideo?.title?.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50) || 'video'}_${label}.${ext}`;
       const a = document.createElement('a');
       a.href = blobUrl;
       a.download = filename;
