@@ -171,7 +171,7 @@ const YouTubeDownloader = () => {
         {/* Search */}
         <div className="flex gap-2 mb-8 max-w-2xl">
           <Input
-            placeholder="Paste YouTube URL o mag-search ng video..."
+            placeholder="Paste Youtube Video URL"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
