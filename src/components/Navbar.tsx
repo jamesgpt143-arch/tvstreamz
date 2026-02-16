@@ -106,8 +106,8 @@ export const Navbar = () => {
     { path: '/movies', label: 'Movies', icon: Film },
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
     { path: '/anime', label: 'Anime', icon: Sparkles },
-    
     { path: '/live-tv', label: 'Live TV', icon: Tv },
+    { path: '/youtube-downloader', label: 'YT Download', icon: Download },
   ];
 
   return (
