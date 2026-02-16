@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com';
+const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -30,17 +30,14 @@ serve(async (req) => {
 
     let apiUrl = '';
 
-    if (action === 'search') {
-      const query = url.searchParams.get('query') || '';
-      apiUrl = `https://${RAPIDAPI_HOST}/v2/search?query=${encodeURIComponent(query)}&type=video`;
-    } else if (action === 'details') {
+    if (action === 'details') {
       const videoId = url.searchParams.get('videoId') || '';
-      apiUrl = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${encodeURIComponent(videoId)}`;
-    } else if (action === 'channel_posts') {
-      const channelId = url.searchParams.get('channelId') || '';
-      apiUrl = `https://${RAPIDAPI_HOST}/v2/channel/posts?channelId=${encodeURIComponent(channelId)}`;
+      apiUrl = `https://${RAPIDAPI_HOST}/get-videos-info/${encodeURIComponent(videoId)}?response_mode=default`;
+    } else if (action === 'quality') {
+      const videoId = url.searchParams.get('videoId') || '';
+      apiUrl = `https://${RAPIDAPI_HOST}/get_available_quality/${encodeURIComponent(videoId)}?response_mode=default`;
     } else {
-      return new Response(JSON.stringify({ error: 'Invalid action' }), {
+      return new Response(JSON.stringify({ error: 'Invalid action. Use details or quality.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
