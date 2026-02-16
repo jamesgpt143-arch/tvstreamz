@@ -140,10 +140,39 @@ const YouTubeDownloader = () => {
     }
   };
 
+  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
+
   const formatSize = (bytes: string | undefined) => {
     if (!bytes) return '';
     const mb = parseInt(bytes) / (1024 * 1024);
     return mb > 1000 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`;
+  };
+
+  const handleDownload = async (url: string, label: string, isAudio?: boolean) => {
+    setDownloadingUrl(url);
+    toast.info('Sinisimulan ang download...');
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const ext = isAudio ? 'mp3' : 'mp4';
+      const filename = `${selectedVideo?.title?.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50) || 'video'}_${label}.${ext}`;
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Download complete!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Hindi ma-download. I-try ang long-press sa link.');
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingUrl(null);
+    }
   };
 
   return (
@@ -219,12 +248,11 @@ const YouTubeDownloader = () => {
                   {selectedVideo.videos.items
                     .filter((v) => v.url)
                     .map((format, i) => (
-                      <a
+                      <button
                         key={i}
-                        href={format.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
+                        onClick={() => handleDownload(format.url, format.qualityLabel || format.quality || 'video')}
+                        disabled={downloadingUrl === format.url}
+                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors w-full text-left"
                       >
                         <div className="flex items-center gap-3">
                           <Film className="w-4 h-4 text-muted-foreground" />
@@ -239,9 +267,13 @@ const YouTubeDownloader = () => {
                           {format.contentLength && (
                             <span className="text-xs text-muted-foreground">{formatSize(format.contentLength)}</span>
                           )}
-                          <Download className="w-4 h-4 text-primary" />
+                          {downloadingUrl === format.url ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          ) : (
+                            <Download className="w-4 h-4 text-primary" />
+                          )}
                         </div>
-                      </a>
+                      </button>
                     ))}
                 </div>
               </div>
@@ -257,12 +289,11 @@ const YouTubeDownloader = () => {
                   {selectedVideo.audios.items
                     .filter((a) => a.url)
                     .map((format, i) => (
-                      <a
+                      <button
                         key={i}
-                        href={format.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
+                        onClick={() => handleDownload(format.url, format.quality || 'audio', true)}
+                        disabled={downloadingUrl === format.url}
+                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors w-full text-left"
                       >
                         <div className="flex items-center gap-3">
                           <Music className="w-4 h-4 text-muted-foreground" />
@@ -275,9 +306,13 @@ const YouTubeDownloader = () => {
                           {format.contentLength && (
                             <span className="text-xs text-muted-foreground">{formatSize(format.contentLength)}</span>
                           )}
-                          <Download className="w-4 h-4 text-green-500" />
+                          {downloadingUrl === format.url ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-green-500" />
+                          ) : (
+                            <Download className="w-4 h-4 text-green-500" />
+                          )}
                         </div>
-                      </a>
+                      </button>
                     ))}
                 </div>
               </div>
