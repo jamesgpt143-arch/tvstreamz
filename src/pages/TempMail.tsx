@@ -51,7 +51,11 @@ const TempMail = () => {
       const data = await res.json();
       if (data.success) {
         setAddress(data.result.address);
-        setExpiresAt(data.result.expiresAt);
+        // API returns Unix timestamp in seconds, convert to ISO string
+        const expiresTimestamp = typeof data.result.expiresAt === 'number' 
+          ? new Date(data.result.expiresAt * 1000).toISOString() 
+          : data.result.expiresAt;
+        setExpiresAt(expiresTimestamp);
         toast.success('Temp email generated!');
       } else {
         toast.error('Failed to generate address');
