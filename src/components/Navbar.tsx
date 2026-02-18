@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download, BookOpen } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download, BookOpen, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -274,7 +274,24 @@ export const Navbar = () => {
                     </div>
                   </Link>
 
-                  {/* Install App */}
+                  {/* Temp Mail */}
+                  <Link
+                    to="/temp-mail"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Mail className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Temp Mail</p>
+                        <p className="text-sm text-muted-foreground">
+                          Disposable email inbox
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
                   <button
                     onClick={() => {
                       handleInstallClick();
