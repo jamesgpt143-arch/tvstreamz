@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Channel } from '@/lib/channels';
-import { AlertCircle, Loader2, Smartphone } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone, Settings, Check } from 'lucide-react';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
@@ -27,6 +27,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iosWarning, setIosWarning] = useState<string | null>(null);
+  const [hlsLevels, setHlsLevels] = useState<{ height: number; index: number }[]>([]);
+  const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   // Check for iOS compatibility issues
   const checkIOSCompatibility = useMemo(() => {
@@ -56,6 +59,14 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       setIosWarning(checkIOSCompatibility);
     }
   }, [checkIOSCompatibility]);
+
+  const handleQualityChange = useCallback((levelIndex: number) => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelIndex;
+      setCurrentLevel(levelIndex);
+    }
+    setShowQualityMenu(false);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -153,10 +164,25 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               hls.loadSource(channel.manifestUri);
               hls.attachMedia(videoRef.current);
               
-              hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
                 if (isMounted) {
                   setIsLoading(false);
+                  // Extract available quality levels
+                  const levels = hls.levels
+                    .map((level, index) => ({ height: level.height, index }))
+                    .filter(l => l.height > 0)
+                    .sort((a, b) => b.height - a.height);
+                  // Remove duplicates
+                  const unique = levels.filter((l, i, arr) => i === 0 || l.height !== arr[i - 1].height);
+                  setHlsLevels(unique);
+                  setCurrentLevel(-1);
                   videoRef.current?.play().catch(() => {});
+                }
+              });
+
+              hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+                if (isMounted && hlsRef.current && hlsRef.current.currentLevel === -1) {
+                  // keep showing "Auto" when ABR is active
                 }
               });
               
@@ -319,6 +345,40 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           playsInline
           // Note: 'controls' is handled dynamically in the useEffect above
         />
+
+        {/* HLS Quality Selector (only for hls.js streams) */}
+        {hlsLevels.length > 1 && hlsRef.current && (
+          <div className="absolute top-2 right-2 z-30">
+            <button
+              onClick={() => setShowQualityMenu(prev => !prev)}
+              className="bg-background/80 backdrop-blur-sm border border-border rounded-lg p-1.5 hover:bg-accent transition-colors"
+              title="Quality"
+            >
+              <Settings className="w-5 h-5 text-foreground" />
+            </button>
+            {showQualityMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[120px]">
+                <button
+                  onClick={() => handleQualityChange(-1)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}
+                >
+                  {currentLevel === -1 && <Check className="w-3 h-3" />}
+                  <span className={currentLevel === -1 ? '' : 'ml-5'}>Auto</span>
+                </button>
+                {hlsLevels.map((level) => (
+                  <button
+                    key={level.index}
+                    onClick={() => handleQualityChange(level.index)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}
+                  >
+                    {currentLevel === level.index && <Check className="w-3 h-3" />}
+                    <span className={currentLevel === level.index ? '' : 'ml-5'}>{level.height}p</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
