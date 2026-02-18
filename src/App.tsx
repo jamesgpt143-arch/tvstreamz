@@ -24,6 +24,7 @@ import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import IPTV from "./pages/IPTV";
 import YouTubeDownloader from "./pages/YouTubeDownloader";
+import TempMail from "./pages/TempMail";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/iptv" element={<IPTV />} />
               <Route path="/youtube-downloader" element={<YouTubeDownloader />} />
+              <Route path="/temp-mail" element={<TempMail />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
