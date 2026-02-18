@@ -346,33 +346,48 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           // Note: 'controls' is handled dynamically in the useEffect above
         />
 
-        {/* HLS Quality Selector (only for hls.js streams) */}
+        {/* HLS Quality Selector - TV Remote & D-pad friendly */}
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
             <button
               onClick={() => setShowQualityMenu(prev => !prev)}
-              className="bg-background/80 backdrop-blur-sm border border-border rounded-lg p-1.5 hover:bg-accent transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowQualityMenu(prev => !prev);
+                }
+              }}
+              className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               title="Quality"
+              aria-label="Change video quality"
             >
-              <Settings className="w-5 h-5 text-foreground" />
+              <Settings className="w-6 h-6 text-foreground" />
             </button>
             {showQualityMenu && (
-              <div className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[120px]">
+              <div
+                className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' || e.key === 'Backspace') {
+                    setShowQualityMenu(false);
+                  }
+                }}
+              >
                 <button
+                  autoFocus
                   onClick={() => handleQualityChange(-1)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}
+                  className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}
                 >
-                  {currentLevel === -1 && <Check className="w-3 h-3" />}
-                  <span className={currentLevel === -1 ? '' : 'ml-5'}>Auto</span>
+                  {currentLevel === -1 && <Check className="w-4 h-4" />}
+                  <span className={currentLevel === -1 ? '' : 'ml-6'}>Auto</span>
                 </button>
                 {hlsLevels.map((level) => (
                   <button
                     key={level.index}
                     onClick={() => handleQualityChange(level.index)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}
+                    className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}
                   >
-                    {currentLevel === level.index && <Check className="w-3 h-3" />}
-                    <span className={currentLevel === level.index ? '' : 'ml-5'}>{level.height}p</span>
+                    {currentLevel === level.index && <Check className="w-4 h-4" />}
+                    <span className={currentLevel === level.index ? '' : 'ml-6'}>{level.height}p</span>
                   </button>
                 ))}
               </div>
