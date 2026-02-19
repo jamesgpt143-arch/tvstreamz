@@ -7,8 +7,8 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// Get the Cloudflare proxy URL from site_settings
-const getProxyUrl = async (): Promise<string> => {
+// Get the Cloudflare proxy URLs (primary + backup) from site_settings
+const getProxyUrls = async (): Promise<{ primary: string; backup: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -16,9 +16,12 @@ const getProxyUrl = async (): Promise<string> => {
       .eq('key', 'iptv_config')
       .single();
     const config = data?.value as Record<string, string> | null;
-    return config?.cloudflare_proxy_url || '';
+    return {
+      primary: config?.cloudflare_proxy_url || '',
+      backup: config?.cloudflare_proxy_url_backup || '',
+    };
   } catch {
-    return '';
+    return { primary: '', backup: '' };
   }
 };
 
@@ -118,19 +121,21 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
 
       try {
-        // Get proxy URL for CORS/403 bypass
-        const proxyUrl = await getProxyUrl();
+        // Get proxy URLs for CORS/403 bypass (primary + backup)
+        const proxyUrls = await getProxyUrls();
+        const proxyUrl = proxyUrls.primary;
+        const backupProxyUrl = proxyUrls.backup;
         const streamUrl = channel.manifestUri;
 
         // Helper: configure Shaka request filter to proxy all requests
-        const configureShakaProxy = (player: shaka.Player) => {
-          if (!proxyUrl) return;
+        const configureShakaProxy = (player: shaka.Player, activeProxyUrl: string) => {
+          if (!activeProxyUrl) return;
           const netEngine = player.getNetworkingEngine();
           if (!netEngine) return;
           
           // Get the base URL of the original manifest for resolving relative paths
           const manifestBase = channel.manifestUri.substring(0, channel.manifestUri.lastIndexOf('/') + 1);
-          const proxyOrigin = new URL(proxyUrl).origin;
+          const proxyOrigin = new URL(activeProxyUrl).origin;
           
           netEngine.registerRequestFilter((type: any, request: any) => {
             const url = request.uris[0];
@@ -147,12 +152,12 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               // Remove leading slash
               const relativePath = path.startsWith('/') ? path.substring(1) : path;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent);
               return;
             }
             
             // External URL — proxy it
-            request.uris[0] = buildProxiedUrl(proxyUrl, url, channel.userAgent);
+            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent);
           });
           console.log('Shaka proxy filter configured');
         };
@@ -197,7 +202,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               },
             });
 
-            configureShakaProxy(player);
+            configureShakaProxy(player, proxyUrl);
 
             try {
               await player.load(streamUrl);
@@ -255,6 +260,12 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
+                  // Try backup proxy if available and not already using it
+                  if (backupProxyUrl && !hls.url?.includes(backupProxyUrl)) {
+                    console.log('Primary proxy failed, switching to backup proxy...');
+                    hls.loadSource(buildProxiedUrl(backupProxyUrl, streamUrl, channel.userAgent));
+                    return;
+                  }
                   setError('Failed to load stream. The channel may be offline.');
                   setIsLoading(false);
                 }
@@ -318,7 +329,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
             },
           });
 
-          configureShakaProxy(player);
+          configureShakaProxy(player, proxyUrl);
 
           try {
             await player.load(streamUrl);

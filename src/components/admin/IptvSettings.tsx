@@ -16,6 +16,7 @@ interface IptvConfig {
   username: string;
   password: string;
   cloudflare_proxy_url: string;
+  cloudflare_proxy_url_backup: string;
 }
 
 const defaultConfig: IptvConfig = {
@@ -26,6 +27,7 @@ const defaultConfig: IptvConfig = {
   username: "",
   password: "",
   cloudflare_proxy_url: "",
+  cloudflare_proxy_url_backup: "",
 };
 
 export const IptvSettings = () => {
@@ -56,6 +58,7 @@ export const IptvSettings = () => {
           username: (val.username as string) || "",
           password: (val.password as string) || "",
           cloudflare_proxy_url: (val.cloudflare_proxy_url as string) || "",
+          cloudflare_proxy_url_backup: (val.cloudflare_proxy_url_backup as string) || "",
         });
       }
     } catch {
@@ -205,18 +208,32 @@ export const IptvSettings = () => {
           </>
         )}
 
-        {/* Cloudflare Proxy URL - shared across both types */}
-        <div className="space-y-2 border-t border-border pt-4">
-          <Label htmlFor="cloudflare_proxy_url">Cloudflare Worker Proxy URL</Label>
-          <Input
-            id="cloudflare_proxy_url"
-            placeholder="https://hls-proxy.your-subdomain.workers.dev"
-            value={config.cloudflare_proxy_url}
-            onChange={(e) => setConfig({ ...config, cloudflare_proxy_url: e.target.value })}
-          />
-          <p className="text-xs text-muted-foreground">
-            Required for stream playback. Deploy the Cloudflare Worker from <code>cloudflare-worker/hls-proxy.js</code> and paste the URL here.
-          </p>
+        {/* Cloudflare Proxy URLs - shared across both types */}
+        <div className="space-y-4 border-t border-border pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="cloudflare_proxy_url">Cloudflare Worker Proxy URL (Primary)</Label>
+            <Input
+              id="cloudflare_proxy_url"
+              placeholder="https://hls-proxy.your-subdomain.workers.dev"
+              value={config.cloudflare_proxy_url}
+              onChange={(e) => setConfig({ ...config, cloudflare_proxy_url: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Primary proxy for stream playback. Deploy the Cloudflare Worker from <code>cloudflare-worker/hls-proxy.js</code>.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cloudflare_proxy_url_backup">Cloudflare Worker Proxy URL (Backup)</Label>
+            <Input
+              id="cloudflare_proxy_url_backup"
+              placeholder="https://hls-proxy-backup.your-subdomain.workers.dev"
+              value={config.cloudflare_proxy_url_backup}
+              onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Backup proxy — awtomatikong gagamitin kapag nag-error o nag-limit ang primary.
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2">
