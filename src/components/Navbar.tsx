@@ -107,7 +107,7 @@ export const Navbar = () => {
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
     { path: '/anime', label: 'Anime', icon: Sparkles },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
-    { path: '/youtube-downloader', label: 'YT Download', icon: Download },
+    
   ];
 
   return (
@@ -255,24 +255,6 @@ export const Navbar = () => {
                     </div>
                   </a>
 
-                  {/* YouTube Downloader */}
-                  <Link
-                    to="/youtube-downloader"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                        <Download className="w-5 h-5 text-destructive" />
-                      </div>
-                      <div>
-                        <p className="font-medium">YouTube Downloader</p>
-                        <p className="text-sm text-muted-foreground">
-                          Download YouTube videos
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
 
                   {/* Temp Mail */}
                   <Link
