@@ -7,6 +7,7 @@ export interface Channel {
   clearKey?: Record<string, string>;
   widevineUrl?: string;
   embedUrl?: string;
+  userAgent?: string;
 }
 
 export const liveChannels: Channel[] = [

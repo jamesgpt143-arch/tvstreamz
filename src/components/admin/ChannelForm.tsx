@@ -70,6 +70,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     category: channel?.category || 'general',
     is_active: channel?.is_active ?? true,
     sort_order: channel?.sort_order ?? 0,
+    user_agent: channel?.user_agent || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +90,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           drm_key: formData.drm_key || null,
           license_type: formData.license_type || null,
           license_url: formData.license_url || null,
+          user_agent: formData.user_agent || null,
         });
         toast.success('Channel updated');
       } else {
@@ -98,6 +100,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           drm_key: formData.drm_key || null,
           license_type: formData.license_type || null,
           license_url: formData.license_url || null,
+          user_agent: formData.user_agent || null,
         });
         toast.success('Channel created');
       }
@@ -264,6 +267,21 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               )}
             </div>
           )}
+
+          {/* Custom User Agent */}
+          <div className="space-y-2">
+            <Label htmlFor="user_agent">Custom User-Agent (Optional)</Label>
+            <Input
+              id="user_agent"
+              value={formData.user_agent || ''}
+              onChange={(e) => setFormData({ ...formData, user_agent: e.target.value })}
+              placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Custom User-Agent header para sa stream requests. Iwanan kung default ang gagamitin.
+            </p>
+          </div>
 
           {/* Sort Order */}
           <div className="space-y-2">

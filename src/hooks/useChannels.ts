@@ -14,6 +14,7 @@ export interface DbChannel {
   category: string | null;
   is_active: boolean;
   sort_order: number | null;
+  user_agent: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,7 @@ export interface ChannelInput {
   category?: string | null;
   is_active?: boolean;
   sort_order?: number | null;
+  user_agent?: string | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -46,6 +48,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
     ? dbChannel.license_url 
     : undefined,
   embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
+  userAgent: dbChannel.user_agent || undefined,
 });
 
 export function useChannels(includeInactive = false) {
