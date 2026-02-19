@@ -1,13 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Film, Sparkles, Tv, MonitorPlay, BookOpen } from 'lucide-react';
+import { Home, Film, Sparkles, Tv, MonitorPlay, Mail } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/movies', label: 'Movies', icon: Film },
   { path: '/tv-shows', label: 'TV', icon: MonitorPlay },
   { path: '/anime', label: 'Anime', icon: Sparkles },
-  { path: '/manga', label: 'Manga', icon: BookOpen },
   { path: '/live-tv', label: 'Live', icon: Tv },
+  { path: '/temp-mail', label: 'Mail', icon: Mail },
 ];
 
 export const BottomNav = () => {
