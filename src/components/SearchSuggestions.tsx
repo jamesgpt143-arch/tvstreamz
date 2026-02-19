@@ -4,7 +4,8 @@ import { Search, X, Film, Tv, Star, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { searchMulti, getImageUrl, Movie, TVShow } from '@/lib/tmdb';
-import { liveChannels, Channel } from '@/lib/channels';
+import { Channel } from '@/lib/channels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
 
 interface SearchSuggestionsProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export const SearchSuggestions = ({ isOpen, onClose }: SearchSuggestionsProps) =
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { data: dbChannels } = useChannels();
+  const liveChannels = (dbChannels || []).map(toAppChannel);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {

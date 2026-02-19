@@ -8,7 +8,7 @@ import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { WelcomePopup } from '@/components/WelcomePopup';
-import { liveChannels } from '@/lib/channels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { trackPageView } from '@/lib/analytics';
 import {
   fetchTrending,
@@ -28,6 +28,8 @@ const Index = () => {
   const [popularTV, setPopularTV] = useState<TVShow[]>([]);
   const [topRated, setTopRated] = useState<Movie[]>([]);
   const [nowPlaying, setNowPlaying] = useState<Movie[]>([]);
+  const { data: dbChannels } = useChannels();
+  const liveChannels = (dbChannels || []).map(toAppChannel);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

@@ -3,8 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
 import { ShareButton } from '@/components/ShareButton';
-import { liveChannels, type Channel } from '@/lib/channels';
-import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
+import { type Channel } from '@/lib/channels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
 import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,26 +28,9 @@ const WatchLive = () => {
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
 
-  // Create a map of channel creation dates from DB for "recent" sorting
-  const dbChannelMap = useMemo(() => {
-    const map = new Map<string, DbChannel>();
-    (dbChannels || []).forEach(ch => {
-      map.set(ch.name.toLowerCase(), ch);
-    });
-    return map;
-  }, [dbChannels]);
-
-  // Merge DB channels with hardcoded channels
+  // All channels from database
   const allChannels: Channel[] = useMemo(() => {
-    const dbConverted = (dbChannels || []).map(toAppChannel);
-    const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
-    
-    // Include all DB channels + hardcoded channels that don't exist in DB
-    const hardcodedNotInDb = liveChannels.filter(
-      c => !dbNames.has(c.name.toLowerCase())
-    );
-    
-    return [...dbConverted, ...hardcodedNotInDb];
+    return (dbChannels || []).map(toAppChannel);
   }, [dbChannels]);
   
   const channel = allChannels.find((c) => c.id === channelId);
@@ -75,19 +58,17 @@ const WatchLive = () => {
         });
       case 'recent':
         return others.sort((a, b) => {
-          const aDb = dbChannelMap.get(a.name.toLowerCase());
-          const bDb = dbChannelMap.get(b.name.toLowerCase());
+          const aDb = (dbChannels || []).find(ch => ch.id === a.id);
+          const bDb = (dbChannels || []).find(ch => ch.id === b.id);
           if (aDb && bDb) {
             return new Date(bDb.created_at).getTime() - new Date(aDb.created_at).getTime();
           }
-          if (aDb && !bDb) return -1;
-          if (!aDb && bDb) return 1;
           return a.name.localeCompare(b.name);
         });
       default:
         return others;
     }
-  }, [allChannels, channelId, viewCounts, dbChannelMap, sortBy]);
+  }, [allChannels, channelId, viewCounts, dbChannels, sortBy]);
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
