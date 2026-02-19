@@ -5,6 +5,32 @@ import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
+import { supabase } from '@/integrations/supabase/client';
+
+// Get the Cloudflare proxy URL from site_settings
+const getProxyUrl = async (): Promise<string> => {
+  try {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'iptv_config')
+      .single();
+    const config = data?.value as Record<string, string> | null;
+    return config?.cloudflare_proxy_url || '';
+  } catch {
+    return '';
+  }
+};
+
+// Build proxied manifest URL with custom user-agent
+const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string): string => {
+  const url = new URL(proxyBase);
+  url.searchParams.set('url', manifestUrl);
+  if (userAgent) {
+    url.searchParams.set('ua', userAgent);
+  }
+  return url.toString();
+};
 
 // Detect iOS devices
 const isIOS = (): boolean => {
@@ -92,6 +118,19 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
 
       try {
+        // Determine if we need to proxy the stream (for CORS bypass + custom UA)
+        let streamUrl = channel.manifestUri;
+        
+        if (channel.userAgent) {
+          const proxyUrl = await getProxyUrl();
+          if (proxyUrl) {
+            streamUrl = buildProxiedUrl(proxyUrl, channel.manifestUri, channel.userAgent);
+            console.log('Using proxy for stream:', streamUrl);
+          } else {
+            console.warn('Channel has custom UA but no proxy URL configured');
+          }
+        }
+
         // ==========================================
         // HLS LOGIC - Check if DRM is needed
         // ==========================================
@@ -133,7 +172,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
             });
 
             try {
-              await player.load(channel.manifestUri);
+              await player.load(streamUrl);
               if (isMounted) {
                 setIsLoading(false);
                 videoRef.current?.play().catch(() => {});
@@ -161,7 +200,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
               hlsRef.current = hls;
               
-              hls.loadSource(channel.manifestUri);
+              hls.loadSource(streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -194,7 +233,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
               // Native HLS support (Safari)
-              videoRef.current.src = channel.manifestUri;
+              videoRef.current.src = streamUrl;
               const handleLoaded = () => {
                 if (isMounted) {
                   setIsLoading(false);
@@ -252,7 +291,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           });
 
           try {
-            await player.load(channel.manifestUri);
+            await player.load(streamUrl);
 
             // 3. Subtitle Logic (Auto-enable English)
             const textTracks = player.getTextTracks();
