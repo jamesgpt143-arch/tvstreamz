@@ -30,6 +30,7 @@ export type Database = {
           stream_type: string
           stream_url: string
           updated_at: string
+          user_agent: string | null
         }
         Insert: {
           category?: string | null
@@ -46,6 +47,7 @@ export type Database = {
           stream_type?: string
           stream_url: string
           updated_at?: string
+          user_agent?: string | null
         }
         Update: {
           category?: string | null
@@ -62,6 +64,7 @@ export type Database = {
           stream_type?: string
           stream_url?: string
           updated_at?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
