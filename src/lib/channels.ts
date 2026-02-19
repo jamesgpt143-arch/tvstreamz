@@ -8,6 +8,7 @@ export interface Channel {
   widevineUrl?: string;
   embedUrl?: string;
   userAgent?: string;
+  useProxy?: boolean;
 }
 
 export const liveChannels: Channel[] = [

@@ -71,6 +71,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     is_active: channel?.is_active ?? true,
     sort_order: channel?.sort_order ?? 0,
     user_agent: channel?.user_agent || '',
+    use_proxy: channel?.use_proxy ?? false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,6 +293,19 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               value={formData.sort_order ?? 0}
               onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
               placeholder="0"
+            />
+          </div>
+
+          {/* Proxy Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div>
+              <Label htmlFor="use_proxy">Use Cloudflare Proxy</Label>
+              <p className="text-xs text-muted-foreground">Route stream through Cloudflare Worker proxy</p>
+            </div>
+            <Switch
+              id="use_proxy"
+              checked={formData.use_proxy ?? false}
+              onCheckedChange={(checked) => setFormData({ ...formData, use_proxy: checked })}
             />
           </div>
 
