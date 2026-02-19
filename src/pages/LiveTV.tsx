@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
-import { liveChannels, type Channel } from '@/lib/channels';
+import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
@@ -27,31 +27,14 @@ const LiveTV = () => {
   // Trigger page popup if enabled
   usePagePopup('livetv');
 
-  // Create a map of channel creation dates from DB for "recent" sorting
-  const dbChannelMap = useMemo(() => {
-    const map = new Map<string, DbChannel>();
-    (dbChannels || []).forEach(ch => {
-      map.set(ch.name.toLowerCase(), ch);
-    });
-    return map;
-  }, [dbChannels]);
-
-  // Merge DB channels with hardcoded channels
+  // All channels come from database now
   const channels: Channel[] = useMemo(() => {
-    const dbConverted = (dbChannels || []).map(toAppChannel);
-    const dbNames = new Set(dbConverted.map(c => c.name.toLowerCase()));
-    
-    // Include all DB channels + hardcoded channels that don't exist in DB
-    const hardcodedNotInDb = liveChannels.filter(
-      c => !dbNames.has(c.name.toLowerCase())
-    );
-    
-    const combined = [...dbConverted, ...hardcodedNotInDb];
+    const allChannels = (dbChannels || []).map(toAppChannel);
 
     // Filter by category
     const filtered = selectedCategory === 'All'
-      ? combined
-      : combined.filter(c => getChannelCategory(c.id) === selectedCategory);
+      ? allChannels
+      : allChannels.filter(c => getChannelCategory(c.id) === selectedCategory);
 
     // Sort based on selected option
     switch (sortBy) {
@@ -66,19 +49,17 @@ const LiveTV = () => {
         });
       case 'recent':
         return filtered.sort((a, b) => {
-          const aDb = dbChannelMap.get(a.name.toLowerCase());
-          const bDb = dbChannelMap.get(b.name.toLowerCase());
+          const aDb = (dbChannels || []).find(ch => ch.id === a.id);
+          const bDb = (dbChannels || []).find(ch => ch.id === b.id);
           if (aDb && bDb) {
             return new Date(bDb.created_at).getTime() - new Date(aDb.created_at).getTime();
           }
-          if (aDb && !bDb) return -1;
-          if (!aDb && bDb) return 1;
           return a.name.localeCompare(b.name);
         });
       default:
         return filtered;
     }
-  }, [dbChannels, dbChannelMap, viewCounts, sortBy, selectedCategory]);
+  }, [dbChannels, viewCounts, sortBy, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
