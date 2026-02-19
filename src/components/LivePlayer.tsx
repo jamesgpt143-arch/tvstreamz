@@ -121,8 +121,8 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
 
       try {
-        // Get proxy URLs for CORS/403 bypass (primary + backup)
-        const proxyUrls = await getProxyUrls();
+        // Get proxy URLs only if channel has proxy enabled
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '' };
         const proxyUrl = proxyUrls.primary;
         const backupProxyUrl = proxyUrls.backup;
         const streamUrl = channel.manifestUri;
