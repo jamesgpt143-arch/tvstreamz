@@ -118,18 +118,44 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
       }
 
       try {
-        // Determine if we need to proxy the stream (for CORS bypass + custom UA)
-        let streamUrl = channel.manifestUri;
-        
-        if (channel.userAgent) {
-          const proxyUrl = await getProxyUrl();
-          if (proxyUrl) {
-            streamUrl = buildProxiedUrl(proxyUrl, channel.manifestUri, channel.userAgent);
-            console.log('Using proxy for stream:', streamUrl);
-          } else {
-            console.warn('Channel has custom UA but no proxy URL configured');
-          }
-        }
+        // Get proxy URL for CORS/403 bypass
+        const proxyUrl = await getProxyUrl();
+        const streamUrl = channel.manifestUri;
+
+        // Helper: configure Shaka request filter to proxy all requests
+        const configureShakaProxy = (player: shaka.Player) => {
+          if (!proxyUrl) return;
+          const netEngine = player.getNetworkingEngine();
+          if (!netEngine) return;
+          
+          // Get the base URL of the original manifest for resolving relative paths
+          const manifestBase = channel.manifestUri.substring(0, channel.manifestUri.lastIndexOf('/') + 1);
+          const proxyOrigin = new URL(proxyUrl).origin;
+          
+          netEngine.registerRequestFilter((type: any, request: any) => {
+            const url = request.uris[0];
+            if (!url) return;
+            
+            // Skip non-HTTP URLs (data:, blob:, etc.) and already-proxied URLs
+            if (!url.startsWith('http')) return;
+            if (url.includes('?url=') || url.includes('&url=')) return;
+            
+            // If URL starts with proxy origin but missing ?url= param,
+            // it's a relative URL resolved against the proxy — reconstruct original
+            if (url.startsWith(proxyOrigin)) {
+              const path = url.substring(proxyOrigin.length);
+              // Remove leading slash
+              const relativePath = path.startsWith('/') ? path.substring(1) : path;
+              const fullOriginalUrl = manifestBase + relativePath;
+              request.uris[0] = buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent);
+              return;
+            }
+            
+            // External URL — proxy it
+            request.uris[0] = buildProxiedUrl(proxyUrl, url, channel.userAgent);
+          });
+          console.log('Shaka proxy filter configured');
+        };
 
         // ==========================================
         // HLS LOGIC - Check if DRM is needed
@@ -149,7 +175,8 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               return;
             }
 
-            const player = new shaka.Player(videoRef.current);
+            const player = new shaka.Player();
+            await player.attach(videoRef.current);
             shakaRef.current = player;
 
             const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
@@ -168,8 +195,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                 enabled: true,
                 defaultBandwidthEstimate: 1500000,
               },
-              preferredVideoResolution: { maxHeight: 1080, maxWidth: 1920 },
             });
+
+            configureShakaProxy(player);
 
             try {
               await player.load(streamUrl);
@@ -200,7 +228,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
               hlsRef.current = hls;
               
-              hls.loadSource(streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -233,7 +261,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
               // Native HLS support (Safari)
-              videoRef.current.src = streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent) : streamUrl;
               const handleLoaded = () => {
                 if (isMounted) {
                   setIsLoading(false);
@@ -262,7 +290,8 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           }
 
           // 1. Initialize Player
-          const player = new shaka.Player(videoRef.current);
+          const player = new shaka.Player();
+          await player.attach(videoRef.current);
           shakaRef.current = player;
 
           // 2. Initialize UI Overlay (Gives you the Quality Selector/Gear Icon)
@@ -287,8 +316,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               enabled: true,
               defaultBandwidthEstimate: 1500000,
             },
-            preferredVideoResolution: { maxHeight: 1080, maxWidth: 1920 },
           });
+
+          configureShakaProxy(player);
 
           try {
             await player.load(streamUrl);
