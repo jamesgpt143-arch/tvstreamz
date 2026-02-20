@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN referrer text DEFAULT NULL;

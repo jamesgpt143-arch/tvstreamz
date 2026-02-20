@@ -71,6 +71,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     is_active: channel?.is_active ?? true,
     sort_order: channel?.sort_order ?? 0,
     user_agent: channel?.user_agent || '',
+    referrer: channel?.referrer || '',
     use_proxy: channel?.use_proxy ?? false,
   });
 
@@ -92,6 +93,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_type: formData.license_type || null,
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
+          referrer: formData.referrer || null,
         });
         toast.success('Channel updated');
       } else {
@@ -102,6 +104,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_type: formData.license_type || null,
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
+          referrer: formData.referrer || null,
         });
         toast.success('Channel created');
       }
@@ -281,6 +284,21 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
             <p className="text-xs text-muted-foreground">
               Custom User-Agent header para sa stream requests. Iwanan kung default ang gagamitin.
+            </p>
+          </div>
+
+          {/* Custom Referrer */}
+          <div className="space-y-2">
+            <Label htmlFor="referrer">Custom Referrer (Optional)</Label>
+            <Input
+              id="referrer"
+              value={formData.referrer || ''}
+              onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
+              placeholder="https://example.com"
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Custom Referer header para sa stream requests. Iwanan kung hindi kailangan.
             </p>
           </div>
 

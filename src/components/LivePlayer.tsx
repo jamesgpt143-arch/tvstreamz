@@ -25,12 +25,15 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string }> => {
   }
 };
 
-// Build proxied manifest URL with custom user-agent
-const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string): string => {
+// Build proxied manifest URL with custom user-agent and referrer
+const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string): string => {
   const url = new URL(proxyBase);
   url.searchParams.set('url', manifestUrl);
   if (userAgent) {
     url.searchParams.set('ua', userAgent);
+  }
+  if (referrer) {
+    url.searchParams.set('referer', referrer);
   }
   return url.toString();
 };
@@ -152,12 +155,12 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               // Remove leading slash
               const relativePath = path.startsWith('/') ? path.substring(1) : path;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
             }
             
             // External URL — proxy it
-            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent);
+            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
           });
           console.log('Shaka proxy filter configured');
         };
@@ -233,7 +236,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
               hlsRef.current = hls;
               
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -263,7 +266,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                   // Try backup proxy if available and not already using it
                   if (backupProxyUrl && !hls.url?.includes(backupProxyUrl)) {
                     console.log('Primary proxy failed, switching to backup proxy...');
-                    hls.loadSource(buildProxiedUrl(backupProxyUrl, streamUrl, channel.userAgent));
+                    hls.loadSource(buildProxiedUrl(backupProxyUrl, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
                   setError('Failed to load stream. The channel may be offline.');
@@ -272,7 +275,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
               // Native HLS support (Safari)
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent) : streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
               const handleLoaded = () => {
                 if (isMounted) {
                   setIsLoading(false);
