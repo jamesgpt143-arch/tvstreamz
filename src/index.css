@@ -186,8 +186,10 @@
 }
 
 .shaka-text-container span {
-  background-color: rgba(0, 0, 0, 0.75) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
   color: white !important;
-  padding: 2px 6px !important;
+  padding: 2px 8px !important;
   font-size: 1.1em !important;
+  border-radius: 4px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
 }
