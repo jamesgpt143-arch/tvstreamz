@@ -15,6 +15,7 @@ export interface DbChannel {
   is_active: boolean;
   sort_order: number | null;
   user_agent: string | null;
+  referrer: string | null;
   use_proxy: boolean;
   created_at: string;
   updated_at: string;
@@ -33,6 +34,7 @@ export interface ChannelInput {
   is_active?: boolean;
   sort_order?: number | null;
   user_agent?: string | null;
+  referrer?: string | null;
   use_proxy?: boolean;
 }
 
@@ -51,6 +53,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
     : undefined,
   embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
   userAgent: dbChannel.user_agent || undefined,
+  referrer: dbChannel.referrer || undefined,
   useProxy: dbChannel.use_proxy,
 });
 

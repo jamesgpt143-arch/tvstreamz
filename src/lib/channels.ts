@@ -8,5 +8,6 @@ export interface Channel {
   widevineUrl?: string;
   embedUrl?: string;
   userAgent?: string;
+  referrer?: string;
   useProxy?: boolean;
 }
