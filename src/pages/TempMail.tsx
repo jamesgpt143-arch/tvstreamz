@@ -91,6 +91,23 @@ const TempMail = () => {
     }
   };
 
+  // Delete email
+  const deleteEmail = async (emailId: string) => {
+    if (!address) return;
+    try {
+      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}/${emailId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEmails((prev) => prev.filter((e) => e.id !== emailId));
+        if (selectedEmail?.id === emailId) setSelectedEmail(null);
+        toast.success('Email deleted');
+      } else {
+        toast.error('Failed to delete email');
+      }
+    } catch {
+      toast.error('Failed to delete email');
+    }
+  };
+
   // Auto-poll every 5s
   useEffect(() => {
     if (!address) return;
@@ -242,19 +259,32 @@ const TempMail = () => {
                 ) : (
                   <div className="space-y-1">
                     {emails.map((email) => (
-                      <button
+                      <div
                         key={email.id}
-                        onClick={() => viewEmail(email.id)}
-                        className="w-full text-left p-3 rounded-lg hover:bg-accent/50 transition-colors flex items-start gap-3"
+                        className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors"
                       >
-                        <Mail className="w-4 h-4 mt-0.5 text-primary shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm truncate">{email.subject || '(No Subject)'}</p>
-                          <p className="text-xs text-muted-foreground truncate">{email.from}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(email.receivedAt).toLocaleString()}</p>
-                        </div>
-                        {email.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                      </button>
+                        <button
+                          onClick={() => viewEmail(email.id)}
+                          className="flex items-start gap-3 min-w-0 flex-1 text-left"
+                        >
+                          <Mail className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{email.subject || '(No Subject)'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{email.from}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(email.receivedAt).toLocaleString()}</p>
+                          </div>
+                          {email.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteEmail(email.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 )}
