@@ -190,7 +190,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               return;
             }
 
-            const player = new shaka.Player();
+            const player = new shaka.Player(/* mediaElement= */ null, containerRef.current);
             await player.attach(videoRef.current);
             shakaRef.current = player;
 
@@ -333,7 +333,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           }
 
           // 1. Initialize Player
-          const player = new shaka.Player();
+          const player = new shaka.Player(/* mediaElement= */ null, containerRef.current);
           await player.attach(videoRef.current);
           shakaRef.current = player;
 
