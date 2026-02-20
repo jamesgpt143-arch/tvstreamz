@@ -210,6 +210,10 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                 enabled: true,
                 defaultBandwidthEstimate: 1500000,
               },
+              preferredTextLanguage: 'en',
+              streaming: {
+                alwaysStreamText: true,
+              },
             });
 
             configureShakaProxy(player, proxyUrl);
@@ -343,7 +347,7 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
             addBigPlayButton: true,
           });
 
-          // Configure DRM
+          // Configure DRM + text preferences
           player.configure({
             drm: {
               clearKeys: channel.clearKey || {},
@@ -355,6 +359,10 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               enabled: true,
               defaultBandwidthEstimate: 1500000,
             },
+            preferredTextLanguage: 'en',
+            streaming: {
+              alwaysStreamText: true,
+            },
           });
 
           configureShakaProxy(player, proxyUrl);
@@ -364,14 +372,23 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
             // 3. Subtitle Logic (Auto-enable English)
             const textTracks = player.getTextTracks();
+            console.log('Available text tracks:', JSON.stringify(textTracks.map((t: any) => ({ lang: t.language, kind: t.kind, label: t.label, roles: t.roles }))));
             const englishTrack = textTracks.find((track: any) => 
                 track.language === 'en' || track.language === 'eng'
             );
 
             if (englishTrack) {
-                player.setTextTrackVisibility(true); // Turn on captions
-                player.selectTextTrack(englishTrack); // Select English
+                player.selectTextTrack(englishTrack); // Select English first
+                player.setTextTrackVisibility(true); // Then turn on visibility
                 console.log('Subtitles auto-enabled:', englishTrack.language);
+            } else {
+                console.log('No English text track found. Available languages:', textTracks.map((t: any) => t.language));
+                // If any text track exists, enable the first one
+                if (textTracks.length > 0) {
+                  player.selectTextTrack(textTracks[0]);
+                  player.setTextTrackVisibility(true);
+                  console.log('Enabled first available track:', textTracks[0].language);
+                }
             }
 
             if (isMounted) {
