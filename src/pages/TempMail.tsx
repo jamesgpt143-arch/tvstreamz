@@ -4,20 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mail, Copy, RefreshCw, Trash2, Clock, Paperclip, ArrowLeft, Inbox, ChevronDown } from 'lucide-react';
+import { Mail, Copy, RefreshCw, Trash2, Clock, Paperclip, ArrowLeft, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = 'https://api.driftz.net';
 
-interface DriftzEmail {
+interface DriftzEmailSummary {
   id: string;
-  from: string;
-  subject: string;
-  body: string;
-  html: string;
-  receivedAt: string;
-  hasAttachments: boolean;
-  attachments?: { id: string; filename: string; size: number; contentType: string }[];
+  fromAddress: string;
+  toAddress: string;
+  subject: string | null;
+  receivedAt: number; // Unix timestamp in seconds
+  expiresAt: number;
+  hasAttachments: boolean | null;
+  attachmentCount: number | null;
+}
+
+interface DriftzEmailFull extends DriftzEmailSummary {
+  htmlContent: string | null;
+  textContent: string | null;
 }
 
 const generateRandomString = (length: number) => {
@@ -27,11 +32,11 @@ const generateRandomString = (length: number) => {
 
 const TempMail = () => {
   const [address, setAddress] = useState<string | null>(null);
-  const [emails, setEmails] = useState<DriftzEmail[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<DriftzEmail | null>(null);
+  const [emails, setEmails] = useState<DriftzEmailSummary[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<DriftzEmailFull | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
-  const [createdAt, setCreatedAt] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [domains, setDomains] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
@@ -46,8 +51,8 @@ const TempMail = () => {
           const data = await res.json();
           if (data.success && data.result) {
             const allDomains = [
-              ...(data.result.public || []),
               ...(data.result.temp || []),
+              ...(data.result.public || []),
             ];
             setDomains(allDomains);
             if (allDomains.length > 0) {
@@ -62,36 +67,25 @@ const TempMail = () => {
     fetchDomains();
   }, []);
 
-  // Generate temp address
+  // Generate temp address using POST /temp/generate
   const generateAddress = async () => {
     setLoading(true);
     setSelectedEmail(null);
     setEmails([]);
     try {
-      // If we have a selected domain, generate username + domain combo
-      // Otherwise fall back to the API's auto-generate
-      if (selectedDomain) {
-        const user = username.trim() || generateRandomString(12);
-        const email = `${user}@${selectedDomain}`;
-        setAddress(email);
-        setUsername(user);
-        setCreatedAt(Date.now());
+      const res = await fetch(`${API_BASE}/temp/generate`, { method: 'POST' });
+      if (!res.ok) {
+        toast.error('Failed to generate temp email');
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.success && data.result?.address) {
+        setAddress(data.result.address);
+        setExpiresAt(data.result.expiresAt);
         toast.success('Temp email generated!');
       } else {
-        const res = await fetch(`${API_BASE}/temp/generate`, { method: 'POST' });
-        if (!res.ok) {
-          toast.error('Failed to generate temp email');
-          setLoading(false);
-          return;
-        }
-        const data = await res.json();
-        if (data.success && data.result?.address) {
-          setAddress(data.result.address);
-          setCreatedAt(Date.now());
-          toast.success('Temp email generated!');
-        } else {
-          toast.error('Failed to generate temp email');
-        }
+        toast.error('Failed to generate temp email');
       }
     } catch (err) {
       console.error('API error:', err);
@@ -101,16 +95,19 @@ const TempMail = () => {
     }
   };
 
-  // Fetch inbox
+  // Fetch inbox using GET /temp/{address}
   const fetchInbox = useCallback(async () => {
     if (!address) return;
     setPolling(true);
     try {
-      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}`);
+      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}?limit=50`);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.result?.emails) {
-          setEmails(data.result.emails);
+        if (data.success && data.result) {
+          setEmails(data.result.items || []);
+          if (data.result.expiresAt) {
+            setExpiresAt(data.result.expiresAt);
+          }
         }
       }
     } catch {
@@ -120,7 +117,7 @@ const TempMail = () => {
     }
   }, [address]);
 
-  // View single email
+  // View single email using GET /temp/{address}/{emailId}
   const viewEmail = async (emailId: string) => {
     if (!address) return;
     try {
@@ -136,11 +133,10 @@ const TempMail = () => {
     }
   };
 
-  // Delete email
+  // Delete email using DELETE /inbox/{emailId}
   const deleteEmail = async (emailId: string) => {
-    if (!address) return;
     try {
-      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}/${emailId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/inbox/${emailId}`, { method: 'DELETE' });
       if (res.ok) {
         setEmails((prev) => prev.filter((e) => e.id !== emailId));
         if (selectedEmail?.id === emailId) setSelectedEmail(null);
@@ -161,12 +157,11 @@ const TempMail = () => {
     return () => clearInterval(interval);
   }, [address, fetchInbox]);
 
-  // Countdown timer (1 hour)
+  // Countdown timer based on expiresAt (unix seconds)
   useEffect(() => {
-    if (!createdAt) return;
-    const expiresAt = createdAt + 60 * 60 * 1000;
+    if (!expiresAt) return;
     const update = () => {
-      const diff = expiresAt - Date.now();
+      const diff = expiresAt * 1000 - Date.now();
       if (diff <= 0) {
         setTimeLeft('Expired');
         setAddress(null);
@@ -179,12 +174,16 @@ const TempMail = () => {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [createdAt]);
+  }, [expiresAt]);
 
   const copyAddress = () => {
     if (!address) return;
     navigator.clipboard.writeText(address);
     toast.success('Copied to clipboard!');
+  };
+
+  const formatTimestamp = (unixSeconds: number) => {
+    return new Date(unixSeconds * 1000).toLocaleString();
   };
 
   return (
@@ -206,16 +205,18 @@ const TempMail = () => {
           <CardContent className="pt-6">
             {!address ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
-                    placeholder="random username"
-                    className="flex-1 min-w-0 bg-muted px-3 py-2 rounded-lg text-sm font-mono border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <span className="text-muted-foreground font-mono text-sm">@</span>
-                  {domains.length > 0 ? (
+                <Mail className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="text-center text-muted-foreground text-sm">Generate a temporary email address to receive emails</p>
+                {domains.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                      placeholder="(auto-generated)"
+                      className="flex-1 min-w-0 bg-muted px-3 py-2 rounded-lg text-sm font-mono border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <span className="text-muted-foreground font-mono text-sm">@</span>
                     <Select value={selectedDomain} onValueChange={setSelectedDomain}>
                       <SelectTrigger className="w-[180px] bg-card border-border">
                         <SelectValue placeholder="Select domain" />
@@ -228,11 +229,9 @@ const TempMail = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Loading...</span>
-                  )}
-                </div>
-                <Button onClick={generateAddress} disabled={loading || domains.length === 0} size="lg" className="w-full">
+                  </div>
+                )}
+                <Button onClick={generateAddress} disabled={loading} size="lg" className="w-full">
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
                   Generate Temp Email
                 </Button>
@@ -255,7 +254,7 @@ const TempMail = () => {
                     <Clock className="w-3.5 h-3.5" />
                     <span>Expires in: <span className="font-medium text-foreground">{timeLeft}</span></span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAddress(null); setUsername(''); }} className="text-xs">
+                  <Button variant="ghost" size="sm" onClick={() => { setAddress(null); setExpiresAt(null); setUsername(''); setEmails([]); setSelectedEmail(null); }} className="text-xs">
                     <Trash2 className="w-3 h-3 mr-1" /> New Address
                   </Button>
                 </div>
@@ -274,36 +273,33 @@ const TempMail = () => {
                 </Button>
                 <CardTitle className="text-lg">{selectedEmail.subject || '(No Subject)'}</CardTitle>
                 <CardDescription>
-                  From: {selectedEmail.from} • {new Date(selectedEmail.receivedAt).toLocaleString()}
+                  From: {selectedEmail.fromAddress} • {formatTimestamp(selectedEmail.receivedAt)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedEmail.html ? (
+                {selectedEmail.htmlContent ? (
                   <div
                     className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 overflow-auto max-h-[60vh]"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.html }}
+                    dangerouslySetInnerHTML={{ __html: selectedEmail.htmlContent }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm bg-muted/30 rounded-lg p-4 max-h-[60vh] overflow-auto">
-                    {selectedEmail.body || 'No content'}
+                    {selectedEmail.textContent || 'No content'}
                   </pre>
                 )}
-                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                {selectedEmail.hasAttachments && selectedEmail.attachmentCount && selectedEmail.attachmentCount > 0 && (
                   <div className="mt-4 space-y-2">
                     <p className="text-sm font-medium flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5" /> Attachments
+                      <Paperclip className="w-3.5 h-3.5" /> {selectedEmail.attachmentCount} Attachment(s)
                     </p>
-                    {selectedEmail.attachments.map((att) => (
-                      <a
-                        key={att.id}
-                        href={`${API_BASE}/attachments/${att.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-sm text-primary hover:underline"
-                      >
-                        {att.filename} ({(att.size / 1024).toFixed(1)} KB)
-                      </a>
-                    ))}
+                    <a
+                      href={`${API_BASE}/attachments/email/${selectedEmail.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-sm text-primary hover:underline"
+                    >
+                      View attachments
+                    </a>
                   </div>
                 )}
               </CardContent>
@@ -339,8 +335,8 @@ const TempMail = () => {
                           <Mail className="w-4 h-4 mt-0.5 text-primary shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm truncate">{email.subject || '(No Subject)'}</p>
-                            <p className="text-xs text-muted-foreground truncate">{email.from}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(email.receivedAt).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground truncate">{email.fromAddress}</p>
+                            <p className="text-xs text-muted-foreground">{formatTimestamp(email.receivedAt)}</p>
                           </div>
                           {email.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                         </button>
