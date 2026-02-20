@@ -34,7 +34,7 @@ const isProxyCoolingDown = (proxyUrl: string): boolean => {
 };
 
 // Get the Cloudflare proxy URLs (primary + backup1 + backup2) + Cloud edge function proxy
-const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; cloud: string }> => {
+const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -42,25 +42,19 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
       .eq('key', 'iptv_config')
       .single();
     const config = data?.value as Record<string, string> | null;
-    
-    // Build Cloud proxy URL from env
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
-    const cloudProxyUrl = projectId ? `https://${projectId}.supabase.co/functions/v1/hls-proxy` : '';
-    
     return {
       primary: config?.cloudflare_proxy_url || '',
       backup: config?.cloudflare_proxy_url_backup || '',
       backup2: config?.cloudflare_proxy_url_backup2 || '',
-      cloud: cloudProxyUrl,
     };
   } catch {
-    return { primary: '', backup: '', backup2: '', cloud: '' };
+    return { primary: '', backup: '', backup2: '' };
   }
 };
 
 // Pick the best available proxy (skipping those in cooldown)
-const pickBestProxy = (urls: { primary: string; backup: string; backup2: string; cloud: string }): string[] => {
-  const ordered = [urls.primary, urls.backup, urls.backup2, urls.cloud].filter(Boolean);
+const pickBestProxy = (urls: { primary: string; backup: string; backup2: string }): string[] => {
+  const ordered = [urls.primary, urls.backup, urls.backup2].filter(Boolean);
   const available: string[] = [];
   const coolingDown: string[] = [];
   
@@ -178,7 +172,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
       try {
         // Get proxy URLs only if channel has proxy enabled
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', cloud: '' };
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '' };
         const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls) : [];
         const proxyUrl = orderedProxies[0] || '';
         const streamUrl = channel.manifestUri;
@@ -188,7 +182,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
         if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
         if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
-        if (proxyUrls.cloud) labelMap.set(proxyUrls.cloud, 'Cloud');
         proxyLabelMapRef.current = labelMap;
 
         // Set initial active proxy label
