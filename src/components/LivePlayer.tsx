@@ -216,6 +216,18 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
             try {
               await player.load(streamUrl);
+
+              // Auto-enable English subtitles
+              const textTracks = player.getTextTracks();
+              const englishTrack = textTracks.find((track: any) => 
+                  track.language === 'en' || track.language === 'eng'
+              );
+              if (englishTrack) {
+                  player.setTextTrackVisibility(true);
+                  player.selectTextTrack(englishTrack);
+                  console.log('HLS+Widevine subtitles auto-enabled:', englishTrack.language);
+              }
+
               if (isMounted) {
                 setIsLoading(false);
                 videoRef.current?.play().catch(() => {});
@@ -374,6 +386,17 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               configureShakaProxy(player, cloudProxyUrl);
               try {
                 await player.load(streamUrl);
+
+                // Auto-enable English subtitles on retry
+                const retryTextTracks = player.getTextTracks();
+                const retryEnglishTrack = retryTextTracks.find((track: any) => 
+                    track.language === 'en' || track.language === 'eng'
+                );
+                if (retryEnglishTrack) {
+                    player.setTextTrackVisibility(true);
+                    player.selectTextTrack(retryEnglishTrack);
+                }
+
                 if (isMounted) {
                   setIsLoading(false);
                   videoRef.current?.play().catch(() => {});
