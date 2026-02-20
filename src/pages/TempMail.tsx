@@ -6,61 +6,93 @@ import { Badge } from '@/components/ui/badge';
 import { Mail, Copy, RefreshCw, Trash2, Clock, Paperclip, ArrowLeft, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_BASE = 'https://api.driftz.net';
+const API_BASE = 'https://api.mail.tm';
 
-interface TempEmail {
+interface MailTmMessage {
   id: string;
-  from: string;
+  from: { address: string; name: string };
+  to: { address: string; name: string }[];
   subject: string;
-  date: string;
-  body?: string;
-  textBody?: string;
-  htmlBody?: string;
-  hasAttachments?: boolean;
-  attachments?: any[];
+  intro: string;
+  text: string;
+  html: string[];
+  hasAttachments: boolean;
+  attachments: { id: string; filename: string; contentType: string; disposition: string; size: number }[];
+  createdAt: string;
+  seen: boolean;
 }
 
-interface EmailDetail {
-  id: string;
-  from: string;
-  to: string;
-  subject: string;
-  date: string;
-  body: string;
-  textBody: string;
-  htmlBody: string;
-  attachments: any[];
-}
+const generateRandomString = (length: number) => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
 
 const TempMail = () => {
   const [address, setAddress] = useState<string | null>(null);
-  const [emails, setEmails] = useState<TempEmail[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [emails, setEmails] = useState<MailTmMessage[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<MailTmMessage | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
 
-  // Generate temp address
+  // Generate temp address using mail.tm
   const generateAddress = async () => {
     setLoading(true);
     setSelectedEmail(null);
     setEmails([]);
     try {
-      const res = await fetch(`${API_BASE}/temp/generate`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setAddress(data.result.address);
-        // API returns Unix timestamp in seconds, convert to ISO string
-        const expiresTimestamp = typeof data.result.expiresAt === 'number' 
-          ? new Date(data.result.expiresAt * 1000).toISOString() 
-          : data.result.expiresAt;
-        setExpiresAt(expiresTimestamp);
-        toast.success('Temp email generated!');
-      } else {
-        toast.error('Failed to generate address');
+      // Step 1: Get available domains
+      const domainRes = await fetch(`${API_BASE}/domains`);
+      const domainData = await domainRes.json();
+      const domains = domainData['hydra:member'];
+      if (!domains || domains.length === 0) {
+        toast.error('No domains available');
+        setLoading(false);
+        return;
       }
-    } catch {
+      const domain = domains[0].domain;
+
+      // Step 2: Create account
+      const username = generateRandomString(12);
+      const email = `${username}@${domain}`;
+      const password = generateRandomString(16);
+
+      const accountRes = await fetch(`${API_BASE}/accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: email, password }),
+      });
+
+      if (!accountRes.ok) {
+        const err = await accountRes.json().catch(() => null);
+        console.error('Account creation failed:', err);
+        toast.error('Failed to create temp email');
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Get auth token
+      const tokenRes = await fetch(`${API_BASE}/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: email, password }),
+      });
+
+      if (!tokenRes.ok) {
+        toast.error('Failed to authenticate');
+        setLoading(false);
+        return;
+      }
+
+      const tokenData = await tokenRes.json();
+      setToken(tokenData.token);
+      setAddress(email);
+      setCreatedAt(Date.now());
+      toast.success('Temp email generated!');
+    } catch (err) {
+      console.error('API error:', err);
       toast.error('API error');
     } finally {
       setLoading(false);
@@ -69,29 +101,33 @@ const TempMail = () => {
 
   // Fetch inbox
   const fetchInbox = useCallback(async () => {
-    if (!address) return;
+    if (!address || !token) return;
     setPolling(true);
     try {
-      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}`);
-      const data = await res.json();
-      if (data.success) {
-        setEmails(data.result.emails || []);
+      const res = await fetch(`${API_BASE}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEmails(data['hydra:member'] || []);
       }
     } catch {
       // silent
     } finally {
       setPolling(false);
     }
-  }, [address]);
+  }, [address, token]);
 
-  // View single email
+  // View single email (get full details)
   const viewEmail = async (emailId: string) => {
-    if (!address) return;
+    if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/temp/${encodeURIComponent(address)}/${emailId}`);
-      const data = await res.json();
-      if (data.success) {
-        setSelectedEmail(data.result);
+      const res = await fetch(`${API_BASE}/messages/${emailId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedEmail(data);
       }
     } catch {
       toast.error('Failed to load email');
@@ -100,20 +136,22 @@ const TempMail = () => {
 
   // Auto-poll every 5s
   useEffect(() => {
-    if (!address) return;
+    if (!address || !token) return;
     fetchInbox();
     const interval = setInterval(fetchInbox, 5000);
     return () => clearInterval(interval);
-  }, [address, fetchInbox]);
+  }, [address, token, fetchInbox]);
 
-  // Countdown timer
+  // Countdown timer (1 hour from creation)
   useEffect(() => {
-    if (!expiresAt) return;
+    if (!createdAt) return;
+    const expiresAt = createdAt + 60 * 60 * 1000; // 1 hour
     const update = () => {
-      const diff = new Date(expiresAt).getTime() - Date.now();
+      const diff = expiresAt - Date.now();
       if (diff <= 0) {
         setTimeLeft('Expired');
         setAddress(null);
+        setToken(null);
         return;
       }
       const mins = Math.floor(diff / 60000);
@@ -123,7 +161,7 @@ const TempMail = () => {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [expiresAt]);
+  }, [createdAt]);
 
   const copyAddress = () => {
     if (!address) return;
@@ -194,18 +232,18 @@ const TempMail = () => {
                 </Button>
                 <CardTitle className="text-lg">{selectedEmail.subject || '(No Subject)'}</CardTitle>
                 <CardDescription>
-                  From: {selectedEmail.from} • {new Date(selectedEmail.date).toLocaleString()}
+                  From: {selectedEmail.from.address} • {new Date(selectedEmail.createdAt).toLocaleString()}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedEmail.htmlBody ? (
+                {selectedEmail.html && selectedEmail.html.length > 0 ? (
                   <div
                     className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 overflow-auto max-h-[60vh]"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.htmlBody }}
+                    dangerouslySetInnerHTML={{ __html: selectedEmail.html.join('') }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm bg-muted/30 rounded-lg p-4 max-h-[60vh] overflow-auto">
-                    {selectedEmail.textBody || selectedEmail.body || 'No content'}
+                    {selectedEmail.text || 'No content'}
                   </pre>
                 )}
                 {selectedEmail.attachments?.length > 0 && (
@@ -213,10 +251,10 @@ const TempMail = () => {
                     <p className="text-sm font-medium flex items-center gap-1.5">
                       <Paperclip className="w-3.5 h-3.5" /> Attachments
                     </p>
-                    {selectedEmail.attachments.map((att: any) => (
+                    {selectedEmail.attachments.map((att) => (
                       <a
                         key={att.id}
-                        href={`${API_BASE}/attachments/${att.id}`}
+                        href={`${API_BASE}/messages/${selectedEmail.id}/attachment/${att.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block text-sm text-primary hover:underline"
@@ -256,8 +294,8 @@ const TempMail = () => {
                         <Mail className="w-4 h-4 mt-0.5 text-primary shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm truncate">{email.subject || '(No Subject)'}</p>
-                          <p className="text-xs text-muted-foreground truncate">{email.from}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(email.date).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground truncate">{email.from.address}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(email.createdAt).toLocaleString()}</p>
                         </div>
                         {email.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                       </button>
