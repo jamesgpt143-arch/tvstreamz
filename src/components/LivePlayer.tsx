@@ -7,8 +7,34 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// Get the Cloudflare proxy URLs (primary + backup) + Cloud edge function proxy
-const getProxyUrls = async (): Promise<{ primary: string; backup: string; cloud: string }> => {
+// Proxy failure memory - remembers which proxies failed and skips them for 1 hour
+const PROXY_FAIL_PREFIX = 'proxy_fail_';
+const PROXY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
+const markProxyFailed = (proxyUrl: string) => {
+  if (!proxyUrl) return;
+  try {
+    localStorage.setItem(PROXY_FAIL_PREFIX + btoa(proxyUrl), Date.now().toString());
+  } catch {}
+};
+
+const isProxyCoolingDown = (proxyUrl: string): boolean => {
+  if (!proxyUrl) return false;
+  try {
+    const failedAt = localStorage.getItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
+    if (!failedAt) return false;
+    if (Date.now() - parseInt(failedAt) > PROXY_COOLDOWN_MS) {
+      localStorage.removeItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Get the Cloudflare proxy URLs (primary + backup1 + backup2) + Cloud edge function proxy
+const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; cloud: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -24,11 +50,30 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; cloud:
     return {
       primary: config?.cloudflare_proxy_url || '',
       backup: config?.cloudflare_proxy_url_backup || '',
+      backup2: config?.cloudflare_proxy_url_backup2 || '',
       cloud: cloudProxyUrl,
     };
   } catch {
-    return { primary: '', backup: '', cloud: '' };
+    return { primary: '', backup: '', backup2: '', cloud: '' };
   }
+};
+
+// Pick the best available proxy (skipping those in cooldown)
+const pickBestProxy = (urls: { primary: string; backup: string; backup2: string; cloud: string }): string[] => {
+  const ordered = [urls.primary, urls.backup, urls.backup2, urls.cloud].filter(Boolean);
+  const available: string[] = [];
+  const coolingDown: string[] = [];
+  
+  for (const url of ordered) {
+    if (isProxyCoolingDown(url)) {
+      coolingDown.push(url);
+    } else {
+      available.push(url);
+    }
+  }
+  
+  // Put cooling-down proxies at the end as last resort
+  return [...available, ...coolingDown];
 };
 
 // Build proxied manifest URL with custom user-agent and referrer
@@ -131,10 +176,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
       try {
         // Get proxy URLs only if channel has proxy enabled
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', cloud: '' };
-        const proxyUrl = proxyUrls.primary;
-        const backupProxyUrl = proxyUrls.backup;
-        const cloudProxyUrl = proxyUrls.cloud;
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', cloud: '' };
+        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls) : [];
+        const proxyUrl = orderedProxies[0] || '';
         const streamUrl = channel.manifestUri;
 
         // Helper: configure Shaka request filter to proxy all requests
@@ -284,20 +328,26 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                 }
               });
               
+              // Track which proxy index we're on for failover
+              let currentProxyIndex = 0;
+              
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // Try backup CF proxy if available and not already using it
-                  if (backupProxyUrl && !hls.url?.includes(backupProxyUrl) && !hls.url?.includes('supabase.co')) {
-                    console.log('Primary proxy failed, switching to backup proxy...');
-                    hls.loadSource(buildProxiedUrl(backupProxyUrl, streamUrl, channel.userAgent, channel.referrer));
+                  // Mark current proxy as failed
+                  if (orderedProxies[currentProxyIndex]) {
+                    markProxyFailed(orderedProxies[currentProxyIndex]);
+                    console.log(`Proxy failed, marked for 1hr cooldown: ${orderedProxies[currentProxyIndex]}`);
+                  }
+                  
+                  // Try next proxy in the ordered list
+                  currentProxyIndex++;
+                  if (currentProxyIndex < orderedProxies.length) {
+                    const nextProxy = orderedProxies[currentProxyIndex];
+                    console.log(`Switching to next proxy (${currentProxyIndex + 1}/${orderedProxies.length}): ${nextProxy}`);
+                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
-                  // Try Cloud edge function proxy as final fallback
-                  if (cloudProxyUrl && !hls.url?.includes('supabase.co')) {
-                    console.log('CF proxies failed, switching to Cloud proxy...');
-                    hls.loadSource(buildProxiedUrl(cloudProxyUrl, streamUrl, channel.userAgent, channel.referrer));
-                    return;
-                  }
+                  
                   setError('Failed to load stream. The channel may be offline.');
                   setIsLoading(false);
                 }
@@ -397,10 +447,13 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
             }
           } catch (err) {
             console.error('Shaka error:', err);
-            // Try Cloud proxy as fallback for DASH
-            if (cloudProxyUrl && proxyUrl && !proxyUrl.includes('supabase.co')) {
-              console.log('CF proxy failed for DASH, retrying with Cloud proxy...');
-              configureShakaProxy(player, cloudProxyUrl);
+            // Try remaining proxies as fallback for DASH
+            let dashRecovered = false;
+            for (let i = 1; i < orderedProxies.length; i++) {
+              const fallbackProxy = orderedProxies[i];
+              console.log(`DASH: proxy failed, trying fallback ${i + 1}/${orderedProxies.length}: ${fallbackProxy}`);
+              markProxyFailed(orderedProxies[i - 1]);
+              configureShakaProxy(player, fallbackProxy);
               try {
                 await player.load(streamUrl);
 
@@ -418,12 +471,14 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
                   setIsLoading(false);
                   videoRef.current?.play().catch(() => {});
                 }
-                return;
+                dashRecovered = true;
+                break;
               } catch (retryErr) {
-                console.error('Cloud proxy also failed:', retryErr);
+                console.error(`Fallback proxy ${i + 1} also failed:`, retryErr);
+                markProxyFailed(fallbackProxy);
               }
             }
-            if (isMounted) {
+            if (!dashRecovered && isMounted) {
               setError('Failed to load stream. The channel may require different DRM or is offline.');
               setIsLoading(false);
             }
