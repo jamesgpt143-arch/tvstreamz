@@ -210,6 +210,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           // Get the base URL of the original manifest for resolving relative paths
           const manifestBase = channel.manifestUri.substring(0, channel.manifestUri.lastIndexOf('/') + 1);
           const proxyOrigin = new URL(activeProxyUrl).origin;
+          // Get the full proxy path prefix (e.g., "/functions/v1/hls-proxy" for Cloud)
+          const proxyPathname = new URL(activeProxyUrl).pathname;
           
           netEngine.registerRequestFilter((type: any, request: any) => {
             const url = request.uris[0];
@@ -223,8 +225,13 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             // it's a relative URL resolved against the proxy — reconstruct original
             if (url.startsWith(proxyOrigin)) {
               const path = url.substring(proxyOrigin.length);
+              // Strip the proxy's own path prefix (e.g., /functions/v1/hls-proxy or /)
+              let relativePath = path;
+              if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
+                relativePath = relativePath.substring(proxyPathname.length);
+              }
               // Remove leading slash
-              const relativePath = path.startsWith('/') ? path.substring(1) : path;
+              relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
               request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
