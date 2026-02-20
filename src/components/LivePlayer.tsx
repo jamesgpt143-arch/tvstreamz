@@ -187,6 +187,9 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
           const netEngine = player.getNetworkingEngine();
           if (!netEngine) return;
           
+          // Clear any existing request filters before adding a new one
+          netEngine.clearAllRequestFilters();
+          
           // Get the base URL of the original manifest for resolving relative paths
           const manifestBase = channel.manifestUri.substring(0, channel.manifestUri.lastIndexOf('/') + 1);
           const proxyOrigin = new URL(activeProxyUrl).origin;
