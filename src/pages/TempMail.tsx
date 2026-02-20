@@ -3,7 +3,8 @@ import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Copy, RefreshCw, Trash2, Clock, Paperclip, ArrowLeft, Inbox } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Mail, Copy, RefreshCw, Trash2, Clock, Paperclip, ArrowLeft, Inbox, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = 'https://api.driftz.net';
@@ -19,6 +20,11 @@ interface DriftzEmail {
   attachments?: { id: string; filename: string; size: number; contentType: string }[];
 }
 
+const generateRandomString = (length: number) => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
 const TempMail = () => {
   const [address, setAddress] = useState<string | null>(null);
   const [emails, setEmails] = useState<DriftzEmail[]>([]);
@@ -27,6 +33,34 @@ const TempMail = () => {
   const [polling, setPolling] = useState(false);
   const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
+  const [domains, setDomains] = useState<string[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const [username, setUsername] = useState('');
+
+  // Fetch available domains on mount
+  useEffect(() => {
+    const fetchDomains = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/domains`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.result) {
+            const allDomains = [
+              ...(data.result.public || []),
+              ...(data.result.temp || []),
+            ];
+            setDomains(allDomains);
+            if (allDomains.length > 0) {
+              setSelectedDomain(allDomains[0]);
+            }
+          }
+        }
+      } catch {
+        // silent
+      }
+    };
+    fetchDomains();
+  }, []);
 
   // Generate temp address
   const generateAddress = async () => {
@@ -34,19 +68,30 @@ const TempMail = () => {
     setSelectedEmail(null);
     setEmails([]);
     try {
-      const res = await fetch(`${API_BASE}/temp/generate`, { method: 'POST' });
-      if (!res.ok) {
-        toast.error('Failed to generate temp email');
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      if (data.success && data.result?.address) {
-        setAddress(data.result.address);
+      // If we have a selected domain, generate username + domain combo
+      // Otherwise fall back to the API's auto-generate
+      if (selectedDomain) {
+        const user = username.trim() || generateRandomString(12);
+        const email = `${user}@${selectedDomain}`;
+        setAddress(email);
+        setUsername(user);
         setCreatedAt(Date.now());
         toast.success('Temp email generated!');
       } else {
-        toast.error('Failed to generate temp email');
+        const res = await fetch(`${API_BASE}/temp/generate`, { method: 'POST' });
+        if (!res.ok) {
+          toast.error('Failed to generate temp email');
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (data.success && data.result?.address) {
+          setAddress(data.result.address);
+          setCreatedAt(Date.now());
+          toast.success('Temp email generated!');
+        } else {
+          toast.error('Failed to generate temp email');
+        }
       }
     } catch (err) {
       console.error('API error:', err);
@@ -160,10 +205,34 @@ const TempMail = () => {
         <Card className="mb-6">
           <CardContent className="pt-6">
             {!address ? (
-              <div className="text-center py-8">
-                <Mail className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">Generate a temporary email address to receive emails</p>
-                <Button onClick={generateAddress} disabled={loading} size="lg">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                    placeholder="random username"
+                    className="flex-1 min-w-0 bg-muted px-3 py-2 rounded-lg text-sm font-mono border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <span className="text-muted-foreground font-mono text-sm">@</span>
+                  {domains.length > 0 ? (
+                    <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                      <SelectTrigger className="w-[180px] bg-card border-border">
+                        <SelectValue placeholder="Select domain" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border z-50">
+                        {domains.map((domain) => (
+                          <SelectItem key={domain} value={domain}>
+                            {domain}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Loading...</span>
+                  )}
+                </div>
+                <Button onClick={generateAddress} disabled={loading || domains.length === 0} size="lg" className="w-full">
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
                   Generate Temp Email
                 </Button>
@@ -186,7 +255,7 @@ const TempMail = () => {
                     <Clock className="w-3.5 h-3.5" />
                     <span>Expires in: <span className="font-medium text-foreground">{timeLeft}</span></span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={generateAddress} className="text-xs">
+                  <Button variant="ghost" size="sm" onClick={() => { setAddress(null); setUsername(''); }} className="text-xs">
                     <Trash2 className="w-3 h-3 mr-1" /> New Address
                   </Button>
                 </div>
