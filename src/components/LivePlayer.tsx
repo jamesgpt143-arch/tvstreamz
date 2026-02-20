@@ -7,8 +7,8 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// Get the Cloudflare proxy URLs (primary + backup) from site_settings
-const getProxyUrls = async (): Promise<{ primary: string; backup: string }> => {
+// Get the Cloudflare proxy URLs (primary + backup) + Cloud edge function proxy
+const getProxyUrls = async (): Promise<{ primary: string; backup: string; cloud: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -16,12 +16,18 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string }> => {
       .eq('key', 'iptv_config')
       .single();
     const config = data?.value as Record<string, string> | null;
+    
+    // Build Cloud proxy URL from env
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
+    const cloudProxyUrl = projectId ? `https://${projectId}.supabase.co/functions/v1/hls-proxy` : '';
+    
     return {
       primary: config?.cloudflare_proxy_url || '',
       backup: config?.cloudflare_proxy_url_backup || '',
+      cloud: cloudProxyUrl,
     };
   } catch {
-    return { primary: '', backup: '' };
+    return { primary: '', backup: '', cloud: '' };
   }
 };
 
@@ -125,9 +131,10 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
 
       try {
         // Get proxy URLs only if channel has proxy enabled
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '' };
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', cloud: '' };
         const proxyUrl = proxyUrls.primary;
         const backupProxyUrl = proxyUrls.backup;
+        const cloudProxyUrl = proxyUrls.cloud;
         const streamUrl = channel.manifestUri;
 
         // Helper: configure Shaka request filter to proxy all requests
@@ -263,10 +270,16 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
               
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // Try backup proxy if available and not already using it
-                  if (backupProxyUrl && !hls.url?.includes(backupProxyUrl)) {
+                  // Try backup CF proxy if available and not already using it
+                  if (backupProxyUrl && !hls.url?.includes(backupProxyUrl) && !hls.url?.includes('supabase.co')) {
                     console.log('Primary proxy failed, switching to backup proxy...');
                     hls.loadSource(buildProxiedUrl(backupProxyUrl, streamUrl, channel.userAgent, channel.referrer));
+                    return;
+                  }
+                  // Try Cloud edge function proxy as final fallback
+                  if (cloudProxyUrl && !hls.url?.includes('supabase.co')) {
+                    console.log('CF proxies failed, switching to Cloud proxy...');
+                    hls.loadSource(buildProxiedUrl(cloudProxyUrl, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
                   setError('Failed to load stream. The channel may be offline.');
@@ -355,6 +368,21 @@ const PlayerCore = ({ channel, onStatusChange }: LivePlayerProps) => {
             }
           } catch (err) {
             console.error('Shaka error:', err);
+            // Try Cloud proxy as fallback for DASH
+            if (cloudProxyUrl && proxyUrl && !proxyUrl.includes('supabase.co')) {
+              console.log('CF proxy failed for DASH, retrying with Cloud proxy...');
+              configureShakaProxy(player, cloudProxyUrl);
+              try {
+                await player.load(streamUrl);
+                if (isMounted) {
+                  setIsLoading(false);
+                  videoRef.current?.play().catch(() => {});
+                }
+                return;
+              } catch (retryErr) {
+                console.error('Cloud proxy also failed:', retryErr);
+              }
+            }
             if (isMounted) {
               setError('Failed to load stream. The channel may require different DRM or is offline.');
               setIsLoading(false);
