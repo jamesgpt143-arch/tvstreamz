@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CATEGORIES } from '@/lib/channelCategories';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,12 +195,20 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           {/* Category */}
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Input
-              id="category"
-              value={formData.category || ''}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="news, entertainment, sports..."
-            />
+            <Select
+              value={formData.category || 'general'}
+              onValueChange={(value) => setFormData({ ...formData, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.filter(c => c !== 'All').map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* DRM Configuration (for MPD/HLS streams) */}
