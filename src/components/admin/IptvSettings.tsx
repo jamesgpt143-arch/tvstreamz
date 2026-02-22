@@ -18,6 +18,8 @@ interface IptvConfig {
   cloudflare_proxy_url: string;
   cloudflare_proxy_url_backup: string;
   cloudflare_proxy_url_backup2: string;
+  cloudflare_proxy_url_backup3: string;
+  cloudflare_proxy_url_backup4: string;
 }
 
 const defaultConfig: IptvConfig = {
@@ -30,6 +32,8 @@ const defaultConfig: IptvConfig = {
   cloudflare_proxy_url: "",
   cloudflare_proxy_url_backup: "",
   cloudflare_proxy_url_backup2: "",
+  cloudflare_proxy_url_backup3: "",
+  cloudflare_proxy_url_backup4: "",
 };
 
 export const IptvSettings = () => {
@@ -62,6 +66,8 @@ export const IptvSettings = () => {
           cloudflare_proxy_url: (val.cloudflare_proxy_url as string) || "",
           cloudflare_proxy_url_backup: (val.cloudflare_proxy_url_backup as string) || "",
           cloudflare_proxy_url_backup2: (val.cloudflare_proxy_url_backup2 as string) || "",
+          cloudflare_proxy_url_backup3: (val.cloudflare_proxy_url_backup3 as string) || "",
+          cloudflare_proxy_url_backup4: (val.cloudflare_proxy_url_backup4 as string) || "",
         });
       }
     } catch {
@@ -245,11 +251,35 @@ export const IptvSettings = () => {
               value={config.cloudflare_proxy_url_backup2}
               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup2: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">
-              Backup 2 — gagamitin kapag nag-fail din ang Backup 1.
-            </p>
-          </div>
-        </div>
+             <p className="text-xs text-muted-foreground">
+               Backup 2 — gagamitin kapag nag-fail din ang Backup 1.
+             </p>
+           </div>
+           <div className="space-y-2">
+             <Label htmlFor="cloudflare_proxy_url_backup3">Cloudflare Worker Proxy URL (Backup 3)</Label>
+             <Input
+               id="cloudflare_proxy_url_backup3"
+               placeholder="https://hls-proxy-backup3.your-subdomain.workers.dev"
+               value={config.cloudflare_proxy_url_backup3}
+               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup3: e.target.value })}
+             />
+             <p className="text-xs text-muted-foreground">
+               Backup 3 — gagamitin kapag nag-fail din ang Backup 2.
+             </p>
+           </div>
+           <div className="space-y-2">
+             <Label htmlFor="cloudflare_proxy_url_backup4">Cloudflare Worker Proxy URL (Backup 4)</Label>
+             <Input
+               id="cloudflare_proxy_url_backup4"
+               placeholder="https://hls-proxy-backup4.your-subdomain.workers.dev"
+               value={config.cloudflare_proxy_url_backup4}
+               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup4: e.target.value })}
+             />
+             <p className="text-xs text-muted-foreground">
+               Backup 4 — gagamitin kapag nag-fail din ang Backup 3.
+             </p>
+           </div>
+         </div>
 
         <div className="flex gap-2">
           <Button onClick={saveConfig} disabled={saving} className="gap-2">
