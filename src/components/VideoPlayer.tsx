@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
@@ -15,6 +15,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
   const [isPlaying, setIsPlaying] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
@@ -22,6 +23,34 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const handlePlay = () => {
     setIsPlaying(true);
   };
+
+  // Orientation-based auto-fullscreen (same as LivePlayer)
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isMobile) return;
+
+    const handleOrientation = () => {
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+      const el = containerRef.current;
+      if (!el) return;
+
+      if (isLandscape && !document.fullscreenElement) {
+        el.requestFullscreen?.().catch(() => {});
+      } else if (!isLandscape && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
+
+    const mql = window.matchMedia('(orientation: landscape)');
+    mql.addEventListener('change', handleOrientation);
+
+    return () => {
+      mql.removeEventListener('change', handleOrientation);
+    };
+  }, [isPlaying]);
 
   return (
     <div className="space-y-4">
@@ -49,7 +78,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
       </div>
 
       {/* Video Frame */}
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
+      <div ref={containerRef} className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
         {!isPlaying ? (
           // Play button overlay
           <div 
