@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Server, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
+import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 
 interface VideoPlayerProps {
   servers: Record<string, string>;
@@ -24,32 +25,9 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
     setIsPlaying(true);
   };
 
-  // Orientation-based auto-fullscreen (same as LivePlayer)
+  // Orientation-based auto-fullscreen (works on both web and Capacitor APK)
   useEffect(() => {
-    if (!isPlaying) return;
-
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (!isMobile) return;
-
-    const handleOrientation = () => {
-      const isLandscape = window.matchMedia('(orientation: landscape)').matches;
-      const el = containerRef.current;
-      if (!el) return;
-
-      if (isLandscape && !document.fullscreenElement) {
-        el.requestFullscreen?.().catch(() => {});
-      } else if (!isLandscape && document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
-    };
-
-    const mql = window.matchMedia('(orientation: landscape)');
-    mql.addEventListener('change', handleOrientation);
-
-    return () => {
-      mql.removeEventListener('change', handleOrientation);
-    };
+    return setupOrientationFullscreen(containerRef.current, isPlaying);
   }, [isPlaying]);
 
   return (
