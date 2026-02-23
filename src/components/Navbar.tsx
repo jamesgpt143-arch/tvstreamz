@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download, BookOpen, Mail } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Download, BookOpen, Mail, Shield, LogIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -24,7 +24,33 @@ export const Navbar = () => {
   const [continueWatchingCount, setContinueWatchingCount] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Check auth & admin status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+      if (user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin");
+        setIsAdmin(!!(roles && roles.length > 0));
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Listen for PWA install prompt
   useEffect(() => {
@@ -293,6 +319,46 @@ export const Navbar = () => {
                       </div>
                     </div>
                   </button>
+
+
+                  {/* Admin Section */}
+                  {isAdmin ? (
+                    <Link
+                      to="/admin"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Admin Panel</p>
+                          <p className="text-sm text-muted-foreground">
+                            Manage your site
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : !isLoggedIn ? (
+                    <Link
+                      to="/auth"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Admin Login</p>
+                          <p className="text-sm text-muted-foreground">
+                            Sign in as admin
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : null}
                 </div>
 
               </SheetContent>
