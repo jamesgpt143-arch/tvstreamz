@@ -217,8 +217,20 @@ export const Navbar = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80">
-                <SheetHeader>
-                  <SheetTitle className="text-left">Menu</SheetTitle>
+              <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    {!isLoggedIn && (
+                      <Link
+                        to="/auth"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
+                        aria-label="Admin Login"
+                      >
+                        <Shield className="w-4 h-4 text-primary" />
+                      </Link>
+                    )}
+                    Menu
+                  </SheetTitle>
                 </SheetHeader>
                 
                 <div className="mt-6 space-y-2">
@@ -321,8 +333,8 @@ export const Navbar = () => {
                   </button>
 
 
-                  {/* Admin Section */}
-                  {isAdmin ? (
+                  {/* Admin Panel - visible only to admins */}
+                  {isAdmin && (
                     <Link
                       to="/admin"
                       onClick={() => setIsMenuOpen(false)}
@@ -340,25 +352,7 @@ export const Navbar = () => {
                         </div>
                       </div>
                     </Link>
-                  ) : !isLoggedIn ? (
-                    <Link
-                      to="/auth"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                          <Shield className="w-5 h-5 text-destructive" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Admin Login</p>
-                          <p className="text-sm text-muted-foreground">
-                            Sign in as admin
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ) : null}
+                  )}
                 </div>
 
               </SheetContent>
