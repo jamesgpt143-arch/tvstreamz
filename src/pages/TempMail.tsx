@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -280,7 +281,10 @@ const TempMail = () => {
                 {selectedEmail.htmlContent ? (
                   <div
                     className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 overflow-auto max-h-[60vh]"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.htmlContent }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedEmail.htmlContent, {
+                      ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'a', 'img', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'strong', 'em'],
+                      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'width', 'height']
+                    }) }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm bg-muted/30 rounded-lg p-4 max-h-[60vh] overflow-auto">
