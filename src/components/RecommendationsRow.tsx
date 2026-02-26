@@ -3,7 +3,7 @@ import { ContentCard } from './ContentCard';
 import { getLastWatched, WatchedItem } from '@/lib/watchHistory';
 import { Movie } from '@/lib/tmdb';
 
-const API_KEY = '2283c405a7e1d26a6b72a786916aad85';
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '2283c405a7e1d26a6b72a786916aad85';
 
 interface RecommendationsRowProps {
   className?: string;
