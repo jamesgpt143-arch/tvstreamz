@@ -6,6 +6,7 @@ import { HeroSection } from '@/components/HeroSection';
 import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
+import { SiteTrending } from '@/components/SiteTrending';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { WelcomePopup } from '@/components/WelcomePopup';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
@@ -77,6 +78,7 @@ const Index = () => {
 
         <div className="relative -mt-20 z-10">
           <RecommendationsRow />
+          <SiteTrending />
           <ContentRow title="🔥 Trending Now" items={trending} />
           <ContentRow title="🎬 Now Playing" items={nowPlaying} type="movie" />
           <ContentRow title="🎥 Popular Movies" items={popularMovies} type="movie" />
