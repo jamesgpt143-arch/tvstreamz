@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Channel } from '@/lib/channels';
-import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, ChevronDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
@@ -95,10 +96,11 @@ interface LivePlayerProps {
   channel: Channel;
   onStatusChange?: (isOnline: boolean) => void;
   onProxyChange?: (label: string) => void;
+  forceProxyUrl?: string | null; // null = auto, string = forced proxy URL
 }
 
 // Inner component that handles the actual player
-const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps) => {
+const PlayerCore = ({ channel, onStatusChange, onProxyChange, forceProxyUrl }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null); // Ref for the UI container
   const hlsRef = useRef<Hls | null>(null);
@@ -175,7 +177,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       try {
         // Get proxy URLs only if channel has proxy enabled
         const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls) : [];
+        const orderedProxies = channel.useProxy 
+          ? (forceProxyUrl ? [forceProxyUrl] : pickBestProxy(proxyUrls))
+          : [];
         const proxyUrl = orderedProxies[0] || '';
         const streamUrl = channel.manifestUri;
 
@@ -540,7 +544,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         hlsRef.current = null;
       }
     };
-  }, [channel]);
+  }, [channel, forceProxyUrl]);
 
   return (
     <>
@@ -633,6 +637,27 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
 export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   const [activeProxyLabel, setActiveProxyLabel] = useState<string | null>(null);
+  const [proxyMode, setProxyMode] = useState<string>('auto'); // 'auto' | proxy URL
+  const [proxyOptions, setProxyOptions] = useState<{ url: string; label: string }[]>([]);
+
+  // Fetch available proxies on mount (only if channel uses proxy)
+  useEffect(() => {
+    if (!channel.useProxy) {
+      setProxyOptions([]);
+      return;
+    }
+    getProxyUrls().then((urls) => {
+      const options: { url: string; label: string }[] = [];
+      if (urls.primary) options.push({ url: urls.primary, label: 'Primary' });
+      if (urls.backup) options.push({ url: urls.backup, label: 'Backup 1' });
+      if (urls.backup2) options.push({ url: urls.backup2, label: 'Backup 2' });
+      if (urls.backup3) options.push({ url: urls.backup3, label: 'Backup 3' });
+      if (urls.backup4) options.push({ url: urls.backup4, label: 'Backup 4' });
+      setProxyOptions(options);
+    });
+  }, [channel.useProxy]);
+
+  const forceProxyUrl = proxyMode === 'auto' ? null : proxyMode;
 
   if (channel.type === 'youtube') {
     return (
@@ -652,20 +677,39 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
     <div>
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
         <PlayerCore 
-          key={channel.id} 
+          key={`${channel.id}-${proxyMode}`}
           channel={channel} 
           onStatusChange={onStatusChange}
           onProxyChange={setActiveProxyLabel}
+          forceProxyUrl={forceProxyUrl}
         />
       </div>
-      {activeProxyLabel && (
-        <div className="flex items-center gap-1.5 mt-2 px-1">
-          <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span>
-          </span>
-        </div>
-      )}
+      {/* Proxy info & manual selector */}
+      <div className="flex items-center gap-3 mt-2 px-1 flex-wrap">
+        {activeProxyLabel && (
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span>
+            </span>
+          </div>
+        )}
+        {channel.useProxy && proxyOptions.length > 0 && (
+          <Select value={proxyMode} onValueChange={setProxyMode}>
+            <SelectTrigger className="h-7 w-[130px] text-[11px] bg-card border-border">
+              <SelectValue placeholder="Auto" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="auto" className="text-xs">Auto</SelectItem>
+              {proxyOptions.map((opt) => (
+                <SelectItem key={opt.url} value={opt.url} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
     </div>
   );
 };
