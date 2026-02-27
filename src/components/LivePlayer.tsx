@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Channel } from '@/lib/channels';
-import { AlertCircle, Loader2, Smartphone, Settings, Check } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
@@ -632,6 +632,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 };
 
 export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
+  const [activeProxyLabel, setActiveProxyLabel] = useState<string | null>(null);
+
   if (channel.type === 'youtube') {
     return (
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
@@ -653,8 +655,17 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
           key={channel.id} 
           channel={channel} 
           onStatusChange={onStatusChange}
+          onProxyChange={setActiveProxyLabel}
         />
       </div>
+      {activeProxyLabel && (
+        <div className="flex items-center gap-1.5 mt-2 px-1">
+          <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 };
