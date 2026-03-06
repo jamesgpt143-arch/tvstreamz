@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN proxy_order jsonb DEFAULT NULL;

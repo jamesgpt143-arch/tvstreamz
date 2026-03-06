@@ -26,6 +26,7 @@ export type Database = {
           license_url: string | null
           logo_url: string | null
           name: string
+          proxy_order: Json | null
           referrer: string | null
           sort_order: number | null
           stream_type: string
@@ -45,6 +46,7 @@ export type Database = {
           license_url?: string | null
           logo_url?: string | null
           name: string
+          proxy_order?: Json | null
           referrer?: string | null
           sort_order?: number | null
           stream_type?: string
@@ -64,6 +66,7 @@ export type Database = {
           license_url?: string | null
           logo_url?: string | null
           name?: string
+          proxy_order?: Json | null
           referrer?: string | null
           sort_order?: number | null
           stream_type?: string
