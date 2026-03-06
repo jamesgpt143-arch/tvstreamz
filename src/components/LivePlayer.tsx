@@ -54,9 +54,20 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
   }
 };
 
-// Pick the best available proxy (skipping those in cooldown)
-const pickBestProxy = (urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string }): string[] => {
-  const ordered = [urls.primary, urls.backup, urls.backup2, urls.backup3, urls.backup4].filter(Boolean);
+// Pick the best available proxy (skipping those in cooldown), respecting per-channel order
+const pickBestProxy = (
+  urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string },
+  channelProxyOrder?: ProxyKey[]
+): string[] => {
+  const order = channelProxyOrder || DEFAULT_PROXY_ORDER;
+  const urlMap: Record<ProxyKey, string> = {
+    primary: urls.primary,
+    backup: urls.backup,
+    backup2: urls.backup2,
+    backup3: urls.backup3,
+    backup4: urls.backup4,
+  };
+  const ordered = order.map(k => urlMap[k]).filter(Boolean);
   const available: string[] = [];
   const coolingDown: string[] = [];
   
