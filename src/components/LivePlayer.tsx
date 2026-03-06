@@ -186,7 +186,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       try {
         // Get proxy URLs only if channel has proxy enabled
         const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls) : [];
+        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
         const proxyUrl = orderedProxies[0] || '';
         const streamUrl = channel.manifestUri;
 
