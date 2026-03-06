@@ -37,6 +37,7 @@ export interface ChannelInput {
   user_agent?: string | null;
   referrer?: string | null;
   use_proxy?: boolean;
+  proxy_order?: string[] | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
