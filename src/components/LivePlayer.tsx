@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Channel } from '@/lib/channels';
+import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
 import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
