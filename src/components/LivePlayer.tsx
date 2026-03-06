@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Channel } from '@/lib/channels';
+import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
 import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
 import Hls from 'hls.js';
 // IMPORTANT: Import Shaka Player UI with CSS for styled controls
@@ -54,9 +54,20 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
   }
 };
 
-// Pick the best available proxy (skipping those in cooldown)
-const pickBestProxy = (urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string }): string[] => {
-  const ordered = [urls.primary, urls.backup, urls.backup2, urls.backup3, urls.backup4].filter(Boolean);
+// Pick the best available proxy (skipping those in cooldown), respecting per-channel order
+const pickBestProxy = (
+  urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string },
+  channelProxyOrder?: ProxyKey[]
+): string[] => {
+  const order = channelProxyOrder || DEFAULT_PROXY_ORDER;
+  const urlMap: Record<ProxyKey, string> = {
+    primary: urls.primary,
+    backup: urls.backup,
+    backup2: urls.backup2,
+    backup3: urls.backup3,
+    backup4: urls.backup4,
+  };
+  const ordered = order.map(k => urlMap[k]).filter(Boolean);
   const available: string[] = [];
   const coolingDown: string[] = [];
   
@@ -175,7 +186,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       try {
         // Get proxy URLs only if channel has proxy enabled
         const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls) : [];
+        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
         const proxyUrl = orderedProxies[0] || '';
         const streamUrl = channel.manifestUri;
 

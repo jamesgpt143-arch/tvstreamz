@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES } from '@/lib/channelCategories';
-import { Loader2 } from 'lucide-react';
+import { Loader2, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { DEFAULT_PROXY_ORDER, PROXY_LABELS, type ProxyKey } from '@/lib/channels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -74,7 +75,18 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     user_agent: channel?.user_agent || '',
     referrer: channel?.referrer || '',
     use_proxy: channel?.use_proxy ?? false,
+    proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
   });
+
+  const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
+
+  const moveProxy = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...proxyOrder];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[index]];
+    setFormData({ ...formData, proxy_order: newOrder });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,6 +347,57 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               onCheckedChange={(checked) => setFormData({ ...formData, use_proxy: checked })}
             />
           </div>
+
+          {/* Proxy Order - shown when proxy is enabled */}
+          {formData.use_proxy && (
+            <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
+              <Label>Proxy Priority Order</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                I-arrange ang pagkakasunod-sunod ng proxy. Ang nasa itaas ang unang gagamitin.
+              </p>
+              <div className="space-y-1">
+                {proxyOrder.map((key, index) => (
+                  <div
+                    key={key}
+                    className="flex items-center gap-2 p-2 rounded bg-background border border-border"
+                  >
+                    <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm flex-1 font-medium">{PROXY_LABELS[key]}</span>
+                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === 0}
+                      onClick={() => moveProxy(index, 'up')}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === proxyOrder.length - 1}
+                      onClick={() => moveProxy(index, 'down')}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => setFormData({ ...formData, proxy_order: null })}
+              >
+                Reset to Default
+              </Button>
+            </div>
+          )}
 
           {/* Active Toggle */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
