@@ -75,7 +75,18 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     user_agent: channel?.user_agent || '',
     referrer: channel?.referrer || '',
     use_proxy: channel?.use_proxy ?? false,
+    proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
   });
+
+  const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
+
+  const moveProxy = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...proxyOrder];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[index]];
+    setFormData({ ...formData, proxy_order: newOrder });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
