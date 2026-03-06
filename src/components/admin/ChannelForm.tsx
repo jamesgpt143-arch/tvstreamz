@@ -348,6 +348,57 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
           </div>
 
+          {/* Proxy Order - shown when proxy is enabled */}
+          {formData.use_proxy && (
+            <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
+              <Label>Proxy Priority Order</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                I-arrange ang pagkakasunod-sunod ng proxy. Ang nasa itaas ang unang gagamitin.
+              </p>
+              <div className="space-y-1">
+                {proxyOrder.map((key, index) => (
+                  <div
+                    key={key}
+                    className="flex items-center gap-2 p-2 rounded bg-background border border-border"
+                  >
+                    <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm flex-1 font-medium">{PROXY_LABELS[key]}</span>
+                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === 0}
+                      onClick={() => moveProxy(index, 'up')}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === proxyOrder.length - 1}
+                      onClick={() => moveProxy(index, 'down')}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => setFormData({ ...formData, proxy_order: null })}
+              >
+                Reset to Default
+              </Button>
+            </div>
+          )}
+
           {/* Active Toggle */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
             <div>
