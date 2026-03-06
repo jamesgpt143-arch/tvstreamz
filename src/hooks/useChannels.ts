@@ -17,6 +17,7 @@ export interface DbChannel {
   user_agent: string | null;
   referrer: string | null;
   use_proxy: boolean;
+  proxy_order: string[] | null;
   created_at: string;
   updated_at: string;
 }
