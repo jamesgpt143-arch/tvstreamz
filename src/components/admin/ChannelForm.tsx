@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES } from '@/lib/channelCategories';
-import { Loader2 } from 'lucide-react';
+import { Loader2, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { DEFAULT_PROXY_ORDER, PROXY_LABELS, type ProxyKey } from '@/lib/channels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
