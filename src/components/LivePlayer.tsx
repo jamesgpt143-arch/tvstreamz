@@ -225,10 +225,19 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const url = request.uris[0];
             if (!url) return;
             
+            // 1. ILAGAY ITO SA PINAKA-UNAHAN: 
             // Skip non-HTTP URLs (data:, blob:, etc.) and already-proxied URLs
+            // Para iwas error sa ClearKey direct keys
             if (!url.startsWith('http')) return;
             if (url.includes('?url=') || url.includes('&url=')) return;
             
+            // 2. PARA SA DRM LICENSE (Widevine man o ClearKey na HTTP)
+            if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
+              return;
+            }
+
+            // 3. PARA SA MGA VIDEO SEGMENTS AT MANIFEST
             // If URL starts with proxy origin but missing ?url= param,
             // it's a relative URL resolved against the proxy — reconstruct original
             if (url.startsWith(proxyOrigin)) {
@@ -248,7 +257,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             // External URL — proxy it
             request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
           });
-          console.log('Shaka proxy filter configured');
+          console.log('Shaka proxy filter configured (with auto-DRM fallback)');
         };
 
         // ==========================================
