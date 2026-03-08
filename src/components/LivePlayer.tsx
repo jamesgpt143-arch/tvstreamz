@@ -7,31 +7,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// Proxy failure memory - remembers which proxies failed and skips them for 1 hour
-const PROXY_FAIL_PREFIX = 'proxy_fail_';
-const PROXY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-
-const markProxyFailed = (proxyUrl: string) => {
-  if (!proxyUrl) return;
-  try {
-    localStorage.setItem(PROXY_FAIL_PREFIX + btoa(proxyUrl), Date.now().toString());
-  } catch {}
-};
-
-const isProxyCoolingDown = (proxyUrl: string): boolean => {
-  if (!proxyUrl) return false;
-  try {
-    const failedAt = localStorage.getItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
-    if (!failedAt) return false;
-    if (Date.now() - parseInt(failedAt) > PROXY_COOLDOWN_MS) {
-      localStorage.removeItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-};
+// No more proxy cooldown memory - always start fresh from Primary down on each play
 
 // Get the Cloudflare proxy URLs (primary + backup1 + backup2) + Cloud edge function proxy
 const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string }> => {
@@ -67,20 +43,8 @@ const pickBestProxy = (
     backup3: urls.backup3,
     backup4: urls.backup4,
   };
-  const ordered = order.map(k => urlMap[k]).filter(Boolean);
-  const available: string[] = [];
-  const coolingDown: string[] = [];
-  
-  for (const url of ordered) {
-    if (isProxyCoolingDown(url)) {
-      coolingDown.push(url);
-    } else {
-      available.push(url);
-    }
-  }
-  
-  // Put cooling-down proxies at the end as last resort
-  return [...available, ...coolingDown];
+  // Always start from Primary down - no cooldown memory
+  return order.map(k => urlMap[k]).filter(Boolean);
 };
 
 // Build proxied manifest URL with custom user-agent and referrer
@@ -377,11 +341,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // Mark current proxy as failed
-                  if (orderedProxies[currentProxyIndex]) {
-                    markProxyFailed(orderedProxies[currentProxyIndex]);
-                    console.log(`Proxy failed, marked for 1hr cooldown: ${orderedProxies[currentProxyIndex]}`);
-                  }
+                  // Log failed proxy
+                  console.log(`Proxy failed: ${orderedProxies[currentProxyIndex] || 'unknown'}, trying next...`);
                   
                   // Try next proxy in the ordered list
                   currentProxyIndex++;
@@ -497,7 +458,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             for (let i = 1; i < orderedProxies.length; i++) {
               const fallbackProxy = orderedProxies[i];
               console.log(`DASH: proxy failed, trying fallback ${i + 1}/${orderedProxies.length}: ${fallbackProxy}`);
-              markProxyFailed(orderedProxies[i - 1]);
+              // Previous proxy failed, moving to next
               configureShakaProxy(player, fallbackProxy);
               try {
                 await player.load(streamUrl);
@@ -521,7 +482,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 break;
               } catch (retryErr) {
                 console.error(`Fallback proxy ${i + 1} also failed:`, retryErr);
-                markProxyFailed(fallbackProxy);
+                // Fallback also failed
               }
             }
             if (!dashRecovered && isMounted) {
