@@ -458,7 +458,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             for (let i = 1; i < orderedProxies.length; i++) {
               const fallbackProxy = orderedProxies[i];
               console.log(`DASH: proxy failed, trying fallback ${i + 1}/${orderedProxies.length}: ${fallbackProxy}`);
-              markProxyFailed(orderedProxies[i - 1]);
+              // Previous proxy failed, moving to next
               configureShakaProxy(player, fallbackProxy);
               try {
                 await player.load(streamUrl);
