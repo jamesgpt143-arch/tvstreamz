@@ -7,31 +7,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// Proxy failure memory - remembers which proxies failed and skips them for 1 hour
-const PROXY_FAIL_PREFIX = 'proxy_fail_';
-const PROXY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-
-const markProxyFailed = (proxyUrl: string) => {
-  if (!proxyUrl) return;
-  try {
-    localStorage.setItem(PROXY_FAIL_PREFIX + btoa(proxyUrl), Date.now().toString());
-  } catch {}
-};
-
-const isProxyCoolingDown = (proxyUrl: string): boolean => {
-  if (!proxyUrl) return false;
-  try {
-    const failedAt = localStorage.getItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
-    if (!failedAt) return false;
-    if (Date.now() - parseInt(failedAt) > PROXY_COOLDOWN_MS) {
-      localStorage.removeItem(PROXY_FAIL_PREFIX + btoa(proxyUrl));
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-};
+// No more proxy cooldown memory - always start fresh from Primary down on each play
 
 // Get the Cloudflare proxy URLs (primary + backup1 + backup2) + Cloud edge function proxy
 const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string }> => {
