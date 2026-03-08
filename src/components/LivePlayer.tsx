@@ -43,20 +43,8 @@ const pickBestProxy = (
     backup3: urls.backup3,
     backup4: urls.backup4,
   };
-  const ordered = order.map(k => urlMap[k]).filter(Boolean);
-  const available: string[] = [];
-  const coolingDown: string[] = [];
-  
-  for (const url of ordered) {
-    if (isProxyCoolingDown(url)) {
-      coolingDown.push(url);
-    } else {
-      available.push(url);
-    }
-  }
-  
-  // Put cooling-down proxies at the end as last resort
-  return [...available, ...coolingDown];
+  // Always start from Primary down - no cooldown memory
+  return order.map(k => urlMap[k]).filter(Boolean);
 };
 
 // Build proxied manifest URL with custom user-agent and referrer
