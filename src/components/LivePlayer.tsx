@@ -341,11 +341,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // Mark current proxy as failed
-                  if (orderedProxies[currentProxyIndex]) {
-                    markProxyFailed(orderedProxies[currentProxyIndex]);
-                    console.log(`Proxy failed, marked for 1hr cooldown: ${orderedProxies[currentProxyIndex]}`);
-                  }
+                  // Log failed proxy
+                  console.log(`Proxy failed: ${orderedProxies[currentProxyIndex] || 'unknown'}, trying next...`);
                   
                   // Try next proxy in the ordered list
                   currentProxyIndex++;
