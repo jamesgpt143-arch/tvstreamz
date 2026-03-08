@@ -482,7 +482,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 break;
               } catch (retryErr) {
                 console.error(`Fallback proxy ${i + 1} also failed:`, retryErr);
-                markProxyFailed(fallbackProxy);
+                // Fallback also failed
               }
             }
             if (!dashRecovered && isMounted) {
