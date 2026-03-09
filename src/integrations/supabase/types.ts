@@ -31,6 +31,7 @@ export type Database = {
           sort_order: number | null
           stream_type: string
           stream_url: string
+          tvapp_slug: string | null
           updated_at: string
           use_proxy: boolean
           user_agent: string | null
@@ -51,6 +52,7 @@ export type Database = {
           sort_order?: number | null
           stream_type?: string
           stream_url: string
+          tvapp_slug?: string | null
           updated_at?: string
           use_proxy?: boolean
           user_agent?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           sort_order?: number | null
           stream_type?: string
           stream_url?: string
+          tvapp_slug?: string | null
           updated_at?: string
           use_proxy?: boolean
           user_agent?: string | null
