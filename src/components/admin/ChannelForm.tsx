@@ -76,6 +76,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     referrer: channel?.referrer || '',
     use_proxy: channel?.use_proxy ?? false,
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
+    tvapp_slug: channel?.tvapp_slug || '',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
