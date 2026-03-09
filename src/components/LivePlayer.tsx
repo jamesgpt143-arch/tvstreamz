@@ -164,7 +164,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               const data = await res.json();
               // Use proxy_url to avoid IP-locked token issues, fallback to resolved_url
               if (data.proxy_url) {
-                streamUrl = data.proxy_url;
+                // Fix: ensure HTTPS to avoid Mixed Content blocking
+                streamUrl = data.proxy_url.replace(/^http:\/\//, 'https://');
               } else if (data.resolved_url) {
                 streamUrl = data.resolved_url;
               }
