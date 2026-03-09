@@ -76,6 +76,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     referrer: channel?.referrer || '',
     use_proxy: channel?.use_proxy ?? false,
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
+    tvapp_slug: channel?.tvapp_slug || '',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -107,6 +108,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
           referrer: formData.referrer || null,
+          tvapp_slug: formData.tvapp_slug || null,
         });
         toast.success('Channel updated');
       } else {
@@ -118,6 +120,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
           referrer: formData.referrer || null,
+          tvapp_slug: formData.tvapp_slug || null,
         });
         toast.success('Channel created');
       }
@@ -320,6 +323,21 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
             <p className="text-xs text-muted-foreground">
               Custom Referer header para sa stream requests. Iwanan kung hindi kailangan.
+            </p>
+          </div>
+
+          {/* TVApp Slug */}
+          <div className="space-y-2">
+            <Label htmlFor="tvapp_slug">TVApp Slug (Auto-resolve)</Label>
+            <Input
+              id="tvapp_slug"
+              value={formData.tvapp_slug || ''}
+              onChange={(e) => setFormData({ ...formData, tvapp_slug: e.target.value })}
+              placeholder="e.g. espn, fox-sports-1"
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kung may slug, auto-resolve ang fresh stream URL bago mag-play. Iwanan kung hindi TVApp stream.
             </p>
           </div>
 

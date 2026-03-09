@@ -23,4 +23,5 @@ export interface Channel {
   referrer?: string;
   useProxy?: boolean;
   proxyOrder?: ProxyKey[];
+  tvappSlug?: string;
 }

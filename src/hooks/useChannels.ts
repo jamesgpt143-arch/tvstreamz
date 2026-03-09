@@ -18,6 +18,7 @@ export interface DbChannel {
   referrer: string | null;
   use_proxy: boolean;
   proxy_order: string[] | null;
+  tvapp_slug: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +39,7 @@ export interface ChannelInput {
   referrer?: string | null;
   use_proxy?: boolean;
   proxy_order?: string[] | null;
+  tvapp_slug?: string | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -58,6 +60,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   referrer: dbChannel.referrer || undefined,
   useProxy: dbChannel.use_proxy,
   proxyOrder: dbChannel.proxy_order as any || undefined,
+  tvappSlug: dbChannel.tvapp_slug || undefined,
 });
 
 export function useChannels(includeInactive = false) {
