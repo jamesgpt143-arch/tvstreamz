@@ -108,6 +108,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
           referrer: formData.referrer || null,
+          tvapp_slug: formData.tvapp_slug || null,
         });
         toast.success('Channel updated');
       } else {
@@ -119,6 +120,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           license_url: formData.license_url || null,
           user_agent: formData.user_agent || null,
           referrer: formData.referrer || null,
+          tvapp_slug: formData.tvapp_slug || null,
         });
         toast.success('Channel created');
       }
