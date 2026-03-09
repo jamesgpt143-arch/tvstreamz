@@ -326,6 +326,21 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             </p>
           </div>
 
+          {/* TVApp Slug */}
+          <div className="space-y-2">
+            <Label htmlFor="tvapp_slug">TVApp Slug (Auto-resolve)</Label>
+            <Input
+              id="tvapp_slug"
+              value={formData.tvapp_slug || ''}
+              onChange={(e) => setFormData({ ...formData, tvapp_slug: e.target.value })}
+              placeholder="e.g. espn, fox-sports-1"
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kung may slug, auto-resolve ang fresh stream URL bago mag-play. Iwanan kung hindi TVApp stream.
+            </p>
+          </div>
+
           {/* Sort Order */}
           <div className="space-y-2">
             <Label htmlFor="sort_order">Sort Order</Label>

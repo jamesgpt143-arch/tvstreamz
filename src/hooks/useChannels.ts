@@ -60,6 +60,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   referrer: dbChannel.referrer || undefined,
   useProxy: dbChannel.use_proxy,
   proxyOrder: dbChannel.proxy_order as any || undefined,
+  tvappSlug: dbChannel.tvapp_slug || undefined,
 });
 
 export function useChannels(includeInactive = false) {

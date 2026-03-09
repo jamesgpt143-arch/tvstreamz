@@ -152,7 +152,22 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
         const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
         const proxyUrl = orderedProxies[0] || '';
-        const streamUrl = channel.manifestUri;
+        
+        // Auto-resolve TVApp slug if present
+        let streamUrl = channel.manifestUri;
+        if (channel.tvappSlug) {
+          try {
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            const resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
+            const res = await fetch(resolveUrl);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.url) streamUrl = data.url;
+            }
+          } catch (e) {
+            console.warn('[TVApp] Failed to resolve slug, falling back to stored URL:', e);
+          }
+        }
 
         // Build label map for proxy indicator
         const labelMap = new Map<string, string>();
