@@ -31,10 +31,14 @@ const LiveTV = () => {
   const channels: Channel[] = useMemo(() => {
     const allChannels = (dbChannels || []).map(toAppChannel);
 
-    // Filter by category
+    // Filter by category using database category field
     const filtered = selectedCategory === 'All'
       ? allChannels
-      : allChannels.filter(c => getChannelCategory(c.id) === selectedCategory);
+      : allChannels.filter(c => {
+          const dbCh = (dbChannels || []).find(d => d.id === c.id);
+          const cat = dbCh?.category || 'general';
+          return cat.toLowerCase() === selectedCategory.toLowerCase();
+        });
 
     // Sort based on selected option
     switch (sortBy) {
