@@ -108,10 +108,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
   useEffect(() => {
     let isMounted = true;
-    
-    // Gagawa tayo ng copy ng channel para pwede nating i-override ang settings 
-    // kung TheTVApp ang source nang hindi nasisira ang React states.
-    const activeChannel = { ...channel };
 
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
@@ -125,32 +121,25 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
       try {
-        const proxyUrls = activeChannel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
-        let orderedProxies = activeChannel.useProxy ? pickBestProxy(proxyUrls, activeChannel.proxyOrder) : [];
-        let proxyUrl = orderedProxies[0] || '';
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
+        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
+        const proxyUrl = orderedProxies[0] || '';
         
-        let streamUrl = activeChannel.manifestUri;
+        let streamUrl = channel.manifestUri;
         
-        if (activeChannel.tvappSlug) {
+        // Auto-resolve TheTVApp - Binalik sa original na nag-work!
+        if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(activeChannel.tvappSlug)}`;
+            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
             
+            // Bypass cache kung auto-refresh triggered
             if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
 
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
-              if (data.resolved_url) {
-                streamUrl = data.resolved_url;
-                
-                // IP-LOCK FIX: Dahil locked ang token sa IP ng Supabase, 
-                // pwersahin natin ang player na dumaan sa Supabase proxy.
-                proxyUrl = `https://${projectId}.supabase.co/functions/v1/stream-proxy`;
-                orderedProxies = [proxyUrl]; 
-                activeChannel.useProxy = true; 
-                activeChannel.referrer = "https://thetvapp.to/"; 
-              }
+              if (data.resolved_url) streamUrl = data.resolved_url;
             }
           } catch (e) {
             console.warn('[TVApp] Failed to resolve slug', e);
@@ -158,19 +147,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         }
 
         const labelMap = new Map<string, string>();
-        if (activeChannel.tvappSlug) {
-            labelMap.set(proxyUrl, 'Supabase Resolver');
-        } else {
-            if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
-            if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
-            if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
-            if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
-            if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
-        }
+        if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
+        if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
+        if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
+        if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
+        if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
         proxyLabelMapRef.current = labelMap;
 
         if (proxyUrl && isMounted) onProxyChange?.(labelMap.get(proxyUrl) || 'Direct');
-        else if (!activeChannel.useProxy && isMounted) onProxyChange?.('Direct');
+        else if (!channel.useProxy && isMounted) onProxyChange?.('Direct');
 
         const configureShakaProxy = (player: shaka.Player, activeProxyUrl: string) => {
           if (!activeProxyUrl) return;
@@ -189,7 +174,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (url.includes('?url=') || url.includes('&url=')) return;
             
             if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, activeChannel.userAgent, activeChannel.referrer);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
               return;
             }
 
@@ -201,15 +186,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               }
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, activeChannel.userAgent, activeChannel.referrer);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
             }
-            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, activeChannel.userAgent, activeChannel.referrer);
+            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
           });
         };
 
         const triggerAutoRefresh = () => {
-          if (activeChannel.tvappSlug && reloadTrigger < 2) { 
+          if (channel.tvappSlug && reloadTrigger < 2) { 
             console.log("Token likely expired. Auto-refreshing stream...");
             if (isMounted) setReloadTrigger(prev => prev + 1);
             return true;
@@ -217,8 +202,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           return false;
         };
 
-        if (activeChannel.type === 'hls') {
-          if (activeChannel.widevineUrl) {
+        if (channel.type === 'hls') {
+          if (channel.widevineUrl) {
             videoRef.current.controls = false;
             shaka.polyfill.installAll();
             
@@ -233,7 +218,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
             uiRef.current = ui;
             ui.configure({ overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'], addBigPlayButton: true });
-            player.configure({ drm: { servers: { 'com.widevine.alpha': activeChannel.widevineUrl } }, abr: { enabled: true } });
+            player.configure({ drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, abr: { enabled: true } });
             configureShakaProxy(player, proxyUrl);
 
             try {
@@ -253,7 +238,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (Hls.isSupported()) {
               const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
               hlsRef.current = hls;
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, activeChannel.userAgent, activeChannel.referrer) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -273,7 +258,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                   if (currentProxyIndex < orderedProxies.length) {
                     const nextProxy = orderedProxies[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, activeChannel.userAgent, activeChannel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
                   
@@ -285,14 +270,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, activeChannel.userAgent, activeChannel.referrer) : streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
               videoRef.current.addEventListener('loadedmetadata', () => {
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
               });
             }
           }
         }
-        else if (activeChannel.type === 'mpd') {
+        else if (channel.type === 'mpd') {
           videoRef.current.controls = false;
           shaka.polyfill.installAll();
           
@@ -307,7 +292,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
           uiRef.current = ui;
           ui.configure({ overflowMenuButtons: ['quality', 'captions'], addBigPlayButton: true });
-          player.configure({ drm: { clearKeys: activeChannel.clearKey || {}, servers: activeChannel.widevineUrl ? { 'com.widevine.alpha': activeChannel.widevineUrl } : {} } });
+          player.configure({ drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } });
           configureShakaProxy(player, proxyUrl);
 
           try {
@@ -425,7 +410,7 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
       {activeProxyLabel && (
         <div className="flex items-center gap-1.5 mt-2 px-1">
           <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' || activeProxyLabel === 'Supabase Resolver' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span></span>
+          <span className="text-xs text-muted-foreground">Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span></span>
         </div>
       )}
     </div>
