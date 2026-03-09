@@ -194,6 +194,27 @@ export type Database = {
         }
         Relationships: []
       }
+      tvapp_cache: {
+        Row: {
+          id: string
+          resolved_url: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          resolved_url: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          resolved_url?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
