@@ -162,7 +162,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
-              if (data.url) streamUrl = data.url;
+              // FIX APPLIED HERE: Changed data.url to data.resolved_url
+              if (data.resolved_url) streamUrl = data.resolved_url;
             }
           } catch (e) {
             console.warn('[TVApp] Failed to resolve slug, falling back to stored URL:', e);
@@ -195,7 +196,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           netEngine.clearAllRequestFilters();
           
           // Get the base URL of the original manifest for resolving relative paths
-          const manifestBase = channel.manifestUri.substring(0, channel.manifestUri.lastIndexOf('/') + 1);
+          const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
           const proxyOrigin = new URL(activeProxyUrl).origin;
           // Get the full proxy path prefix (e.g., "/functions/v1/hls-proxy" for Cloud)
           const proxyPathname = new URL(activeProxyUrl).pathname;
