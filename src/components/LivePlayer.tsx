@@ -162,13 +162,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
-              // Use proxy_url to avoid IP-locked token issues, fallback to resolved_url
-              if (data.proxy_url) {
-                // Fix: ensure HTTPS to avoid Mixed Content blocking
-                streamUrl = data.proxy_url.replace(/^http:\/\//, 'https://');
-              } else if (data.resolved_url) {
-                streamUrl = data.resolved_url;
-              }
+              // FIX APPLIED HERE: Changed data.url to data.resolved_url
+              if (data.resolved_url) streamUrl = data.resolved_url;
             }
           } catch (e) {
             console.warn('[TVApp] Failed to resolve slug, falling back to stored URL:', e);
