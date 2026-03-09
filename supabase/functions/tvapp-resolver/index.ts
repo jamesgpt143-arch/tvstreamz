@@ -214,6 +214,50 @@ serve(async (req) => {
       );
     }
 
+    // Determine cache key
+    const cacheKey = slug || pageSlug || eventSlug;
+
+    // Check cache first
+    if (cacheKey) {
+      const { data: cached } = await supabaseAdmin
+        .from("tvapp_cache")
+        .select("resolved_url, updated_at")
+        .eq("slug", cacheKey)
+        .maybeSingle();
+
+      if (cached) {
+        const age = Date.now() - new Date(cached.updated_at).getTime();
+        if (age < CACHE_TTL_MS) {
+          console.log(`[cache] HIT for ${cacheKey}, age=${Math.round(age / 60000)}min`);
+          const cachedUrl = cached.resolved_url;
+
+          if (action === "play") {
+            const proxyBase = `${url.origin}/functions/v1/stream-proxy`;
+            const proxyUrl = `${proxyBase}?url=${encodeURIComponent(cachedUrl)}&referer=${encodeURIComponent(TVAPP_BASE + "/")}`;
+            return new Response(null, {
+              status: 302,
+              headers: { ...corsHeaders, Location: proxyUrl },
+            });
+          }
+
+          return new Response(
+            JSON.stringify({
+              resolved_url: cachedUrl,
+              proxy_url: `${url.origin}/functions/v1/stream-proxy?url=${encodeURIComponent(cachedUrl)}&referer=${encodeURIComponent(TVAPP_BASE + "/")}`,
+              cached: true,
+              cache_age_minutes: Math.round(age / 60000),
+              expires_hint: "This URL has an expiring token. Call this endpoint again when it expires.",
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          console.log(`[cache] STALE for ${cacheKey}, age=${Math.round(age / 60000)}min`);
+        }
+      } else {
+        console.log(`[cache] MISS for ${cacheKey}`);
+      }
+    }
+
     let resolvedUrl: string | null = null;
 
     // Try methods in order of reliability
@@ -257,6 +301,21 @@ serve(async (req) => {
       );
     }
 
+    // Upsert cache
+    if (cacheKey) {
+      const { error: upsertErr } = await supabaseAdmin
+        .from("tvapp_cache")
+        .upsert(
+          { slug: cacheKey, resolved_url: resolvedUrl, updated_at: new Date().toISOString() },
+          { onConflict: "slug" }
+        );
+      if (upsertErr) {
+        console.error("[cache] Upsert error:", upsertErr.message);
+      } else {
+        console.log(`[cache] STORED ${cacheKey}`);
+      }
+    }
+
     // If action=play, redirect to stream-proxy with the resolved URL
     if (action === "play") {
       const proxyBase = `${url.origin}/functions/v1/stream-proxy`;
@@ -276,6 +335,7 @@ serve(async (req) => {
       JSON.stringify({
         resolved_url: resolvedUrl,
         proxy_url: `${url.origin}/functions/v1/stream-proxy?url=${encodeURIComponent(resolvedUrl)}&referer=${encodeURIComponent(TVAPP_BASE + "/")}`,
+        cached: false,
         expires_hint:
           "This URL has an expiring token. Call this endpoint again when it expires.",
       }),
