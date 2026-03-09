@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
-import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, RefreshCw } from 'lucide-react';
 import Hls from 'hls.js';
-// IMPORTANT: Import Shaka Player UI with CSS for styled controls
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// No more proxy cooldown memory - always start fresh from Primary down on each play
-
-// Get the Cloudflare proxy URLs (primary + backup1 + backup2) + Cloud edge function proxy
 const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string }> => {
   try {
     const { data } = await supabase
@@ -30,7 +26,6 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
   }
 };
 
-// Pick the best available proxy (skipping those in cooldown), respecting per-channel order
 const pickBestProxy = (
   urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string },
   channelProxyOrder?: ProxyKey[]
@@ -43,24 +38,17 @@ const pickBestProxy = (
     backup3: urls.backup3,
     backup4: urls.backup4,
   };
-  // Always start from Primary down - no cooldown memory
   return order.map(k => urlMap[k]).filter(Boolean);
 };
 
-// Build proxied manifest URL with custom user-agent and referrer
 const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string): string => {
   const url = new URL(proxyBase);
   url.searchParams.set('url', manifestUrl);
-  if (userAgent) {
-    url.searchParams.set('ua', userAgent);
-  }
-  if (referrer) {
-    url.searchParams.set('referer', referrer);
-  }
+  if (userAgent) url.searchParams.set('ua', userAgent);
+  if (referrer) url.searchParams.set('referer', referrer);
   return url.toString();
 };
 
-// Detect iOS devices
 const isIOS = (): boolean => {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -72,48 +60,42 @@ interface LivePlayerProps {
   onProxyChange?: (label: string) => void;
 }
 
-// Inner component that handles the actual player
 const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null); // Ref for the UI container
+  const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const shakaRef = useRef<shaka.Player | null>(null);
-  const uiRef = useRef<shaka.ui.Overlay | null>(null); // Ref for Shaka UI
+  const uiRef = useRef<shaka.ui.Overlay | null>(null);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iosWarning, setIosWarning] = useState<string | null>(null);
   const [hlsLevels, setHlsLevels] = useState<{ height: number; index: number }[]>([]);
-  const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
+  const [currentLevel, setCurrentLevel] = useState(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const proxyLabelMapRef = useRef<Map<string, string>>(new Map());
 
-  // Check for iOS compatibility issues
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    setReloadTrigger(0);
+    setIsRefreshing(false);
+  }, [channel.id]);
+
   const checkIOSCompatibility = useMemo(() => {
     if (!isIOS()) return null;
-    
-    // DRM streams don't work on iOS
-    if (channel.clearKey || channel.widevineUrl) {
-      return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions. Subukan sa Android o desktop browser.';
-    }
-    
-    // Plain MPD might work but could have issues
-    if (channel.type === 'mpd') {
-      return 'Maaaring hindi gumana ang stream na ito sa iPhone/iPad. Subukan sa Android o desktop browser kung may problema.';
-    }
-    
+    if (channel.clearKey || channel.widevineUrl) return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions.';
+    if (channel.type === 'mpd') return 'Maaaring hindi gumana ang stream na ito sa iPhone/iPad.';
     return null;
   }, [channel]);
 
-  // Update parent about online status
   useEffect(() => {
     onStatusChange?.(!error && !iosWarning);
   }, [error, iosWarning, onStatusChange]);
   
-  // Set iOS warning on mount
   useEffect(() => {
-    if (checkIOSCompatibility) {
-      setIosWarning(checkIOSCompatibility);
-    }
+    if (checkIOSCompatibility) setIosWarning(checkIOSCompatibility);
   }, [checkIOSCompatibility]);
 
   const handleQualityChange = useCallback((levelIndex: number) => {
@@ -126,424 +108,260 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Gagawa tayo ng copy ng channel para pwede nating i-override ang settings 
+    // kung TheTVApp ang source nang hindi nasisira ang React states.
+    const activeChannel = { ...channel };
 
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
       
       setIsLoading(true);
       setError(null);
+      if (reloadTrigger > 0) setIsRefreshing(true);
 
-      // Cleanup previous instances
-      if (uiRef.current) {
-        await uiRef.current.destroy();
-        uiRef.current = null;
-      }
-      if (shakaRef.current) {
-        await shakaRef.current.destroy();
-        shakaRef.current = null;
-      }
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
+      if (uiRef.current) { await uiRef.current.destroy(); uiRef.current = null; }
+      if (shakaRef.current) { await shakaRef.current.destroy(); shakaRef.current = null; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
       try {
-        // Get proxy URLs only if channel has proxy enabled
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
-        const proxyUrl = orderedProxies[0] || '';
+        const proxyUrls = activeChannel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
+        let orderedProxies = activeChannel.useProxy ? pickBestProxy(proxyUrls, activeChannel.proxyOrder) : [];
+        let proxyUrl = orderedProxies[0] || '';
         
-        // Auto-resolve TVApp slug if present
-        let streamUrl = channel.manifestUri;
-        if (channel.tvappSlug) {
+        let streamUrl = activeChannel.manifestUri;
+        
+        if (activeChannel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-            const resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
+            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(activeChannel.tvappSlug)}`;
+            
+            if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
+
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
-              // FIX APPLIED HERE: Changed data.url to data.resolved_url
-              if (data.resolved_url) streamUrl = data.resolved_url;
+              if (data.resolved_url) {
+                streamUrl = data.resolved_url;
+                
+                // IP-LOCK FIX: Dahil locked ang token sa IP ng Supabase, 
+                // pwersahin natin ang player na dumaan sa Supabase proxy.
+                proxyUrl = `https://${projectId}.supabase.co/functions/v1/stream-proxy`;
+                orderedProxies = [proxyUrl]; 
+                activeChannel.useProxy = true; 
+                activeChannel.referrer = "https://thetvapp.to/"; 
+              }
             }
           } catch (e) {
-            console.warn('[TVApp] Failed to resolve slug, falling back to stored URL:', e);
+            console.warn('[TVApp] Failed to resolve slug', e);
           }
         }
 
-        // Build label map for proxy indicator
         const labelMap = new Map<string, string>();
-        if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
-        if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
-        if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
-        if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
-        if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
+        if (activeChannel.tvappSlug) {
+            labelMap.set(proxyUrl, 'Supabase Resolver');
+        } else {
+            if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
+            if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
+            if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
+            if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
+            if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
+        }
         proxyLabelMapRef.current = labelMap;
 
-        // Set initial active proxy label
-        if (proxyUrl && isMounted) {
-          onProxyChange?.(labelMap.get(proxyUrl) || 'Direct');
-        } else if (!channel.useProxy && isMounted) {
-          onProxyChange?.('Direct');
-        }
+        if (proxyUrl && isMounted) onProxyChange?.(labelMap.get(proxyUrl) || 'Direct');
+        else if (!activeChannel.useProxy && isMounted) onProxyChange?.('Direct');
 
-        // Helper: configure Shaka request filter to proxy all requests
         const configureShakaProxy = (player: shaka.Player, activeProxyUrl: string) => {
           if (!activeProxyUrl) return;
           const netEngine = player.getNetworkingEngine();
           if (!netEngine) return;
           
-          // Clear any existing request filters before adding a new one
           netEngine.clearAllRequestFilters();
-          
-          // Get the base URL of the original manifest for resolving relative paths
           const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
           const proxyOrigin = new URL(activeProxyUrl).origin;
-          // Get the full proxy path prefix (e.g., "/functions/v1/hls-proxy" for Cloud)
           const proxyPathname = new URL(activeProxyUrl).pathname;
           
           netEngine.registerRequestFilter((type: any, request: any) => {
             const url = request.uris[0];
             if (!url) return;
-            
-            // 1. ILAGAY ITO SA PINAKA-UNAHAN: 
-            // Skip non-HTTP URLs (data:, blob:, etc.) and already-proxied URLs
-            // Para iwas error sa ClearKey direct keys
             if (!url.startsWith('http')) return;
             if (url.includes('?url=') || url.includes('&url=')) return;
             
-            // 2. PARA SA DRM LICENSE (Widevine man o ClearKey na HTTP)
             if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, activeChannel.userAgent, activeChannel.referrer);
               return;
             }
 
-            // 3. PARA SA MGA VIDEO SEGMENTS AT MANIFEST
-            // If URL starts with proxy origin but missing ?url= param,
-            // it's a relative URL resolved against the proxy — reconstruct original
             if (url.startsWith(proxyOrigin)) {
               const path = url.substring(proxyOrigin.length);
-              // Strip the proxy's own path prefix (e.g., /functions/v1/hls-proxy or /)
               let relativePath = path;
               if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
                 relativePath = relativePath.substring(proxyPathname.length);
               }
-              // Remove leading slash
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, activeChannel.userAgent, activeChannel.referrer);
               return;
             }
-            
-            // External URL — proxy it
-            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
+            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, activeChannel.userAgent, activeChannel.referrer);
           });
-          console.log('Shaka proxy filter configured (with auto-DRM fallback)');
         };
 
-        // ==========================================
-        // HLS LOGIC - Check if DRM is needed
-        // ==========================================
-        if (channel.type === 'hls') {
-          // If HLS has Widevine DRM, use Shaka Player
-          if (channel.widevineUrl) {
-            videoRef.current.controls = false;
+        const triggerAutoRefresh = () => {
+          if (activeChannel.tvappSlug && reloadTrigger < 2) { 
+            console.log("Token likely expired. Auto-refreshing stream...");
+            if (isMounted) setReloadTrigger(prev => prev + 1);
+            return true;
+          }
+          return false;
+        };
 
+        if (activeChannel.type === 'hls') {
+          if (activeChannel.widevineUrl) {
+            videoRef.current.controls = false;
             shaka.polyfill.installAll();
             
             if (!shaka.Player.isBrowserSupported()) {
-              if (isMounted) {
-                setError('Your browser does not support this stream format.');
-                setIsLoading(false);
-              }
+              if (isMounted) { setError('Browser unsupported.'); setIsLoading(false); setIsRefreshing(false); }
               return;
             }
 
             const player = new shaka.Player(/* mediaElement= */ null, containerRef.current);
             await player.attach(videoRef.current);
             shakaRef.current = player;
-
             const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
             uiRef.current = ui;
-
-            ui.configure({
-              overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'],
-              addBigPlayButton: true,
-            });
-
-            player.configure({
-              drm: {
-                servers: { 'com.widevine.alpha': channel.widevineUrl },
-              },
-              abr: {
-                enabled: true,
-                defaultBandwidthEstimate: 1500000,
-              },
-              preferredTextLanguage: 'en',
-              streaming: {
-                alwaysStreamText: true,
-              },
-            });
-
+            ui.configure({ overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'], addBigPlayButton: true });
+            player.configure({ drm: { servers: { 'com.widevine.alpha': activeChannel.widevineUrl } }, abr: { enabled: true } });
             configureShakaProxy(player, proxyUrl);
 
             try {
               await player.load(streamUrl);
-
-              // Auto-enable English subtitles
-              const textTracks = player.getTextTracks();
-              const englishTrack = textTracks.find((track: any) => 
-                  track.language === 'en' || track.language === 'eng'
-              );
-              if (englishTrack) {
-                  player.setTextTrackVisibility(true);
-                  player.selectTextTrack(englishTrack);
-                  console.log('HLS+Widevine subtitles auto-enabled:', englishTrack.language);
-              }
-
-              if (isMounted) {
-                setIsLoading(false);
-                videoRef.current?.play().catch(() => {});
-              }
+              if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
-              console.error('Shaka error:', err);
               if (isMounted) {
-                setError('Failed to load stream. The channel may be offline or requires CORS headers from the server.');
-                setIsLoading(false);
+                if (!triggerAutoRefresh()) {
+                  setError('Failed to load stream. Offline or CORS error.');
+                  setIsLoading(false);
+                  setIsRefreshing(false);
+                }
               }
             }
           } else {
-            // Standard HLS without DRM - use hls.js or native
             videoRef.current.controls = true; 
-
             if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                startLevel: -1, // Auto-select best quality
-                capLevelToPlayerSize: true, // Don't load higher than display size
-                abrEwmaDefaultEstimate: 1500000, // Start assuming decent bandwidth
-                abrBandWidthUpFactor: 0.7, // Switch up to HD quickly
-                abrBandWidthFactor: 0.8, // Switch down less aggressively
-              });
+              const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
               hlsRef.current = hls;
-              
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, activeChannel.userAgent, activeChannel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
                 if (isMounted) {
                   setIsLoading(false);
-                  // Extract available quality levels
-                  const levels = hls.levels
-                    .map((level, index) => ({ height: level.height, index }))
-                    .filter(l => l.height > 0)
-                    .sort((a, b) => b.height - a.height);
-                  // Remove duplicates
-                  const unique = levels.filter((l, i, arr) => i === 0 || l.height !== arr[i - 1].height);
-                  setHlsLevels(unique);
-                  setCurrentLevel(-1);
+                  setIsRefreshing(false);
+                  const levels = hls.levels.map((l, i) => ({ height: l.height, index: i })).filter(l => l.height > 0).sort((a, b) => b.height - a.height);
+                  setHlsLevels(levels.filter((l, i, arr) => i === 0 || l.height !== arr[i - 1].height));
                   videoRef.current?.play().catch(() => {});
                 }
               });
-
-              hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
-                if (isMounted && hlsRef.current && hlsRef.current.currentLevel === -1) {
-                  // keep showing "Auto" when ABR is active
-                }
-              });
               
-              // Track which proxy index we're on for failover
               let currentProxyIndex = 0;
-              
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // Log failed proxy
-                  console.log(`Proxy failed: ${orderedProxies[currentProxyIndex] || 'unknown'}, trying next...`);
-                  
-                  // Try next proxy in the ordered list
                   currentProxyIndex++;
                   if (currentProxyIndex < orderedProxies.length) {
                     const nextProxy = orderedProxies[currentProxyIndex];
-                    console.log(`Switching to next proxy (${currentProxyIndex + 1}/${orderedProxies.length}): ${nextProxy}`);
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, activeChannel.userAgent, activeChannel.referrer));
                     return;
                   }
                   
-                  setError('Failed to load stream. The channel may be offline.');
-                  setIsLoading(false);
+                  if (!triggerAutoRefresh()) {
+                    setError('Failed to load stream. The channel may be offline.');
+                    setIsLoading(false);
+                    setIsRefreshing(false);
+                  }
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-              // Native HLS support (Safari)
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
-              const handleLoaded = () => {
-                if (isMounted) {
-                  setIsLoading(false);
-                  videoRef.current?.play().catch(() => {});
-                }
-              };
-              videoRef.current.addEventListener('loadedmetadata', handleLoaded);
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, activeChannel.userAgent, activeChannel.referrer) : streamUrl;
+              videoRef.current.addEventListener('loadedmetadata', () => {
+                if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
+              });
             }
           }
         }
-        // ==========================================
-        // DASH/MPD LOGIC (using Shaka Player + UI)
-        // ==========================================
-        else if (channel.type === 'mpd') {
-          // Disable native controls so Shaka UI can take over
+        else if (activeChannel.type === 'mpd') {
           videoRef.current.controls = false;
-
           shaka.polyfill.installAll();
           
           if (!shaka.Player.isBrowserSupported()) {
-            if (isMounted) {
-              setError('Your browser does not support this stream format.');
-              setIsLoading(false);
-            }
+            if (isMounted) { setError('Browser unsupported.'); setIsLoading(false); setIsRefreshing(false); }
             return;
           }
 
-          // 1. Initialize Player
           const player = new shaka.Player(/* mediaElement= */ null, containerRef.current);
           await player.attach(videoRef.current);
           shakaRef.current = player;
-
-          // 2. Initialize UI Overlay (Gives you the Quality Selector/Gear Icon)
           const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
           uiRef.current = ui;
-
-          // Configure UI buttons
-          ui.configure({
-            overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'],
-            addBigPlayButton: true,
-          });
-
-          // Configure DRM + text preferences
-          player.configure({
-            drm: {
-              clearKeys: channel.clearKey || {},
-              servers: channel.widevineUrl
-                ? { 'com.widevine.alpha': channel.widevineUrl }
-                : {},
-            },
-            abr: {
-              enabled: true,
-              defaultBandwidthEstimate: 1500000,
-            },
-            preferredTextLanguage: 'en',
-            streaming: {
-              alwaysStreamText: true,
-            },
-          });
-
+          ui.configure({ overflowMenuButtons: ['quality', 'captions'], addBigPlayButton: true });
+          player.configure({ drm: { clearKeys: activeChannel.clearKey || {}, servers: activeChannel.widevineUrl ? { 'com.widevine.alpha': activeChannel.widevineUrl } : {} } });
           configureShakaProxy(player, proxyUrl);
 
           try {
             await player.load(streamUrl);
-
-            // 3. Subtitle Logic (Auto-enable English)
-            const textTracks = player.getTextTracks();
-            console.log('Available text tracks:', JSON.stringify(textTracks.map((t: any) => ({ lang: t.language, kind: t.kind, label: t.label, roles: t.roles }))));
-            const englishTrack = textTracks.find((track: any) => 
-                track.language === 'en' || track.language === 'eng'
-            );
-
-            if (englishTrack) {
-                player.selectTextTrack(englishTrack); // Select English first
-                player.setTextTrackVisibility(true); // Then turn on visibility
-                console.log('Subtitles auto-enabled:', englishTrack.language);
-            } else {
-                console.log('No English text track found. Available languages:', textTracks.map((t: any) => t.language));
-                // If any text track exists, enable the first one
-                if (textTracks.length > 0) {
-                  player.selectTextTrack(textTracks[0]);
-                  player.setTextTrackVisibility(true);
-                  console.log('Enabled first available track:', textTracks[0].language);
-                }
-            }
-
-            if (isMounted) {
-              setIsLoading(false);
-              videoRef.current?.play().catch(() => {});
-            }
+            if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
-            console.error('Shaka error:', err);
-            // Try remaining proxies as fallback for DASH
             let dashRecovered = false;
             for (let i = 1; i < orderedProxies.length; i++) {
               const fallbackProxy = orderedProxies[i];
-              console.log(`DASH: proxy failed, trying fallback ${i + 1}/${orderedProxies.length}: ${fallbackProxy}`);
-              // Previous proxy failed, moving to next
               configureShakaProxy(player, fallbackProxy);
               try {
                 await player.load(streamUrl);
-
-                // Auto-enable English subtitles on retry
-                const retryTextTracks = player.getTextTracks();
-                const retryEnglishTrack = retryTextTracks.find((track: any) => 
-                    track.language === 'en' || track.language === 'eng'
-                );
-                if (retryEnglishTrack) {
-                    player.setTextTrackVisibility(true);
-                    player.selectTextTrack(retryEnglishTrack);
-                }
-
-                if (isMounted) {
-                  setIsLoading(false);
-                  onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`);
-                  videoRef.current?.play().catch(() => {});
-                }
+                if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
-              } catch (retryErr) {
-                console.error(`Fallback proxy ${i + 1} also failed:`, retryErr);
-                // Fallback also failed
-              }
+              } catch (retryErr) {}
             }
             if (!dashRecovered && isMounted) {
-              setError('Failed to load stream. The channel may require different DRM or is offline.');
-              setIsLoading(false);
+              if (!triggerAutoRefresh()) {
+                setError('Failed to load stream.');
+                setIsLoading(false);
+                setIsRefreshing(false);
+              }
             }
           }
         }
       } catch (err) {
-        console.error('Player error:', err);
-        if (isMounted) {
-          setError('Failed to initialize player.');
-          setIsLoading(false);
-        }
+        if (isMounted) { setError('Failed to initialize player.'); setIsLoading(false); setIsRefreshing(false); }
       }
     };
 
     loadPlayer();
 
-    // Cleanup function
     return () => {
       isMounted = false;
-      
-      if (uiRef.current) {
-        uiRef.current.destroy();
-        uiRef.current = null;
-      }
-      
-      if (shakaRef.current) {
-        shakaRef.current.destroy().catch(() => {});
-        shakaRef.current = null;
-      }
-
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
+      if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
+      if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
-  }, [channel]);
+  }, [channel, reloadTrigger]);
 
   return (
     <>
-      {isLoading && !iosWarning && (
+      {isLoading && !iosWarning && !isRefreshing && (
         <div className="absolute inset-0 flex items-center justify-center bg-card z-10 pointer-events-none">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        </div>
+      )}
+
+      {isRefreshing && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/90 backdrop-blur-sm z-20">
+          <RefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
+          <p className="text-primary font-medium">Auto-refreshing stream...</p>
+          <p className="text-xs text-muted-foreground mt-1">Getting fresh token</p>
         </div>
       )}
 
@@ -562,61 +380,21 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         </div>
       )}
 
-      {/* Container for Shaka UI Overlay */}
-      <div 
-        ref={containerRef} 
-        className="relative w-full h-full"
-      >
-        <video
-          ref={videoRef}
-          className="w-full h-full"
-          autoPlay
-          playsInline
-          // Note: 'controls' is handled dynamically in the useEffect above
-        />
-
-        {/* HLS Quality Selector - TV Remote & D-pad friendly */}
+      <div ref={containerRef} className="relative w-full h-full">
+        <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
-            <button
-              onClick={() => setShowQualityMenu(prev => !prev)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setShowQualityMenu(prev => !prev);
-                }
-              }}
-              className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-              title="Quality"
-              aria-label="Change video quality"
-            >
+            <button onClick={() => setShowQualityMenu(prev => !prev)} className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
               <Settings className="w-6 h-6 text-foreground" />
             </button>
             {showQualityMenu && (
-              <div
-                className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape' || e.key === 'Backspace') {
-                    setShowQualityMenu(false);
-                  }
-                }}
-              >
-                <button
-                  autoFocus
-                  onClick={() => handleQualityChange(-1)}
-                  className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}
-                >
-                  {currentLevel === -1 && <Check className="w-4 h-4" />}
-                  <span className={currentLevel === -1 ? '' : 'ml-6'}>Auto</span>
+              <div className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+                <button onClick={() => handleQualityChange(-1)} className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}>
+                  {currentLevel === -1 && <Check className="w-4 h-4" />}<span className={currentLevel === -1 ? '' : 'ml-6'}>Auto</span>
                 </button>
                 {hlsLevels.map((level) => (
-                  <button
-                    key={level.index}
-                    onClick={() => handleQualityChange(level.index)}
-                    className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}
-                  >
-                    {currentLevel === level.index && <Check className="w-4 h-4" />}
-                    <span className={currentLevel === level.index ? '' : 'ml-6'}>{level.height}p</span>
+                  <button key={level.index} onClick={() => handleQualityChange(level.index)} className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}>
+                    {currentLevel === level.index && <Check className="w-4 h-4" />}<span className={currentLevel === level.index ? '' : 'ml-6'}>{level.height}p</span>
                   </button>
                 ))}
               </div>
@@ -634,13 +412,7 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   if (channel.type === 'youtube') {
     return (
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
-        <iframe
-          src={`${channel.embedUrl}&autoplay=1`}
-          title={channel.name}
-          className="w-full h-full"
-          allowFullScreen
-          allow="autoplay; encrypted-media"
-        />
+        <iframe src={`${channel.embedUrl}&autoplay=1`} title={channel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
       </div>
     );
   }
@@ -648,19 +420,12 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   return (
     <div>
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
-        <PlayerCore 
-          key={channel.id} 
-          channel={channel} 
-          onStatusChange={onStatusChange}
-          onProxyChange={setActiveProxyLabel}
-        />
+        <PlayerCore key={channel.id} channel={channel} onStatusChange={onStatusChange} onProxyChange={setActiveProxyLabel} />
       </div>
       {activeProxyLabel && (
         <div className="flex items-center gap-1.5 mt-2 px-1">
           <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span>
-          </span>
+          <span className="text-xs text-muted-foreground">Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' || activeProxyLabel === 'Supabase Resolver' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span></span>
         </div>
       )}
     </div>
