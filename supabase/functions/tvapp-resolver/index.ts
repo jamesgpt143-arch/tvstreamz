@@ -41,6 +41,13 @@ async function resolveViaTvpass(slug: string): Promise<string | null> {
           ? location
           : new URL(location, current).toString();
         console.log(`[tvpass] Redirect ${i + 1}: ${current}`);
+        
+        // If the redirect URL is already an m3u8, return it immediately
+        // Don't fetch it again — the server may reject our headers/IP
+        if (current.includes(".m3u8")) {
+          console.log(`[tvpass] Resolved m3u8 from redirect: ${current}`);
+          return current;
+        }
         continue;
       }
 
