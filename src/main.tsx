@@ -3,13 +3,22 @@ import App from "./App.tsx";
 import "./index.css";
 import 'shaka-player/dist/controls.css';
 
-// DevTools protection disabled temporarily
-// if (import.meta.env.PROD) {
-//   document.addEventListener('contextmenu', (e) => e.preventDefault());
-//   document.addEventListener('keydown', (e) => {
-//     if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) || (e.ctrlKey && e.key.toUpperCase() === 'U')) e.preventDefault();
-//   });
-//   (function loop() { setInterval(() => { (function(){return false;})['constructor']('debugger')['call'](); }, 50); })();
-// }
+// Capacitor: Ensure status bar is visible and content doesn't go behind it
+const initCapacitor = async () => {
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      const { StatusBar, Style } = await import('@capacitor/status-bar');
+      // Show status bar and set style
+      await StatusBar.show();
+      await StatusBar.setStyle({ style: Style.Dark });
+      await StatusBar.setOverlaysWebView({ overlay: false });
+    }
+  } catch (e) {
+    // Not in Capacitor context, ignore
+  }
+};
+
+initCapacitor();
 
 createRoot(document.getElementById("root")!).render(<App />);
