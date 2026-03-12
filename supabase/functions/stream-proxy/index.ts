@@ -82,16 +82,10 @@ async function fetchWithRedirects(
 
 function resolveUrl(base: string, relative: string): string {
   if (relative.startsWith("http")) return relative;
-  if (relative.startsWith("/")) {
-    // Absolute path - use origin from base URL
-    try {
-      return new URL(relative, base).toString();
-    } catch {
-      return base + relative;
-    }
-  }
-  // Relative path - append to base directory
-  return base + relative;
+  // For paths starting with /, strip the leading / to treat as relative to base dir
+  // (many HLS servers use /path segments relative to manifest dir, not server root)
+  const cleaned = relative.startsWith("/") ? relative.substring(1) : relative;
+  return base + cleaned;
 }
 
 function rewriteHLS(
