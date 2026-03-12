@@ -246,9 +246,14 @@ serve(async (req) => {
       const text = new TextDecoder().decode(body);
       const baseUrl =
         targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
-      // Build the public proxy base URL - edge function runtime may report internal URLs
-      const publicOrigin = Deno.env.get("SUPABASE_URL") || url.origin;
-      const proxyBase = `${publicOrigin}/functions/v1/stream-proxy?url=`;
+      // Build public proxy base - edge function runtime reports internal URLs
+      // Extract project ref from SUPABASE_URL or fall back to request URL
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+      const projectRef = supabaseUrl.match(/\/\/([^.]+)\./)?.[1] || "";
+      const publicProxyOrigin = projectRef 
+        ? `https://${projectRef}.supabase.co`
+        : url.origin;
+      const proxyBase = `${publicProxyOrigin}/functions/v1/stream-proxy?url=`;
       const extra = extraParams(params);
 
       const rewritten = isHLS
