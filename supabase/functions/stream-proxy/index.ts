@@ -246,7 +246,13 @@ serve(async (req) => {
       const text = new TextDecoder().decode(body);
       const baseUrl =
         targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
-      const proxyBase = `${url.origin}${url.pathname}?url=`;
+      // Build public proxy base URL
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+      const projectRef = supabaseUrl.match(/\/\/([^.]+)\./)?.[1] || "";
+      const publicProxyOrigin = projectRef 
+        ? `https://${projectRef}.supabase.co`
+        : url.origin;
+      const proxyBase = `${publicProxyOrigin}/functions/v1/stream-proxy?url=`;
       const extra = extraParams(params);
 
       const rewritten = isHLS
