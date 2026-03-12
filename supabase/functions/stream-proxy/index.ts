@@ -246,7 +246,9 @@ serve(async (req) => {
       const text = new TextDecoder().decode(body);
       const baseUrl =
         targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
-      const proxyBase = `${url.origin}${url.pathname}?url=`;
+      // Build the public proxy base URL - edge function runtime may report internal URLs
+      const publicOrigin = Deno.env.get("SUPABASE_URL") || url.origin;
+      const proxyBase = `${publicOrigin}/functions/v1/stream-proxy?url=`;
       const extra = extraParams(params);
 
       const rewritten = isHLS
