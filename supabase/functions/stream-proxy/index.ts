@@ -136,7 +136,7 @@ function rewriteDASH(
   rewritten = rewritten.replace(
     /<BaseURL>([^<]+)<\/BaseURL>/g,
     (_m, innerUrl) => {
-      const full = innerUrl.startsWith("http") ? innerUrl : baseUrl + innerUrl;
+      const full = resolveUrl(baseUrl, innerUrl);
       return `<BaseURL>${proxyBase}${encodeURIComponent(full)}${extra}</BaseURL>`;
     }
   );
@@ -146,7 +146,7 @@ function rewriteDASH(
     /(media|initialization)="([^"]+)"/g,
     (match, attr, val) => {
       if (val.includes("$")) return match; // template
-      const full = val.startsWith("http") ? val : baseUrl + val;
+      const full = resolveUrl(baseUrl, val);
       return `${attr}="${proxyBase}${encodeURIComponent(full)}${extra}"`;
     }
   );
