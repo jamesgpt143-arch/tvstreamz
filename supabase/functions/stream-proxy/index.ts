@@ -80,6 +80,14 @@ async function fetchWithRedirects(
 
 // ─── Manifest Rewriters ───
 
+function resolveUrl(base: string, relative: string): string {
+  if (relative.startsWith("http")) return relative;
+  // For paths starting with /, strip the leading / to treat as relative to base dir
+  // (many HLS servers use /path segments relative to manifest dir, not server root)
+  const cleaned = relative.startsWith("/") ? relative.substring(1) : relative;
+  return base + cleaned;
+}
+
 function rewriteHLS(
   text: string,
   baseUrl: string,
@@ -94,14 +102,14 @@ function rewriteHLS(
       // URI= in EXT-X-KEY, EXT-X-MAP etc.
       if (trimmed.includes('URI="')) {
         return trimmed.replace(/URI="([^"]+)"/g, (_m, uri) => {
-          const full = uri.startsWith("http") ? uri : baseUrl + uri;
+          const full = resolveUrl(baseUrl, uri);
           return `URI="${proxyBase}${encodeURIComponent(full)}${extra}"`;
         });
       }
 
       // Non-comment, non-empty = segment/playlist URL
       if (trimmed && !trimmed.startsWith("#")) {
-        const full = trimmed.startsWith("http") ? trimmed : baseUrl + trimmed;
+        const full = resolveUrl(baseUrl, trimmed);
         return proxyBase + encodeURIComponent(full) + extra;
       }
 
@@ -122,7 +130,7 @@ function rewriteDASH(
   rewritten = rewritten.replace(
     /<BaseURL>([^<]+)<\/BaseURL>/g,
     (_m, innerUrl) => {
-      const full = innerUrl.startsWith("http") ? innerUrl : baseUrl + innerUrl;
+      const full = resolveUrl(baseUrl, innerUrl);
       return `<BaseURL>${proxyBase}${encodeURIComponent(full)}${extra}</BaseURL>`;
     }
   );
@@ -132,7 +140,7 @@ function rewriteDASH(
     /(media|initialization)="([^"]+)"/g,
     (match, attr, val) => {
       if (val.includes("$")) return match; // template
-      const full = val.startsWith("http") ? val : baseUrl + val;
+      const full = resolveUrl(baseUrl, val);
       return `${attr}="${proxyBase}${encodeURIComponent(full)}${extra}"`;
     }
   );
