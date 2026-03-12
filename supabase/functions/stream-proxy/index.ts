@@ -80,6 +80,20 @@ async function fetchWithRedirects(
 
 // ─── Manifest Rewriters ───
 
+function resolveUrl(base: string, relative: string): string {
+  if (relative.startsWith("http")) return relative;
+  if (relative.startsWith("/")) {
+    // Absolute path - use origin from base URL
+    try {
+      return new URL(relative, base).toString();
+    } catch {
+      return base + relative;
+    }
+  }
+  // Relative path - append to base directory
+  return base + relative;
+}
+
 function rewriteHLS(
   text: string,
   baseUrl: string,
@@ -94,14 +108,14 @@ function rewriteHLS(
       // URI= in EXT-X-KEY, EXT-X-MAP etc.
       if (trimmed.includes('URI="')) {
         return trimmed.replace(/URI="([^"]+)"/g, (_m, uri) => {
-          const full = uri.startsWith("http") ? uri : baseUrl + uri;
+          const full = resolveUrl(baseUrl, uri);
           return `URI="${proxyBase}${encodeURIComponent(full)}${extra}"`;
         });
       }
 
       // Non-comment, non-empty = segment/playlist URL
       if (trimmed && !trimmed.startsWith("#")) {
-        const full = trimmed.startsWith("http") ? trimmed : baseUrl + trimmed;
+        const full = resolveUrl(baseUrl, trimmed);
         return proxyBase + encodeURIComponent(full) + extra;
       }
 
