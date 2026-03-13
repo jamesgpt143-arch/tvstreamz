@@ -18,11 +18,21 @@ import {
 import { toast } from 'sonner';
 
 export function ChannelManager() {
-  const { data: channels, isLoading } = useChannels(true); // Include inactive
+  const { data: channels, isLoading } = useChannels(true);
   const deleteChannel = useDeleteChannel();
+  const updateChannel = useUpdateChannel();
   const [showForm, setShowForm] = useState(false);
   const [editingChannel, setEditingChannel] = useState<DbChannel | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DbChannel | null>(null);
+
+  const handleToggleActive = async (channel: DbChannel) => {
+    try {
+      await updateChannel.mutateAsync({ id: channel.id, is_active: !channel.is_active });
+      toast.success(`"${channel.name}" ${channel.is_active ? 'disabled' : 'enabled'}`);
+    } catch (error) {
+      toast.error('Failed to update channel status');
+    }
+  };
 
   const handleEdit = (channel: DbChannel) => {
     setEditingChannel(channel);
