@@ -119,6 +119,15 @@ export function ChannelManager() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => handleToggleActive(channel)}
+                      className={`h-8 w-8 ${channel.is_active ? 'text-green-500 hover:text-red-500' : 'text-muted-foreground hover:text-green-500'}`}
+                      title={channel.is_active ? 'Disable channel' : 'Enable channel'}
+                    >
+                      {channel.is_active ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleEdit(channel)}
                       className="h-8 w-8"
                     >
