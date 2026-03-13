@@ -99,17 +99,6 @@ export function ChannelManager() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground truncate">{channel.name}</p>
-                      {channel.is_active ? (
-                        <Badge variant="outline" className="text-green-500 border-green-500/50 gap-1">
-                          <Check className="h-3 w-3" />
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1">
-                          <X className="h-3 w-3" />
-                          Inactive
-                        </Badge>
-                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {channel.stream_type.toUpperCase()} • {channel.category || 'General'}
