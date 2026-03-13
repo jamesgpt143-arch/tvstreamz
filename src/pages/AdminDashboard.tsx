@@ -5,12 +5,13 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
 import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
 import { IptvSettings } from "@/components/admin/IptvSettings";
+import { NotificationManager } from "@/components/admin/NotificationManager";
 
 interface DailyStats {
   date: string;
