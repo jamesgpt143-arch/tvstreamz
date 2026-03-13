@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Tv, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useChannels, useDeleteChannel, type DbChannel } from '@/hooks/useChannels';
+import { useChannels, useDeleteChannel, useUpdateChannel, type DbChannel } from '@/hooks/useChannels';
 import { ChannelForm } from './ChannelForm';
 import {
   AlertDialog,
