@@ -6,7 +6,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string }> => {
+const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -20,14 +20,16 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
       backup2: config?.cloudflare_proxy_url_backup2 || '',
       backup3: config?.cloudflare_proxy_url_backup3 || '',
       backup4: config?.cloudflare_proxy_url_backup4 || '',
+      backup5: config?.cloudflare_proxy_url_backup5 || '',
+      backup6: config?.cloudflare_proxy_url_backup6 || '',
     };
   } catch {
-    return { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
+    return { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
   }
 };
 
 const pickBestProxy = (
-  urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string },
+  urls: { primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string },
   channelProxyOrder?: ProxyKey[]
 ): string[] => {
   const order = channelProxyOrder || DEFAULT_PROXY_ORDER;
@@ -37,6 +39,8 @@ const pickBestProxy = (
     backup2: urls.backup2,
     backup3: urls.backup3,
     backup4: urls.backup4,
+    backup5: urls.backup5,
+    backup6: urls.backup6,
   };
   return order.map(k => urlMap[k]).filter(Boolean);
 };
@@ -121,13 +125,13 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
       try {
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '' };
+        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
         const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
         const proxyUrl = orderedProxies[0] || '';
         
         let streamUrl = channel.manifestUri;
         
-        // Auto-resolve TheTVApp - Binalik sa original na nag-work!
+        // Auto-resolve TheTVApp
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -152,6 +156,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
         if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
         if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
+        if (proxyUrls.backup5) labelMap.set(proxyUrls.backup5, 'Backup 5');
+        if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
         proxyLabelMapRef.current = labelMap;
 
         if (proxyUrl && isMounted) onProxyChange?.(labelMap.get(proxyUrl) || 'Direct');
