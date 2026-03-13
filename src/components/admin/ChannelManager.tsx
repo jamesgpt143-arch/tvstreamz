@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Tv, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useChannels, useDeleteChannel, useUpdateChannel, type DbChannel } from '@/hooks/useChannels';
+import { useChannels, useDeleteChannel, type DbChannel } from '@/hooks/useChannels';
 import { ChannelForm } from './ChannelForm';
 import {
   AlertDialog,
@@ -18,21 +18,11 @@ import {
 import { toast } from 'sonner';
 
 export function ChannelManager() {
-  const { data: channels, isLoading } = useChannels(true);
+  const { data: channels, isLoading } = useChannels(true); // Include inactive
   const deleteChannel = useDeleteChannel();
-  const updateChannel = useUpdateChannel();
   const [showForm, setShowForm] = useState(false);
   const [editingChannel, setEditingChannel] = useState<DbChannel | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DbChannel | null>(null);
-
-  const handleToggleActive = async (channel: DbChannel) => {
-    try {
-      await updateChannel.mutateAsync({ id: channel.id, is_active: !channel.is_active });
-      toast.success(`"${channel.name}" ${channel.is_active ? 'disabled' : 'enabled'}`);
-    } catch (error) {
-      toast.error('Failed to update channel status');
-    }
-  };
 
   const handleEdit = (channel: DbChannel) => {
     setEditingChannel(channel);
@@ -99,21 +89,23 @@ export function ChannelManager() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground truncate">{channel.name}</p>
+                      {channel.is_active ? (
+                        <Badge variant="outline" className="text-green-500 border-green-500/50 gap-1">
+                          <Check className="h-3 w-3" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground gap-1">
+                          <X className="h-3 w-3" />
+                          Inactive
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {channel.stream_type.toUpperCase()} • {channel.category || 'General'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleToggleActive(channel)}
-                      className={`h-8 w-8 ${channel.is_active ? 'text-green-500 hover:text-red-500' : 'text-muted-foreground hover:text-green-500'}`}
-                      title={channel.is_active ? 'Disable channel' : 'Enable channel'}
-                    >
-                      {channel.is_active ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
