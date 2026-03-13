@@ -4,6 +4,7 @@ import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, 
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 import { SearchSuggestions } from './SearchSuggestions';
 import {
   Sheet,
@@ -203,6 +204,7 @@ export const Navbar = () => {
               )}
             </div>
 
+            <NotificationBell />
             <ThemeToggle />
 
             {/* Hamburger Menu */}

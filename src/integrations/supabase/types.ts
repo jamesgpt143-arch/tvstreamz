@@ -110,6 +110,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
