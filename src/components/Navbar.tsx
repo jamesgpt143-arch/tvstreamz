@@ -204,6 +204,7 @@ export const Navbar = () => {
               )}
             </div>
 
+            <NotificationBell />
             <ThemeToggle />
 
             {/* Hamburger Menu */}

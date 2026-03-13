@@ -438,6 +438,10 @@ export default function AdminDashboard() {
           <TabsContent value="iptv">
             <IptvSettings />
           </TabsContent>
+
+          <TabsContent value="notifications">
+            <NotificationManager />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
