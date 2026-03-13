@@ -227,6 +227,10 @@ export default function AdminDashboard() {
               <Wifi className="h-4 w-4" />
               IPTV
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analytics" className="space-y-6">
