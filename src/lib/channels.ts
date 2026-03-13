@@ -1,4 +1,4 @@
-export type ProxyKey = 'primary' | 'backup' | 'backup2' | 'backup3' | 'backup4';
+export type ProxyKey = 'primary' | 'backup' | 'backup2' | 'backup3' | 'backup4' | 'backup5' | 'backup6';
 
 export const PROXY_LABELS: Record<ProxyKey, string> = {
   primary: 'Primary',
@@ -6,9 +6,11 @@ export const PROXY_LABELS: Record<ProxyKey, string> = {
   backup2: 'Backup 2',
   backup3: 'Backup 3',
   backup4: 'Backup 4',
+  backup5: 'Backup 5',
+  backup6: 'Backup 6',
 };
 
-export const DEFAULT_PROXY_ORDER: ProxyKey[] = ['primary', 'backup', 'backup2', 'backup3', 'backup4'];
+export const DEFAULT_PROXY_ORDER: ProxyKey[] = ['primary', 'backup', 'backup2', 'backup3', 'backup4', 'backup5', 'backup6'];
 
 export interface Channel {
   id: string;
