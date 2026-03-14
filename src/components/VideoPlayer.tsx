@@ -9,8 +9,8 @@ interface VideoPlayerProps {
   title: string;
 }
 
-// All servers use sandbox to block popup ads
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 1', 'Server 2', 'Server 3'];
+// Server 1 (VidSrc) supports sandbox, others don't
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
