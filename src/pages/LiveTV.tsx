@@ -25,9 +25,21 @@ const LiveTV = () => {
   const { data: viewCounts } = useChannelViews();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
   const [selectedCategory, setSelectedCategory] = useState<ChannelCategory>('All');
+  const [showQr, setShowQr] = useState(false);
   
   // Trigger page popup if enabled
   usePagePopup('livetv');
+
+  // Show GCash QR once per day
+  useEffect(() => {
+    const key = 'gcash_qr_last_shown';
+    const last = localStorage.getItem(key);
+    const today = new Date().toDateString();
+    if (last !== today) {
+      setShowQr(true);
+      localStorage.setItem(key, today);
+    }
+  }, []);
 
   // All channels come from database now
   const channels: Channel[] = useMemo(() => {
