@@ -166,6 +166,15 @@ const LiveTV = () => {
           </div>
         </div>
       </main>
+
+      {/* Daily GCash QR Popup */}
+      <Dialog open={showQr} onOpenChange={setShowQr}>
+        <DialogContent className="max-w-xs p-4">
+          <img src={gcashQr} alt="GCash QR Code for Donation" className="w-full h-auto rounded-lg" />
+          <p className="text-center text-muted-foreground text-sm mt-2">Support us via GCash 💚</p>
+          <p className="text-center text-muted-foreground text-xs">Tap outside or press X to close</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
