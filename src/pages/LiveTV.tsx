@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { type Channel } from '@/lib/channels';
@@ -6,6 +6,8 @@ import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
 import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
+import gcashQr from '@/assets/gcash-qr.jpg';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory, getChannelCategory } from '@/lib/channelCategories';
 import {
