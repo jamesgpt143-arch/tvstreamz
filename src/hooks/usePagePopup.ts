@@ -17,12 +17,28 @@ const DEFAULT_CONFIG: PagePopupConfig = {
   url: '',
 };
 
+// Helper function to check if user is admin
+async function isUserAdmin(): Promise<boolean> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return false;
+  
+  const { data, error } = await supabase
+    .rpc('has_role', { _user_id: session.user.id, _role: 'admin' });
+  
+  return !error && data === true;
+}
+
 export function usePagePopup(pageId: string) {
   const [config, setConfig] = useState<PagePopupConfig>(DEFAULT_CONFIG);
   const [hasTriggered, setHasTriggered] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const fetchConfig = async () => {
+    const fetchConfigAndCheckAdmin = async () => {
+      // Check if user is admin
+      const adminStatus = await isUserAdmin();
+      setIsAdmin(adminStatus);
+      
       const { data, error } = await supabase
         .from('site_settings')
         .select('value')
@@ -37,11 +53,13 @@ export function usePagePopup(pageId: string) {
       }
     };
 
-    fetchConfig();
+    fetchConfigAndCheckAdmin();
   }, [pageId]);
 
-  // Trigger popup when config is loaded and enabled
+  // Trigger popup when config is loaded and enabled (skip for admins)
   useEffect(() => {
+    if (isAdmin) return; // Don't show popup to admins
+    
     if (config.enabled && config.url && !hasTriggered) {
       setHasTriggered(true);
       
@@ -60,9 +78,9 @@ export function usePagePopup(pageId: string) {
         });
       }
     }
-  }, [config, hasTriggered]);
+  }, [config, hasTriggered, isAdmin]);
 
-  return { config, hasTriggered };
+  return { config, hasTriggered, isAdmin };
 }
 
 // Admin hook for managing all page popups
