@@ -19,6 +19,7 @@ export interface DbChannel {
   use_proxy: boolean;
   proxy_order: string[] | null;
   tvapp_slug: string | null;
+  proxy_type: string;
   created_at: string;
   updated_at: string;
 }
