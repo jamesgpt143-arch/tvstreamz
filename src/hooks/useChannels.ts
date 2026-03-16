@@ -63,6 +63,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   useProxy: dbChannel.use_proxy,
   proxyOrder: dbChannel.proxy_order as any || undefined,
   tvappSlug: dbChannel.tvapp_slug || undefined,
+  proxyType: dbChannel.proxy_type || 'none',
 });
 
 export function useChannels(includeInactive = false) {
