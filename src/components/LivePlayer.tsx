@@ -6,7 +6,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
+const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
     const { data } = await supabase
       .from('site_settings')
@@ -14,14 +14,15 @@ const getProxyUrls = async (): Promise<{ primary: string; backup: string; backup
       .eq('key', 'iptv_config')
       .single();
     const config = data?.value as Record<string, string> | null;
+    const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
     return {
-      primary: config?.cloudflare_proxy_url || '',
-      backup: config?.cloudflare_proxy_url_backup || '',
-      backup2: config?.cloudflare_proxy_url_backup2 || '',
-      backup3: config?.cloudflare_proxy_url_backup3 || '',
-      backup4: config?.cloudflare_proxy_url_backup4 || '',
-      backup5: config?.cloudflare_proxy_url_backup5 || '',
-      backup6: config?.cloudflare_proxy_url_backup6 || '',
+      primary: config?.[prefix] || '',
+      backup: config?.[`${prefix}_backup`] || '',
+      backup2: config?.[`${prefix}_backup2`] || '',
+      backup3: config?.[`${prefix}_backup3`] || '',
+      backup4: config?.[`${prefix}_backup4`] || '',
+      backup5: config?.[`${prefix}_backup5`] || '',
+      backup6: config?.[`${prefix}_backup6`] || '',
     };
   } catch {
     return { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
@@ -125,7 +126,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
       try {
-        const proxyUrls = channel.useProxy ? await getProxyUrls() : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
+        const proxyUrls = channel.useProxy ? await getProxyUrls(channel.proxyType || 'cloudflare') : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
         const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
         const proxyUrl = orderedProxies[0] || '';
         

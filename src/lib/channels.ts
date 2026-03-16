@@ -26,4 +26,5 @@ export interface Channel {
   useProxy?: boolean;
   proxyOrder?: ProxyKey[];
   tvappSlug?: string;
+  proxyType?: string;
 }

@@ -5,7 +5,7 @@ import { DEFAULT_PROXY_ORDER, PROXY_LABELS, type ProxyKey } from '@/lib/channels
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from '@/components/ui/switch'; // kept for Active toggle
 import {
   Select,
   SelectContent,
@@ -77,6 +77,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     use_proxy: channel?.use_proxy ?? false,
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
     tvapp_slug: channel?.tvapp_slug || '',
+    proxy_type: (channel as any)?.proxy_type || 'none',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -98,30 +99,24 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     }
 
     try {
+      const submitData = {
+        ...formData,
+        drm_key_id: formData.drm_key_id || null,
+        drm_key: formData.drm_key || null,
+        license_type: formData.license_type || null,
+        license_url: formData.license_url || null,
+        user_agent: formData.user_agent || null,
+        referrer: formData.referrer || null,
+        tvapp_slug: formData.tvapp_slug || null,
+        use_proxy: formData.proxy_type !== 'none',
+        proxy_type: formData.proxy_type || 'none',
+      };
+
       if (isEditing && channel) {
-        await updateChannel.mutateAsync({
-          id: channel.id,
-          ...formData,
-          drm_key_id: formData.drm_key_id || null,
-          drm_key: formData.drm_key || null,
-          license_type: formData.license_type || null,
-          license_url: formData.license_url || null,
-          user_agent: formData.user_agent || null,
-          referrer: formData.referrer || null,
-          tvapp_slug: formData.tvapp_slug || null,
-        });
+        await updateChannel.mutateAsync({ id: channel.id, ...submitData });
         toast.success('Channel updated');
       } else {
-        await createChannel.mutateAsync({
-          ...formData,
-          drm_key_id: formData.drm_key_id || null,
-          drm_key: formData.drm_key || null,
-          license_type: formData.license_type || null,
-          license_url: formData.license_url || null,
-          user_agent: formData.user_agent || null,
-          referrer: formData.referrer || null,
-          tvapp_slug: formData.tvapp_slug || null,
-        });
+        await createChannel.mutateAsync(submitData);
         toast.success('Channel created');
       }
       onClose();
@@ -353,21 +348,27 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
           </div>
 
-          {/* Proxy Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <div>
-              <Label htmlFor="use_proxy">Use Cloudflare Proxy</Label>
-              <p className="text-xs text-muted-foreground">Route stream through Cloudflare Worker proxy</p>
-            </div>
-            <Switch
-              id="use_proxy"
-              checked={formData.use_proxy ?? false}
-              onCheckedChange={(checked) => setFormData({ ...formData, use_proxy: checked })}
-            />
+          {/* Proxy Provider */}
+          <div className="space-y-2">
+            <Label htmlFor="proxy_type">Proxy Provider</Label>
+            <Select
+              value={formData.proxy_type || 'none'}
+              onValueChange={(value) => setFormData({ ...formData, proxy_type: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Direct (No Proxy)</SelectItem>
+                <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
+                <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Piliin kung saan dadaan ang stream requests</p>
           </div>
 
           {/* Proxy Order - shown when proxy is enabled */}
-          {formData.use_proxy && (
+          {formData.proxy_type !== 'none' && (
             <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
               <Label>Proxy Priority Order</Label>
               <p className="text-xs text-muted-foreground mb-2">
