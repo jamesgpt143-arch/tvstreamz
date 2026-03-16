@@ -18,6 +18,8 @@ interface WelcomePopupData {
   message: string;
   button_text: string;
   tags: string[];
+  link_url?: string;
+  link_text?: string;
 }
 
 const defaultData: WelcomePopupData = {
@@ -26,7 +28,9 @@ const defaultData: WelcomePopupData = {
   title: 'Welcome to TVStreamz!',
   message: 'Stream your favorite movies, TV shows, anime, and live TV channels for free. Enjoy unlimited entertainment anytime, anywhere!',
   button_text: 'Start Watching 🍿',
-  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV']
+  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV'],
+  link_url: '',
+  link_text: ''
 };
 
 export const WelcomePopupSettings = () => {
@@ -52,7 +56,7 @@ export const WelcomePopupSettings = () => {
       }
 
       if (settings?.value) {
-        setData(settings.value as unknown as WelcomePopupData);
+        setData({ ...defaultData, ...(settings.value as unknown as WelcomePopupData) });
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -158,6 +162,30 @@ export const WelcomePopupSettings = () => {
           />
         </div>
 
+        {/* Optional Link */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/20">
+          <div className="space-y-2">
+            <Label htmlFor="link_text">Link Display Text (Optional)</Label>
+            <Input
+              id="link_text"
+              value={data.link_text || ''}
+              onChange={(e) => setData({ ...data, link_text: e.target.value })}
+              placeholder="e.g. Join our Telegram Group"
+            />
+            <p className="text-[10px] text-muted-foreground">Ito ang text na makikita at iki-click ng user.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="link_url">Link URL (Optional)</Label>
+            <Input
+              id="link_url"
+              value={data.link_url || ''}
+              onChange={(e) => setData({ ...data, link_url: e.target.value })}
+              placeholder="https://t.me/yourgroup"
+            />
+            <p className="text-[10px] text-muted-foreground">Ang website address kung saan sila mapupunta.</p>
+          </div>
+        </div>
+
         {/* Button Text */}
         <div className="space-y-2">
           <Label htmlFor="button_text">Button Text</Label>
@@ -201,19 +229,27 @@ export const WelcomePopupSettings = () => {
         {/* Preview */}
         <div className="space-y-2">
           <Label>Preview</Label>
-          <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/10 to-primary/5">
-            <div className="text-center space-y-3">
-              <div className="text-4xl">{data.emoji}</div>
-              <h3 className="text-xl font-bold">{data.title}</h3>
-              <p className="text-sm text-muted-foreground">{data.message}</p>
-              <div className="flex flex-wrap justify-center gap-2">
+          <div className="border rounded-lg p-6 bg-gradient-to-br from-primary/10 to-primary/5">
+            <div className="text-center space-y-4">
+              <div className="text-5xl">{data.emoji}</div>
+              <h3 className="text-2xl font-bold">{data.title}</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.message}</p>
+              
+              {/* Link Preview */}
+              {data.link_text && data.link_url && (
+                <a href={data.link_url} target="_blank" rel="noopener noreferrer" className="inline-block text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors mt-2">
+                  {data.link_text}
+                </a>
+              )}
+
+              <div className="flex flex-wrap justify-center gap-2 pt-2">
                 {data.tags.map((tag) => (
                   <span key={tag} className="px-2 py-1 bg-primary/20 rounded-full text-xs text-primary">
                     {tag}
                   </span>
                 ))}
               </div>
-              <Button size="sm" className="mt-2">{data.button_text}</Button>
+              <Button className="w-full mt-4">{data.button_text}</Button>
             </div>
           </div>
         </div>
