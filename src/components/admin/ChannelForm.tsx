@@ -99,30 +99,24 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     }
 
     try {
+      const submitData = {
+        ...formData,
+        drm_key_id: formData.drm_key_id || null,
+        drm_key: formData.drm_key || null,
+        license_type: formData.license_type || null,
+        license_url: formData.license_url || null,
+        user_agent: formData.user_agent || null,
+        referrer: formData.referrer || null,
+        tvapp_slug: formData.tvapp_slug || null,
+        use_proxy: formData.proxy_type !== 'none',
+        proxy_type: formData.proxy_type || 'none',
+      };
+
       if (isEditing && channel) {
-        await updateChannel.mutateAsync({
-          id: channel.id,
-          ...formData,
-          drm_key_id: formData.drm_key_id || null,
-          drm_key: formData.drm_key || null,
-          license_type: formData.license_type || null,
-          license_url: formData.license_url || null,
-          user_agent: formData.user_agent || null,
-          referrer: formData.referrer || null,
-          tvapp_slug: formData.tvapp_slug || null,
-        });
+        await updateChannel.mutateAsync({ id: channel.id, ...submitData });
         toast.success('Channel updated');
       } else {
-        await createChannel.mutateAsync({
-          ...formData,
-          drm_key_id: formData.drm_key_id || null,
-          drm_key: formData.drm_key || null,
-          license_type: formData.license_type || null,
-          license_url: formData.license_url || null,
-          user_agent: formData.user_agent || null,
-          referrer: formData.referrer || null,
-          tvapp_slug: formData.tvapp_slug || null,
-        });
+        await createChannel.mutateAsync(submitData);
         toast.success('Channel created');
       }
       onClose();
