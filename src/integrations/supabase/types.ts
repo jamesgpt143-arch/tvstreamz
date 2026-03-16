@@ -27,6 +27,7 @@ export type Database = {
           logo_url: string | null
           name: string
           proxy_order: Json | null
+          proxy_type: string
           referrer: string | null
           sort_order: number | null
           stream_type: string
@@ -48,6 +49,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           proxy_order?: Json | null
+          proxy_type?: string
           referrer?: string | null
           sort_order?: number | null
           stream_type?: string
@@ -69,6 +71,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           proxy_order?: Json | null
+          proxy_type?: string
           referrer?: string | null
           sort_order?: number | null
           stream_type?: string
