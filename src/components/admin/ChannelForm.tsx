@@ -348,17 +348,23 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             />
           </div>
 
-          {/* Proxy Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <div>
-              <Label htmlFor="use_proxy">Use Cloudflare Proxy</Label>
-              <p className="text-xs text-muted-foreground">Route stream through Cloudflare Worker proxy</p>
-            </div>
-            <Switch
-              id="use_proxy"
-              checked={formData.use_proxy ?? false}
-              onCheckedChange={(checked) => setFormData({ ...formData, use_proxy: checked })}
-            />
+          {/* Proxy Provider */}
+          <div className="space-y-2">
+            <Label htmlFor="proxy_type">Proxy Provider</Label>
+            <Select
+              value={formData.proxy_type || 'none'}
+              onValueChange={(value) => setFormData({ ...formData, proxy_type: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Direct (No Proxy)</SelectItem>
+                <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
+                <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Piliin kung saan dadaan ang stream requests</p>
           </div>
 
           {/* Proxy Order - shown when proxy is enabled */}
