@@ -133,6 +133,30 @@ export const FloatingChat = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
+
+    // ==========================================
+    // HIDDEN ADMIN COMMAND: CLEAR ALL MESSAGES
+    // ==========================================
+    if (isAdmin && newMessage.trim() === '/clear_all') {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('live_chat_messages')
+        .delete()
+        .eq('channel_id', channelId);
+
+      if (error) {
+        toast({ title: "Error", description: "Failed to clear chat", variant: "destructive" });
+      } else {
+        setMessages([]); 
+        toast({ title: "Chat Cleared", description: "All messages have been deleted." });
+      }
+      
+      setNewMessage(''); 
+      setIsLoading(false);
+      return; 
+    }
+    // ==========================================
     
     const displayUsername = isAdmin ? 'Admin' : profile?.username;
     const displayAvatar = isAdmin ? ADMIN_AVATAR : profile?.avatar_url;
