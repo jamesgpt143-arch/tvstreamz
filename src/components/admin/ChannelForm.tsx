@@ -368,7 +368,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           </div>
 
           {/* Proxy Order - shown when proxy is enabled */}
-          {formData.use_proxy && (
+          {formData.proxy_type !== 'none' && (
             <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
               <Label>Proxy Priority Order</Label>
               <p className="text-xs text-muted-foreground mb-2">

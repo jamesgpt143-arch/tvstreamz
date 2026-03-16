@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Save, Wifi } from "lucide-react";
+import { Loader2, Save, Wifi, Cloud, Server } from "lucide-react";
 
 interface IptvConfig {
   type: "stalker" | "xtream";
@@ -15,6 +15,7 @@ interface IptvConfig {
   server_url: string;
   username: string;
   password: string;
+  // Cloudflare proxy URLs
   cloudflare_proxy_url: string;
   cloudflare_proxy_url_backup: string;
   cloudflare_proxy_url_backup2: string;
@@ -22,6 +23,14 @@ interface IptvConfig {
   cloudflare_proxy_url_backup4: string;
   cloudflare_proxy_url_backup5: string;
   cloudflare_proxy_url_backup6: string;
+  // Supabase proxy URLs
+  supabase_proxy_url: string;
+  supabase_proxy_url_backup: string;
+  supabase_proxy_url_backup2: string;
+  supabase_proxy_url_backup3: string;
+  supabase_proxy_url_backup4: string;
+  supabase_proxy_url_backup5: string;
+  supabase_proxy_url_backup6: string;
 }
 
 const defaultConfig: IptvConfig = {
@@ -38,7 +47,58 @@ const defaultConfig: IptvConfig = {
   cloudflare_proxy_url_backup4: "",
   cloudflare_proxy_url_backup5: "",
   cloudflare_proxy_url_backup6: "",
+  supabase_proxy_url: "",
+  supabase_proxy_url_backup: "",
+  supabase_proxy_url_backup2: "",
+  supabase_proxy_url_backup3: "",
+  supabase_proxy_url_backup4: "",
+  supabase_proxy_url_backup5: "",
+  supabase_proxy_url_backup6: "",
 };
+
+const PROXY_FIELDS = [
+  { suffix: "", label: "Primary" },
+  { suffix: "_backup", label: "Backup 1" },
+  { suffix: "_backup2", label: "Backup 2" },
+  { suffix: "_backup3", label: "Backup 3" },
+  { suffix: "_backup4", label: "Backup 4" },
+  { suffix: "_backup5", label: "Backup 5" },
+  { suffix: "_backup6", label: "Backup 6" },
+];
+
+interface ProxySectionProps {
+  title: string;
+  icon: React.ReactNode;
+  prefix: "cloudflare_proxy_url" | "supabase_proxy_url";
+  config: IptvConfig;
+  onChange: (config: IptvConfig) => void;
+  placeholder: string;
+  description: string;
+}
+
+const ProxySection = ({ title, icon, prefix, config, onChange, placeholder, description }: ProxySectionProps) => (
+  <div className="space-y-3">
+    <div className="flex items-center gap-2 text-sm font-semibold">
+      {icon}
+      {title}
+    </div>
+    <p className="text-xs text-muted-foreground">{description}</p>
+    {PROXY_FIELDS.map(({ suffix, label }) => {
+      const key = `${prefix}${suffix}` as keyof IptvConfig;
+      return (
+        <div key={key} className="space-y-1">
+          <Label htmlFor={key}>{label}</Label>
+          <Input
+            id={key}
+            placeholder={placeholder}
+            value={config[key] as string}
+            onChange={(e) => onChange({ ...config, [key]: e.target.value })}
+          />
+        </div>
+      );
+    })}
+  </div>
+);
 
 export const IptvSettings = () => {
   const [config, setConfig] = useState<IptvConfig>(defaultConfig);
@@ -60,21 +120,11 @@ export const IptvSettings = () => {
 
       if (data?.value) {
         const val = data.value as Record<string, unknown>;
-        setConfig({
-          type: (val.type as "stalker" | "xtream") || "stalker",
-          portal_url: (val.portal_url as string) || "",
-          mac_address: (val.mac_address as string) || "",
-          server_url: (val.server_url as string) || "",
-          username: (val.username as string) || "",
-          password: (val.password as string) || "",
-          cloudflare_proxy_url: (val.cloudflare_proxy_url as string) || "",
-          cloudflare_proxy_url_backup: (val.cloudflare_proxy_url_backup as string) || "",
-          cloudflare_proxy_url_backup2: (val.cloudflare_proxy_url_backup2 as string) || "",
-          cloudflare_proxy_url_backup3: (val.cloudflare_proxy_url_backup3 as string) || "",
-          cloudflare_proxy_url_backup4: (val.cloudflare_proxy_url_backup4 as string) || "",
-          cloudflare_proxy_url_backup5: (val.cloudflare_proxy_url_backup5 as string) || "",
-          cloudflare_proxy_url_backup6: (val.cloudflare_proxy_url_backup6 as string) || "",
-        });
+        const merged = { ...defaultConfig };
+        for (const k of Object.keys(defaultConfig) as (keyof IptvConfig)[]) {
+          if (val[k] !== undefined) (merged as any)[k] = val[k] as string;
+        }
+        setConfig(merged);
       }
     } catch {
       // No config yet
@@ -223,95 +273,30 @@ export const IptvSettings = () => {
           </>
         )}
 
-        {/* Cloudflare Proxy URLs - shared across both types */}
-        <div className="space-y-4 border-t border-border pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="cloudflare_proxy_url">Cloudflare Worker Proxy URL (Primary)</Label>
-            <Input
-              id="cloudflare_proxy_url"
-              placeholder="https://hls-proxy.your-subdomain.workers.dev"
-              value={config.cloudflare_proxy_url}
-              onChange={(e) => setConfig({ ...config, cloudflare_proxy_url: e.target.value })}
+        {/* Proxy URLs - Two Sections */}
+        <div className="space-y-6 border-t border-border pt-4">
+          <ProxySection
+            title="Cloudflare Workers Proxy"
+            icon={<Cloud className="h-4 w-4 text-orange-500" />}
+            prefix="cloudflare_proxy_url"
+            config={config}
+            onChange={setConfig}
+            placeholder="https://hls-proxy.your-subdomain.workers.dev"
+            description="Deploy the Cloudflare Worker from cloudflare-worker/hls-proxy.js. I-set ang Primary at hanggang 6 na backup URLs."
+          />
+
+          <div className="border-t border-border pt-4">
+            <ProxySection
+              title="Supabase Edge Functions Proxy"
+              icon={<Server className="h-4 w-4 text-green-500" />}
+              prefix="supabase_proxy_url"
+              config={config}
+              onChange={setConfig}
+              placeholder="https://your-project.supabase.co/functions/v1/stream-proxy"
+              description="Supabase Edge Function proxy URLs. I-set ang Primary at hanggang 6 na backup URLs."
             />
-            <p className="text-xs text-muted-foreground">
-              Primary proxy for stream playback. Deploy the Cloudflare Worker from <code>cloudflare-worker/hls-proxy.js</code>.
-            </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="cloudflare_proxy_url_backup">Cloudflare Worker Proxy URL (Backup 1)</Label>
-            <Input
-              id="cloudflare_proxy_url_backup"
-              placeholder="https://hls-proxy-backup.your-subdomain.workers.dev"
-              value={config.cloudflare_proxy_url_backup}
-              onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup: e.target.value })}
-            />
-            <p className="text-xs text-muted-foreground">
-              Backup 1 — awtomatikong gagamitin kapag nag-error o nag-limit ang primary.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cloudflare_proxy_url_backup2">Cloudflare Worker Proxy URL (Backup 2)</Label>
-            <Input
-              id="cloudflare_proxy_url_backup2"
-              placeholder="https://hls-proxy-backup2.your-subdomain.workers.dev"
-              value={config.cloudflare_proxy_url_backup2}
-              onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup2: e.target.value })}
-            />
-             <p className="text-xs text-muted-foreground">
-               Backup 2 — gagamitin kapag nag-fail din ang Backup 1.
-             </p>
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="cloudflare_proxy_url_backup3">Cloudflare Worker Proxy URL (Backup 3)</Label>
-             <Input
-               id="cloudflare_proxy_url_backup3"
-               placeholder="https://hls-proxy-backup3.your-subdomain.workers.dev"
-               value={config.cloudflare_proxy_url_backup3}
-               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup3: e.target.value })}
-             />
-             <p className="text-xs text-muted-foreground">
-               Backup 3 — gagamitin kapag nag-fail din ang Backup 2.
-             </p>
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="cloudflare_proxy_url_backup4">Cloudflare Worker Proxy URL (Backup 4)</Label>
-             <Input
-               id="cloudflare_proxy_url_backup4"
-               placeholder="https://hls-proxy-backup4.your-subdomain.workers.dev"
-               value={config.cloudflare_proxy_url_backup4}
-               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup4: e.target.value })}
-             />
-             <p className="text-xs text-muted-foreground">
-               Backup 4 — gagamitin kapag nag-fail din ang Backup 3.
-             </p>
-           </div>
-           {/* Dinagdag na Backup 5 */}
-           <div className="space-y-2">
-             <Label htmlFor="cloudflare_proxy_url_backup5">Cloudflare Worker Proxy URL (Backup 5)</Label>
-             <Input
-               id="cloudflare_proxy_url_backup5"
-               placeholder="https://hls-proxy-backup5.your-subdomain.workers.dev"
-               value={config.cloudflare_proxy_url_backup5}
-               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup5: e.target.value })}
-             />
-             <p className="text-xs text-muted-foreground">
-               Backup 5 — gagamitin kapag nag-fail din ang Backup 4.
-             </p>
-           </div>
-           {/* Dinagdag na Backup 6 */}
-           <div className="space-y-2">
-             <Label htmlFor="cloudflare_proxy_url_backup6">Cloudflare Worker Proxy URL (Backup 6)</Label>
-             <Input
-               id="cloudflare_proxy_url_backup6"
-               placeholder="https://hls-proxy-backup6.your-subdomain.workers.dev"
-               value={config.cloudflare_proxy_url_backup6}
-               onChange={(e) => setConfig({ ...config, cloudflare_proxy_url_backup6: e.target.value })}
-             />
-             <p className="text-xs text-muted-foreground">
-               Backup 6 — gagamitin kapag nag-fail din ang Backup 5.
-             </p>
-           </div>
-         </div>
+        </div>
 
         <div className="flex gap-2">
           <Button onClick={saveConfig} disabled={saving} className="gap-2">
