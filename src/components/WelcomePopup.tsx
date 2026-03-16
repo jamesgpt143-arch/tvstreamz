@@ -11,6 +11,8 @@ interface WelcomePopupData {
   message: string;
   button_text: string;
   tags: string[];
+  link_url?: string;
+  link_text?: string;
 }
 
 const defaultData: WelcomePopupData = {
@@ -19,7 +21,9 @@ const defaultData: WelcomePopupData = {
   title: 'Welcome to TVStreamz!',
   message: 'Stream your favorite movies, TV shows, anime, and live TV channels for free. Enjoy unlimited entertainment anytime, anywhere!',
   button_text: 'Start Watching 🍿',
-  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV']
+  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV'],
+  link_url: '',
+  link_text: ''
 };
 
 export const WelcomePopup = () => {
@@ -37,7 +41,7 @@ export const WelcomePopup = () => {
           .single();
 
         if (!error && settings?.value) {
-          const popupData = settings.value as unknown as WelcomePopupData;
+          const popupData = { ...defaultData, ...(settings.value as unknown as WelcomePopupData) };
           setData(popupData);
           
           // Only show if enabled and user hasn't seen it this session
@@ -102,9 +106,22 @@ export const WelcomePopup = () => {
             <h2 className="text-2xl font-bold text-foreground">
               {data.title}
             </h2>
-            <p className="text-muted-foreground text-sm leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
               {data.message}
             </p>
+
+            {/* Clickable Link (Shown only if both text and url exist) */}
+            {data.link_text && data.link_url && (
+              <a
+                href={data.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors"
+              >
+                {data.link_text}
+              </a>
+            )}
+
             <div className="flex flex-wrap justify-center gap-2 pt-2">
               {data.tags.map((tag) => (
                 <span key={tag} className="px-2 py-1 bg-primary/20 rounded-full text-xs text-primary">
