@@ -121,13 +121,43 @@ const CustomChannels = () => {
     };
 
     if (formData.id) {
+      // UPDATE EXISTING CHANNEL (Walang notification kapag nag-edit lang)
       const { error } = await supabase.from('custom_channels').update(payload).eq('id', formData.id);
       if (error) toast.error("Error updating channel");
       else toast.success("Channel updated!");
     } else {
+      // INSERT NEW CHANNEL
       const { error } = await supabase.from('custom_channels').insert([payload]);
-      if (error) toast.error("Error adding channel");
-      else toast.success("Channel added!");
+      if (error) {
+        toast.error("Error adding channel");
+      } else {
+        toast.success("Channel added!");
+        
+        // ==========================================
+        // AUTOMATIC NOTIFICATION LOGIC
+        // ==========================================
+        try {
+          // 1. Kunin ang Username ng nag-upload
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('user_id', user.id)
+            .single();
+            
+          const uploaderName = profile?.username || 'Isang user';
+
+          // 2. Mag-send ng notification sa lahat
+          await supabase.from('notifications').insert({
+            title: "📺 Bagong Custom Channel!",
+            message: `Nag-add si ${uploaderName} ng bagong stream: "${formData.name}". Silipin na kung gumagana!`,
+            link_text: "Watch Now",
+            link_url: "/custom-channels"
+          });
+        } catch (err) {
+          console.error("Failed to push notification:", err);
+        }
+        // ==========================================
+      }
     }
 
     setIsModalOpen(false);
