@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { LivePlayer } from "@/components/LivePlayer";
 import type { Channel } from "@/lib/channels";
+import { useQueryClient } from "@tanstack/react-query"; // DINAGDAG: Para sa instant notification update
 
 interface CustomChannel {
   id: string;
@@ -34,6 +35,8 @@ const CustomChannels = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [playingChannel, setPlayingChannel] = useState<Channel | null>(null);
+  
+  const queryClient = useQueryClient(); // DINAGDAG: Para ma-refresh agad ang bell icon
 
   const [formData, setFormData] = useState({
     id: '',
@@ -121,23 +124,18 @@ const CustomChannels = () => {
     };
 
     if (formData.id) {
-      // UPDATE EXISTING CHANNEL (Walang notification kapag nag-edit lang)
       const { error } = await supabase.from('custom_channels').update(payload).eq('id', formData.id);
       if (error) toast.error("Error updating channel");
       else toast.success("Channel updated!");
     } else {
-      // INSERT NEW CHANNEL
       const { error } = await supabase.from('custom_channels').insert([payload]);
       if (error) {
         toast.error("Error adding channel");
+        console.error(error);
       } else {
         toast.success("Channel added!");
         
-        // ==========================================
-        // AUTOMATIC NOTIFICATION LOGIC
-        // ==========================================
         try {
-          // 1. Kunin ang Username ng nag-upload
           const { data: profile } = await supabase
             .from('profiles')
             .select('username')
@@ -146,17 +144,23 @@ const CustomChannels = () => {
             
           const uploaderName = profile?.username || 'Isang user';
 
-          // 2. Mag-send ng notification sa lahat
-          await supabase.from('notifications').insert({
+          const { error: notifError } = await supabase.from('notifications').insert({
             title: "📺 Bagong Custom Channel!",
             message: `Nag-add si ${uploaderName} ng bagong stream: "${formData.name}". Silipin na kung gumagana!`,
             link_text: "Watch Now",
             link_url: "/custom-channels"
           });
+
+          if (notifError) {
+             console.error("Notif Error:", notifError);
+          } else {
+             // I-FORCE REFRESH ANG NOTIFICATION BELL INSTANTLY!
+             queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          }
+
         } catch (err) {
           console.error("Failed to push notification:", err);
         }
-        // ==========================================
       }
     }
 
