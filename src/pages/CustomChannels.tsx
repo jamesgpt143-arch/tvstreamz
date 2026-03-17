@@ -4,8 +4,8 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-// DITO YUNG MALI KANINA: Dinagdag ko ang MonitorUp sa import
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Tv, Pencil, Trash2, Loader2, Play, MonitorUp } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -19,6 +19,11 @@ interface CustomChannel {
   stream_url: string;
   logo_url: string | null;
   stream_type: 'hls' | 'mpd' | 'youtube';
+  drm_key_id: string | null;
+  drm_key: string | null;
+  license_type: 'clearkey' | 'widevine' | null;
+  license_url: string | null;
+  proxy_type: string | null;
 }
 
 const CustomChannels = () => {
@@ -36,6 +41,11 @@ const CustomChannels = () => {
     stream_url: '',
     logo_url: '',
     stream_type: 'hls' as const,
+    drm_key_id: '',
+    drm_key: '',
+    license_type: 'none' as string,
+    license_url: '',
+    proxy_type: 'cloudflare'
   });
 
   useEffect(() => {
@@ -44,23 +54,29 @@ const CustomChannels = () => {
 
   const fetchAuthAndChannels = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
 
-    if (user) {
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin");
-      setIsAdmin(!!(roles && roles.length > 0));
+      if (user) {
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin");
+        setIsAdmin(!!(roles && roles.length > 0));
+      }
+
+      const { data, error } = await supabase
+        .from('custom_channels')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setChannels(data as CustomChannel[]);
+      }
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    } finally {
+      setLoading(false);
     }
-
-    const { data, error } = await supabase
-      .from('custom_channels')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setChannels(data as CustomChannel[]);
-    }
-    setLoading(false);
   };
 
   const handleOpenModal = (channel?: CustomChannel) => {
@@ -71,9 +87,17 @@ const CustomChannels = () => {
         stream_url: channel.stream_url,
         logo_url: channel.logo_url || '',
         stream_type: channel.stream_type,
+        drm_key_id: channel.drm_key_id || '',
+        drm_key: channel.drm_key || '',
+        license_type: channel.license_type || 'none',
+        license_url: channel.license_url || '',
+        proxy_type: channel.proxy_type || 'cloudflare'
       });
     } else {
-      setFormData({ id: '', name: '', stream_url: '', logo_url: '', stream_type: 'hls' });
+      setFormData({ 
+        id: '', name: '', stream_url: '', logo_url: '', stream_type: 'hls',
+        drm_key_id: '', drm_key: '', license_type: 'none', license_url: '', proxy_type: 'cloudflare'
+      });
     }
     setIsModalOpen(true);
   };
@@ -88,6 +112,11 @@ const CustomChannels = () => {
       stream_url: formData.stream_url,
       logo_url: formData.logo_url || null,
       stream_type: formData.stream_type,
+      drm_key_id: formData.drm_key_id || null,
+      drm_key: formData.drm_key || null,
+      license_type: formData.license_type === 'none' ? null : formData.license_type,
+      license_url: formData.license_url || null,
+      proxy_type: formData.proxy_type === 'none' ? null : formData.proxy_type,
       user_id: user.id
     };
 
@@ -117,15 +146,17 @@ const CustomChannels = () => {
   };
 
   const handlePlay = (ch: CustomChannel) => {
-    // Format it into standard Channel object so LivePlayer can read it
     const mappedChannel: Channel = {
       id: ch.id,
       name: ch.name,
       manifestUri: ch.stream_url,
       type: ch.stream_type,
       logo: ch.logo_url || '',
-      useProxy: true,           
-      proxyType: 'cloudflare' 
+      clearKey: ch.license_type === 'clearkey' && ch.drm_key_id && ch.drm_key 
+        ? { [ch.drm_key_id]: ch.drm_key } : undefined,
+      widevineUrl: ch.license_type === 'widevine' && ch.license_url ? ch.license_url : undefined,
+      useProxy: ch.proxy_type !== null && ch.proxy_type !== 'none',
+      proxyType: ch.proxy_type || 'cloudflare' 
     };
     setPlayingChannel(mappedChannel);
   };
@@ -183,7 +214,6 @@ const CustomChannels = () => {
                     <Play className="w-4 h-4" /> Play
                   </Button>
                   
-                  {/* Show Edit/Delete only to owner or admin */}
                   {(user?.id === ch.user_id || isAdmin) && (
                     <>
                       <Button onClick={() => handleOpenModal(ch)} size="icon" variant="outline" className="w-9 h-9">
@@ -200,45 +230,95 @@ const CustomChannels = () => {
           </div>
         )}
 
-        {/* ADD/EDIT MODAL */}
+        {/* ADVANCED ADD/EDIT MODAL */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{formData.id ? 'Edit Channel' : 'Add Custom Channel'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-4">
+              
               <div className="space-y-2">
-                <Label>Channel Name</Label>
-                <Input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. My Favorite Movie Stream" />
+                <Label>Channel Name *</Label>
+                <Input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. GMA 7" />
               </div>
+
               <div className="space-y-2">
-                <Label>Stream URL (.m3u8 / .mpd / YouTube)</Label>
+                <Label>Stream URL *</Label>
                 <Input required value={formData.stream_url} onChange={e => setFormData({...formData, stream_url: e.target.value})} placeholder="https://..." />
               </div>
-              <div className="space-y-2">
-                <Label>Logo URL (Optional)</Label>
-                <Input type="url" value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} placeholder="https://..." />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Stream Type</Label>
+                  <Select value={formData.stream_type} onValueChange={(val: any) => setFormData({...formData, stream_type: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hls">HLS (.m3u8)</SelectItem>
+                      <SelectItem value="mpd">DASH (.mpd)</SelectItem>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Logo URL</Label>
+                  <Input type="url" value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} placeholder="https://..." />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Stream Type</Label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                  value={formData.stream_type} 
-                  onChange={e => setFormData({...formData, stream_type: e.target.value as any})}
-                >
-                  <option value="hls">HLS (.m3u8)</option>
-                  <option value="mpd">DASH (.mpd)</option>
-                  <option value="youtube">YouTube URL</option>
-                </select>
+
+              {/* ADVANCED SETTINGS */}
+              <div className="pt-4 border-t border-border space-y-4">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase">Advanced Settings</h4>
+                
+                <div className="space-y-2">
+                  <Label>Proxy Provider</Label>
+                  <Select value={formData.proxy_type} onValueChange={(val) => setFormData({...formData, proxy_type: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Direct (No Proxy)</SelectItem>
+                      <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
+                      <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">Kailangan ito para maiwasan ang CORS error sa mga streams.</p>
+                </div>
+
+                {(formData.stream_type === 'hls' || formData.stream_type === 'mpd') && (
+                  <div className="space-y-3 p-3 rounded bg-muted/30 border border-border">
+                    <Label>DRM Settings</Label>
+                    <Select value={formData.license_type} onValueChange={(val) => setFormData({...formData, license_type: val})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No DRM</SelectItem>
+                        <SelectItem value="clearkey">ClearKey</SelectItem>
+                        <SelectItem value="widevine">Widevine</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {formData.license_type === 'clearkey' && (
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Input value={formData.drm_key_id} onChange={e => setFormData({...formData, drm_key_id: e.target.value})} placeholder="Key ID" className="font-mono text-xs" />
+                        <Input value={formData.drm_key} onChange={e => setFormData({...formData, drm_key: e.target.value})} placeholder="Key" className="font-mono text-xs" />
+                      </div>
+                    )}
+                    {formData.license_type === 'widevine' && (
+                      <Input value={formData.license_url} onChange={e => setFormData({...formData, license_url: e.target.value})} placeholder="License URL" className="mt-2 text-xs" />
+                    )}
+                  </div>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Save Channel
-              </Button>
+
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="flex-1">Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={isSaving}>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} 
+                  {formData.id ? 'Update' : 'Add Channel'}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        {/* PLAYER POPUP */}
         <Dialog open={!!playingChannel} onOpenChange={(open) => !open && setPlayingChannel(null)}>
           <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-border">
             {playingChannel && (
@@ -246,12 +326,11 @@ const CustomChannels = () => {
                 <LivePlayer channel={playingChannel} />
               </div>
             )}
-            <div className="p-4 bg-card border-t border-border">
+            <div className="p-4 bg-card border-t border-border flex justify-between items-center">
               <h3 className="font-semibold text-lg">{playingChannel?.name}</h3>
             </div>
           </DialogContent>
         </Dialog>
-
       </main>
     </div>
   );
