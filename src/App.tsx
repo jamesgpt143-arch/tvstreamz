@@ -28,6 +28,8 @@ import TempMail from "./pages/TempMail";
 import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
 
+// DITO NATIN IDINAGDAG ANG IMPORT
+import CustomChannels from "./pages/CustomChannels";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,10 @@ const App = () => (
               <Route path="/iptv" element={<IPTV />} />
               
               <Route path="/temp-mail" element={<TempMail />} />
+              
+              {/* DITO NATIN ISININGIT ANG BAGONG ROUTE */}
+              <Route path="/custom-channels" element={<CustomChannels />} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
