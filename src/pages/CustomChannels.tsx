@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Tv, Pencil, Trash2, Loader2, Play } from "lucide-react";
+// DITO YUNG MALI KANINA: Dinagdag ko ang MonitorUp sa import
+import { Plus, Tv, Pencil, Trash2, Loader2, Play, MonitorUp } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { LivePlayer } from "@/components/LivePlayer";
@@ -123,7 +124,7 @@ const CustomChannels = () => {
       manifestUri: ch.stream_url,
       type: ch.stream_type,
       logo: ch.logo_url || '',
-      useProxy: true,           // SAPILITAN NATING IPAPADAAN SA CLOUDFLARE PARA HINDI MAG-CORS
+      useProxy: true,           
       proxyType: 'cloudflare' 
     };
     setPlayingChannel(mappedChannel);
