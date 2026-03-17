@@ -21,4 +21,19 @@ const initCapacitor = async () => {
 
 initCapacitor();
 
+// ==========================================
+// KILL SWITCH PARA SA LUMANG PWA/SERVICE WORKER
+// ==========================================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+      console.log('Old Service Worker removed. Forcing fresh update.');
+    }
+  }).catch((err) => {
+    console.error('Service Worker unregistration failed: ', err);
+  });
+}
+// ==========================================
+
 createRoot(document.getElementById("root")!).render(<App />);
