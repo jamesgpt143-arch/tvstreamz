@@ -138,7 +138,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
             
-            // Bypass cache kung auto-refresh triggered
             if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
 
             const res = await fetch(resolveUrl);
@@ -243,7 +242,40 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           } else {
             videoRef.current.controls = true; 
             if (Hls.isSupported()) {
-              const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
+              // ==========================================
+              // FIX: ADDED XHR SETUP TO INTERCEPT ALL CHUNKS
+              // ==========================================
+              const hls = new Hls({ 
+                enableWorker: true, 
+                lowLatencyMode: true, 
+                startLevel: -1,
+                xhrSetup: (xhr, url) => {
+                  if (proxyUrl) {
+                    const proxyOrigin = new URL(proxyUrl).origin;
+                    
+                    // Kung proxied na, hayaan na
+                    if (url.includes('?url=') || url.includes('&url=')) return;
+
+                    // Kung na-resolve accidentally ng browser sa proxy origin, i-build pabalik sa totoong url at i-proxy
+                    if (url.startsWith(proxyOrigin)) {
+                       const proxyPathname = new URL(proxyUrl).pathname;
+                       const path = url.substring(proxyOrigin.length);
+                       let relativePath = path;
+                       if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
+                         relativePath = relativePath.substring(proxyPathname.length);
+                       }
+                       relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+                       const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
+                       const fullOriginalUrl = manifestBase + relativePath;
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
+                    } 
+                    // Kung absolute url na nakalusot, sapilitang i-proxy
+                    else if (url.startsWith('http')) {
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
+                    }
+                  }
+                }
+              });
               hlsRef.current = hls;
               hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
