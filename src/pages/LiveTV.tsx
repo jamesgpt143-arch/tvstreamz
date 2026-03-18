@@ -1,15 +1,13 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { type Channel } from '@/lib/channels';
-import { useChannels, toAppChannel, type DbChannel } from '@/hooks/useChannels';
+import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
 import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
-import gcashQr from '@/assets/gcash-qr.jpg';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CATEGORIES, type ChannelCategory, getChannelCategory } from '@/lib/channelCategories';
+import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import {
   Select,
   SelectContent,
@@ -25,21 +23,9 @@ const LiveTV = () => {
   const { data: viewCounts } = useChannelViews();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
   const [selectedCategory, setSelectedCategory] = useState<ChannelCategory>('All');
-  const [showQr, setShowQr] = useState(false);
   
   // Trigger page popup if enabled
   usePagePopup('livetv');
-
-  // Show GCash QR once per day
-  useEffect(() => {
-    const key = 'gcash_qr_last_shown';
-    const last = localStorage.getItem(key);
-    const today = new Date().toDateString();
-    if (last !== today) {
-      setShowQr(true);
-      localStorage.setItem(key, today);
-    }
-  }, []);
 
   // All channels come from database now
   const channels: Channel[] = useMemo(() => {
@@ -166,15 +152,6 @@ const LiveTV = () => {
           </div>
         </div>
       </main>
-
-      {/* Daily GCash QR Popup */}
-      <Dialog open={showQr} onOpenChange={setShowQr}>
-        <DialogContent className="max-w-xs p-4">
-          <img src={gcashQr} alt="GCash QR Code for Donation" className="w-full h-auto rounded-lg" />
-          <p className="text-center text-muted-foreground text-sm mt-2">Support us via GCash 💚</p>
-          <p className="text-center text-muted-foreground text-xs">Tap outside or press X to close</p>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
