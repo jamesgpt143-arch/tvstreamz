@@ -5,10 +5,15 @@ import { GenreFilter } from '@/components/GenreFilter';
 import { fetchPopularMovies, fetchTopRatedMovies, fetchNowPlaying, fetchUpcoming, discoverContent, Movie, MOVIE_GENRES } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+// DINAGDAG: Import para sa page popup
+import { usePagePopup } from '@/hooks/usePagePopup';
 
 type Category = 'popular' | 'top_rated' | 'now_playing' | 'upcoming';
 
 const Movies = () => {
+  // DINAGDAG: I-trigger ang popup para sa 'movies'
+  usePagePopup('movies');
+
   const [movies, setMovies] = useState<Movie[]>([]);
   const [category, setCategory] = useState<Category>('popular');
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
