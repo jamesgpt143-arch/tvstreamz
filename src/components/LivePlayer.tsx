@@ -114,6 +114,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   useEffect(() => {
     let isMounted = true;
 
+    // MAGLAGAY NG TEMPORARY META REFERRER PARA MA-BYPASS ANG ILANG CORS
+    const metaTag = document.createElement('meta');
+    metaTag.name = "referrer";
+    metaTag.content = "no-referrer";
+    document.head.appendChild(metaTag);
+
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
       
@@ -132,14 +138,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         let streamUrl = channel.manifestUri;
         
-        // Auto-resolve TheTVApp
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
-            
             if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
-
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
@@ -201,7 +204,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
         const triggerAutoRefresh = () => {
           if (channel.tvappSlug && reloadTrigger < 2) { 
-            console.log("Token likely expired. Auto-refreshing stream...");
             if (isMounted) setReloadTrigger(prev => prev + 1);
             return true;
           }
@@ -242,40 +244,38 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           } else {
             videoRef.current.controls = true; 
             if (Hls.isSupported()) {
-              // ==========================================
-              // FIX: ADDED XHR SETUP TO INTERCEPT ALL CHUNKS
-              // ==========================================
-              const hls = new Hls({ 
-                enableWorker: true, 
-                lowLatencyMode: true, 
+              
+              // NORMAL HLS KUNG DIRECT, PROXIED HLS KUNG MAY PROXY
+              const hlsConfig: any = {
+                enableWorker: true,
+                lowLatencyMode: true,
                 startLevel: -1,
-                xhrSetup: (xhr, url) => {
-                  if (proxyUrl) {
-                    const proxyOrigin = new URL(proxyUrl).origin;
-                    
-                    // Kung proxied na, hayaan na
-                    if (url.includes('?url=') || url.includes('&url=')) return;
+              };
 
-                    // Kung na-resolve accidentally ng browser sa proxy origin, i-build pabalik sa totoong url at i-proxy
-                    if (url.startsWith(proxyOrigin)) {
-                       const proxyPathname = new URL(proxyUrl).pathname;
-                       const path = url.substring(proxyOrigin.length);
-                       let relativePath = path;
-                       if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
-                         relativePath = relativePath.substring(proxyPathname.length);
-                       }
-                       relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
-                       const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
-                       const fullOriginalUrl = manifestBase + relativePath;
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
-                    } 
-                    // Kung absolute url na nakalusot, sapilitang i-proxy
-                    else if (url.startsWith('http')) {
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
-                    }
+              // Ilagay lang ang proxy interceptor kapag NAKA-ON ang proxy. 
+              // Kapag Direct, hayaan siyang normal.
+              if (proxyUrl) {
+                hlsConfig.xhrSetup = (xhr: XMLHttpRequest, url: string) => {
+                  const proxyOrigin = new URL(proxyUrl).origin;
+                  if (url.includes('?url=') || url.includes('&url=')) return;
+                  if (url.startsWith(proxyOrigin)) {
+                      const proxyPathname = new URL(proxyUrl).pathname;
+                      const path = url.substring(proxyOrigin.length);
+                      let relativePath = path;
+                      if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
+                        relativePath = relativePath.substring(proxyPathname.length);
+                      }
+                      relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+                      const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
+                      const fullOriginalUrl = manifestBase + relativePath;
+                      xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
+                  } else if (url.startsWith('http')) {
+                      xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
                   }
-                }
-              });
+                };
+              }
+
+              const hls = new Hls(hlsConfig);
               hlsRef.current = hls;
               hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
@@ -293,16 +293,18 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               let currentProxyIndex = 0;
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  currentProxyIndex++;
-                  if (currentProxyIndex < orderedProxies.length) {
+                  if (proxyUrl && currentProxyIndex < orderedProxies.length) {
+                    currentProxyIndex++;
                     const nextProxy = orderedProxies[currentProxyIndex];
-                    onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
-                    return;
+                    if (nextProxy) {
+                      onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
+                      hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                      return;
+                    }
                   }
                   
                   if (!triggerAutoRefresh()) {
-                    setError('Failed to load stream. The channel may be offline.');
+                    setError('Failed to load stream. The channel may be offline or blocking access.');
                     setIsLoading(false);
                     setIsRefreshing(false);
                   }
@@ -367,6 +369,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
     return () => {
       isMounted = false;
+      document.head.removeChild(metaTag); // Tanggalin ang meta tag kapag isinara ang player
       if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
       if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
