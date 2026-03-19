@@ -114,7 +114,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   useEffect(() => {
     let isMounted = true;
 
-    // MAGLAGAY NG TEMPORARY META REFERRER PARA MA-BYPASS ANG ILANG CORS
+    // Temporary Meta Referrer for extra bypass attempt
     const metaTag = document.createElement('meta');
     metaTag.name = "referrer";
     metaTag.content = "no-referrer";
@@ -244,16 +244,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           } else {
             videoRef.current.controls = true; 
             if (Hls.isSupported()) {
-              
-              // NORMAL HLS KUNG DIRECT, PROXIED HLS KUNG MAY PROXY
               const hlsConfig: any = {
                 enableWorker: true,
                 lowLatencyMode: true,
                 startLevel: -1,
               };
 
-              // Ilagay lang ang proxy interceptor kapag NAKA-ON ang proxy. 
-              // Kapag Direct, hayaan siyang normal.
               if (proxyUrl) {
                 hlsConfig.xhrSetup = (xhr: XMLHttpRequest, url: string) => {
                   const proxyOrigin = new URL(proxyUrl).origin;
@@ -293,14 +289,24 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               let currentProxyIndex = 0;
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  if (proxyUrl && currentProxyIndex < orderedProxies.length) {
-                    currentProxyIndex++;
+                  
+                  // ==========================================
+                  // INFINITE PROXY LOOP LOGIC FOR TESTING
+                  // ==========================================
+                  if (data.type === Hls.ErrorTypes.NETWORK_ERROR && proxyUrl && orderedProxies.length > 0) {
+                    
+                    // Modulo arithmetic para bumalik sa 0 kapag lumagpas na sa dulo
+                    currentProxyIndex = (currentProxyIndex + 1) % orderedProxies.length;
                     const nextProxy = orderedProxies[currentProxyIndex];
+                    
                     if (nextProxy) {
                       onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
                       hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
-                      return;
+                      return; // Wag ituloy sa error state
                     }
+                  } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    hls.recoverMediaError();
+                    return;
                   }
                   
                   if (!triggerAutoRefresh()) {
@@ -369,7 +375,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
     return () => {
       isMounted = false;
-      document.head.removeChild(metaTag); // Tanggalin ang meta tag kapag isinara ang player
+      document.head.removeChild(metaTag);
       if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
       if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
