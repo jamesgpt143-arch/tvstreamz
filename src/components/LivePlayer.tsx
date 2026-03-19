@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
-import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield } from 'lucide-react';
+import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, RefreshCw } from 'lucide-react';
 import Hls from 'hls.js';
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
@@ -80,6 +80,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const proxyLabelMapRef = useRef<Map<string, string>>(new Map());
 
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    setReloadTrigger(0);
+    setIsRefreshing(false);
+  }, [channel.id]);
+
   const checkIOSCompatibility = useMemo(() => {
     if (!isIOS()) return null;
     if (channel.clearKey || channel.widevineUrl) return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions.';
@@ -106,17 +114,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   useEffect(() => {
     let isMounted = true;
 
-    // Temporary Meta Referrer for extra bypass attempt
-    const metaTag = document.createElement('meta');
-    metaTag.name = "referrer";
-    metaTag.content = "no-referrer";
-    document.head.appendChild(metaTag);
-
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
       
       setIsLoading(true);
       setError(null);
+      if (reloadTrigger > 0) setIsRefreshing(true);
 
       if (uiRef.current) { await uiRef.current.destroy(); uiRef.current = null; }
       if (shakaRef.current) { await shakaRef.current.destroy(); shakaRef.current = null; }
@@ -129,10 +132,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         let streamUrl = channel.manifestUri;
         
+        // Auto-resolve TheTVApp
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-            const resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
+            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
+            
+            if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
+
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
@@ -192,13 +199,22 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           });
         };
 
+        const triggerAutoRefresh = () => {
+          if (channel.tvappSlug && reloadTrigger < 2) { 
+            console.log("Token likely expired. Auto-refreshing stream...");
+            if (isMounted) setReloadTrigger(prev => prev + 1);
+            return true;
+          }
+          return false;
+        };
+
         if (channel.type === 'hls') {
           if (channel.widevineUrl) {
             videoRef.current.controls = false;
             shaka.polyfill.installAll();
             
             if (!shaka.Player.isBrowserSupported()) {
-              if (isMounted) { setError('Browser unsupported.'); setIsLoading(false); }
+              if (isMounted) { setError('Browser unsupported.'); setIsLoading(false); setIsRefreshing(false); }
               return;
             }
 
@@ -213,5 +229,229 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
             try {
               await player.load(streamUrl);
-              if (isMounted) { setIsLoading(false); videoRef.current?.play().catch(() => {}); }
+              if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
+              if (isMounted) {
+                if (!triggerAutoRefresh()) {
+                  setError('Failed to load stream. Offline or CORS error.');
+                  setIsLoading(false);
+                  setIsRefreshing(false);
+                }
+              }
+            }
+          } else {
+            videoRef.current.controls = true; 
+            if (Hls.isSupported()) {
+              // ==========================================
+              // FIX: ADDED XHR SETUP TO INTERCEPT ALL CHUNKS
+              // ==========================================
+              const hls = new Hls({ 
+                enableWorker: true, 
+                lowLatencyMode: true, 
+                startLevel: -1,
+                xhrSetup: (xhr, url) => {
+                  if (proxyUrl) {
+                    const proxyOrigin = new URL(proxyUrl).origin;
+                    
+                    // Kung proxied na, hayaan na
+                    if (url.includes('?url=') || url.includes('&url=')) return;
+
+                    // Kung na-resolve accidentally ng browser sa proxy origin, i-build pabalik sa totoong url at i-proxy
+                    if (url.startsWith(proxyOrigin)) {
+                       const proxyPathname = new URL(proxyUrl).pathname;
+                       const path = url.substring(proxyOrigin.length);
+                       let relativePath = path;
+                       if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
+                         relativePath = relativePath.substring(proxyPathname.length);
+                       }
+                       relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+                       const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
+                       const fullOriginalUrl = manifestBase + relativePath;
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
+                    } 
+                    // Kung absolute url na nakalusot, sapilitang i-proxy
+                    else if (url.startsWith('http')) {
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
+                    }
+                  }
+                }
+              });
+              hlsRef.current = hls;
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+              hls.attachMedia(videoRef.current);
+              
+              hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+                if (isMounted) {
+                  setIsLoading(false);
+                  setIsRefreshing(false);
+                  const levels = hls.levels.map((l, i) => ({ height: l.height, index: i })).filter(l => l.height > 0).sort((a, b) => b.height - a.height);
+                  setHlsLevels(levels.filter((l, i, arr) => i === 0 || l.height !== arr[i - 1].height));
+                  videoRef.current?.play().catch(() => {});
+                }
+              });
+              
+              let currentProxyIndex = 0;
+              hls.on(Hls.Events.ERROR, (_, data) => {
+                if (data.fatal && isMounted) {
+                  currentProxyIndex++;
+                  if (currentProxyIndex < orderedProxies.length) {
+                    const nextProxy = orderedProxies[currentProxyIndex];
+                    onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
+                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                    return;
+                  }
+                  
+                  if (!triggerAutoRefresh()) {
+                    setError('Failed to load stream. The channel may be offline.');
+                    setIsLoading(false);
+                    setIsRefreshing(false);
+                  }
+                }
+              });
+            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
+              videoRef.current.addEventListener('loadedmetadata', () => {
+                if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
+              });
+            }
+          }
+        }
+        else if (channel.type === 'mpd') {
+          videoRef.current.controls = false;
+          shaka.polyfill.installAll();
+          
+          if (!shaka.Player.isBrowserSupported()) {
+            if (isMounted) { setError('Browser unsupported.'); setIsLoading(false); setIsRefreshing(false); }
+            return;
+          }
+
+          const player = new shaka.Player(/* mediaElement= */ null, containerRef.current);
+          await player.attach(videoRef.current);
+          shakaRef.current = player;
+          const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
+          uiRef.current = ui;
+          ui.configure({ overflowMenuButtons: ['quality', 'captions'], addBigPlayButton: true });
+          player.configure({ drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } });
+          configureShakaProxy(player, proxyUrl);
+
+          try {
+            await player.load(streamUrl);
+            if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
+          } catch (err) {
+            let dashRecovered = false;
+            for (let i = 1; i < orderedProxies.length; i++) {
+              const fallbackProxy = orderedProxies[i];
+              configureShakaProxy(player, fallbackProxy);
+              try {
+                await player.load(streamUrl);
+                if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
+                dashRecovered = true;
+                break;
+              } catch (retryErr) {}
+            }
+            if (!dashRecovered && isMounted) {
+              if (!triggerAutoRefresh()) {
+                setError('Failed to load stream.');
+                setIsLoading(false);
+                setIsRefreshing(false);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (isMounted) { setError('Failed to initialize player.'); setIsLoading(false); setIsRefreshing(false); }
+      }
+    };
+
+    loadPlayer();
+
+    return () => {
+      isMounted = false;
+      if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
+      if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    };
+  }, [channel, reloadTrigger]);
+
+  return (
+    <>
+      {isLoading && !iosWarning && !isRefreshing && (
+        <div className="absolute inset-0 flex items-center justify-center bg-card z-10 pointer-events-none">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        </div>
+      )}
+
+      {isRefreshing && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/90 backdrop-blur-sm z-20">
+          <RefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
+          <p className="text-primary font-medium">Auto-refreshing stream...</p>
+          <p className="text-xs text-muted-foreground mt-1">Getting fresh token</p>
+        </div>
+      )}
+
+      {iosWarning && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-20">
+          <Smartphone className="w-12 h-12 text-amber-500" />
+          <p className="text-amber-500 font-medium">iOS Compatibility Issue</p>
+          <p className="text-muted-foreground text-sm max-w-xs">{iosWarning}</p>
+        </div>
+      )}
+
+      {error && !iosWarning && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-20">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      )}
+
+      <div ref={containerRef} className="relative w-full h-full">
+        <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
+        {hlsLevels.length > 1 && hlsRef.current && (
+          <div className="absolute top-2 right-2 z-30">
+            <button onClick={() => setShowQualityMenu(prev => !prev)} className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
+              <Settings className="w-6 h-6 text-foreground" />
+            </button>
+            {showQualityMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+                <button onClick={() => handleQualityChange(-1)} className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent ${currentLevel === -1 ? 'text-primary font-semibold' : 'text-foreground'}`}>
+                  {currentLevel === -1 && <Check className="w-4 h-4" />}<span className={currentLevel === -1 ? '' : 'ml-6'}>Auto</span>
+                </button>
+                {hlsLevels.map((level) => (
+                  <button key={level.index} onClick={() => handleQualityChange(level.index)} className={`w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-accent ${currentLevel === level.index ? 'text-primary font-semibold' : 'text-foreground'}`}>
+                    {currentLevel === level.index && <Check className="w-4 h-4" />}<span className={currentLevel === level.index ? '' : 'ml-6'}>{level.height}p</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
+  const [activeProxyLabel, setActiveProxyLabel] = useState<string | null>(null);
+
+  if (channel.type === 'youtube') {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
+        <iframe src={`${channel.embedUrl}&autoplay=1`} title={channel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
+        <PlayerCore key={channel.id} channel={channel} onStatusChange={onStatusChange} onProxyChange={setActiveProxyLabel} />
+      </div>
+      {activeProxyLabel && (
+        <div className="flex items-center gap-1.5 mt-2 px-1">
+          <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Proxy: <span className={`font-medium ${activeProxyLabel === 'Primary' ? 'text-primary' : activeProxyLabel === 'Direct' ? 'text-muted-foreground' : 'text-accent-foreground'}`}>{activeProxyLabel}</span></span>
+        </div>
+      )}
+    </div>
+  );
+};
