@@ -78,17 +78,6 @@ const WatchLive = () => {
     setIsOnline(online);
   }, []);
 
-  // ==========================================
-  // VPN WARNING LOGIC 
-  // ==========================================
-  // Eto na yung eksaktong listahan ng channels na kailangan ng VPN
-  const vpnRequiredKeywords = ['animax hd', 'love nature', 'bein sports', 'kplus'];
-  
-  const needsVpnWarning = channel 
-    ? vpnRequiredKeywords.some(keyword => channel.name.toLowerCase().includes(keyword.toLowerCase()))
-    : false;
-
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -161,37 +150,6 @@ const WatchLive = () => {
                 channel={channel} 
                 onStatusChange={handleStatusChange}
               />
-
-              {/* Ticker / Marquee for VPN Warning - LALABAS LANG KUNG NASA LISTAHAN */}
-              {needsVpnWarning && (
-                <div className="mt-3 relative overflow-hidden bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center py-2 px-2">
-                  <style>
-                    {`
-                      @keyframes marquee {
-                        0% { transform: translateX(100%); }
-                        100% { transform: translateX(-150%); }
-                      }
-                      .animate-marquee {
-                        display: inline-block;
-                        white-space: nowrap;
-                        animation: marquee 22s linear infinite;
-                        will-change: transform;
-                      }
-                      /* Pause on hover para madaling basahin */
-                      .marquee-container:hover .animate-marquee {
-                        animation-play-state: paused;
-                      }
-                    `}
-                  </style>
-                  <div className="marquee-container w-full overflow-hidden flex items-center">
-                     <div className="animate-marquee text-amber-500 text-xs sm:text-sm font-semibold flex items-center gap-4">
-                       <span>⚠️ PAALALA: Ang channel na ito ({channel.name}) ay maaaring geo-locked.</span>
-                       <span>•</span>
-                       <span>Mangyaring gumamit ng VPN (ikonekta sa SG, US, UK, o Europe server) kung ayaw mag-play ng stream. 🛡️</span>
-                     </div>
-                  </div>
-                </div>
-              )}
 
               {/* Share Button */}
               <div className="flex justify-start mt-3">
