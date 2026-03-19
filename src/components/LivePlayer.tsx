@@ -202,9 +202,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           });
         };
 
+        // ==========================================
+        // INSTANT REFRESH LOGIC (No limits)
+        // ==========================================
         const triggerAutoRefresh = () => {
-          if (channel.tvappSlug && reloadTrigger < 2) { 
-            if (isMounted) setReloadTrigger(prev => prev + 1);
+          if (isMounted) {
+            setReloadTrigger(prev => prev + 1);
             return true;
           }
           return false;
@@ -234,11 +237,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
               if (isMounted) {
-                if (!triggerAutoRefresh()) {
-                  setError('Failed to load stream. Offline or CORS error.');
-                  setIsLoading(false);
-                  setIsRefreshing(false);
-                }
+                triggerAutoRefresh();
               }
             }
           } else {
@@ -286,34 +285,18 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 }
               });
               
-              let currentProxyIndex = 0;
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
                   
-                  // ==========================================
-                  // INFINITE PROXY LOOP LOGIC FOR TESTING
-                  // ==========================================
-                  if (data.type === Hls.ErrorTypes.NETWORK_ERROR && proxyUrl && orderedProxies.length > 0) {
-                    
-                    // Modulo arithmetic para bumalik sa 0 kapag lumagpas na sa dulo
-                    currentProxyIndex = (currentProxyIndex + 1) % orderedProxies.length;
-                    const nextProxy = orderedProxies[currentProxyIndex];
-                    
-                    if (nextProxy) {
-                      onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                      hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
-                      return; // Wag ituloy sa error state
-                    }
-                  } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                  // Kung media error (decoding issue), subukan muna i-recover bago i-refresh
+                  if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                     hls.recoverMediaError();
                     return;
                   }
                   
-                  if (!triggerAutoRefresh()) {
-                    setError('Failed to load stream. The channel may be offline or blocking access.');
-                    setIsLoading(false);
-                    setIsRefreshing(false);
-                  }
+                  // Kung namatay ang koneksyon (Network Error), REFRESH AGAD
+                  // Walang pagpapalit-palit ng proxy, isang bagsak na re-connection na lang.
+                  triggerAutoRefresh();
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
@@ -346,24 +329,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             await player.load(streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
-            let dashRecovered = false;
-            for (let i = 1; i < orderedProxies.length; i++) {
-              const fallbackProxy = orderedProxies[i];
-              configureShakaProxy(player, fallbackProxy);
-              try {
-                await player.load(streamUrl);
-                if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
-                dashRecovered = true;
-                break;
-              } catch (retryErr) {}
-            }
-            if (!dashRecovered && isMounted) {
-              if (!triggerAutoRefresh()) {
-                setError('Failed to load stream.');
-                setIsLoading(false);
-                setIsRefreshing(false);
-              }
-            }
+            triggerAutoRefresh();
           }
         }
       } catch (err) {
@@ -393,8 +359,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       {isRefreshing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/90 backdrop-blur-sm z-20">
           <RefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
-          <p className="text-primary font-medium">Auto-refreshing stream...</p>
-          <p className="text-xs text-muted-foreground mt-1">Getting fresh token</p>
+          <p className="text-primary font-medium">Reconnecting to server...</p>
+          <p className="text-xs text-muted-foreground mt-1">Please wait</p>
         </div>
       )}
 
