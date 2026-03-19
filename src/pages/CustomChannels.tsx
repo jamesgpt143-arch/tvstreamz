@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { LivePlayer } from "@/components/LivePlayer";
 import type { Channel } from "@/lib/channels";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface CustomChannel {
   id: string;
@@ -35,8 +34,6 @@ const CustomChannels = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [playingChannel, setPlayingChannel] = useState<Channel | null>(null);
-  
-  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     id: '',
@@ -124,43 +121,42 @@ const CustomChannels = () => {
     };
 
     if (formData.id) {
+      // UPDATE EXISTING CHANNEL (Walang notification kapag nag-edit lang)
       const { error } = await supabase.from('custom_channels').update(payload).eq('id', formData.id);
       if (error) toast.error("Error updating channel");
       else toast.success("Channel updated!");
     } else {
+      // INSERT NEW CHANNEL
       const { error } = await supabase.from('custom_channels').insert([payload]);
       if (error) {
         toast.error("Error adding channel");
-        console.error(error);
       } else {
         toast.success("Channel added!");
         
+        // ==========================================
+        // AUTOMATIC NOTIFICATION LOGIC
+        // ==========================================
         try {
+          // 1. Kunin ang Username ng nag-upload
           const { data: profile } = await supabase
             .from('profiles')
             .select('username')
             .eq('user_id', user.id)
-            .maybeSingle();
+            .single();
             
-          const uploaderName = profile?.username || (isAdmin ? 'Admin' : 'Isang user');
+          const uploaderName = profile?.username || 'Isang user';
 
-          const { error: notifError } = await supabase.from('notifications').insert({
+          // 2. Mag-send ng notification sa lahat
+          await supabase.from('notifications').insert({
             title: "📺 Bagong Custom Channel!",
             message: `Nag-add si ${uploaderName} ng bagong stream: "${formData.name}". Silipin na kung gumagana!`,
             link_text: "Watch Now",
             link_url: "/custom-channels"
           });
-
-          if (notifError) {
-             console.error("Notif Error:", notifError);
-          } else {
-             queryClient.invalidateQueries({ queryKey: ["notifications"] });
-             queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
-          }
-
         } catch (err) {
           console.error("Failed to push notification:", err);
         }
+        // ==========================================
       }
     }
 
@@ -264,6 +260,7 @@ const CustomChannels = () => {
           </div>
         )}
 
+        {/* ADVANCED ADD/EDIT MODAL */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -299,6 +296,7 @@ const CustomChannels = () => {
                 </div>
               </div>
 
+              {/* ADVANCED SETTINGS */}
               <div className="pt-4 border-t border-border space-y-4">
                 <h4 className="text-sm font-semibold text-muted-foreground uppercase">Advanced Settings</h4>
                 
