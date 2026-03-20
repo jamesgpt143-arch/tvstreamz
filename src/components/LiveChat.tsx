@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, LogIn, Loader2, LockOpen, ExternalLink } from 'lucide-react';
+import { Send, MessageCircle, LogIn, Loader2, LockOpen, ExternalLink, Reply, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +37,9 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
+  // Reply State
+  const [replyingTo, setReplyingTo] = useState<{username: string, message: string} | null>(null);
+
   // Cuty Ads States
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
   const [unlockLink, setUnlockLink] = useState('');
@@ -46,7 +49,6 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -94,7 +96,6 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
     setProfile(data);
   };
 
-  // Cuty Unlocking Logic
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('chat_unlocked') === 'true') {
@@ -136,7 +137,6 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
   };
 
   useEffect(() => {
-    // Fetch existing messages
     const fetchMessages = async () => {
       const { data } = await supabase
         .from('live_chat_messages')
@@ -145,49 +145,39 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
         .order('created_at', { ascending: true })
         .limit(100);
       
-      if (data) {
-        setMessages(data);
-      }
+      if (data) setMessages(data);
     };
 
     fetchMessages();
 
-    // Subscribe to new messages
     const channel = supabase
       .channel(`live-chat-${channelId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_chat_messages',
-          filter: `channel_id=eq.${channelId}`
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as ChatMessage]);
-        }
+        { event: 'INSERT', schema: 'public', table: 'live_chat_messages', filter: `channel_id=eq.${channelId}` },
+        (payload) => setMessages((prev) => [...prev, payload.new as ChatMessage])
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [channelId]);
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newMessage.trim() || !user || !profile) return;
 
-    setIsLoading(true);
+    let finalMessage = newMessage.trim();
 
+    // Format if replying
+    if (replyingTo) {
+      finalMessage = `@@REPLY||${replyingTo.username}||${replyingTo.message}||${finalMessage}`;
+    }
+
+    setIsLoading(true);
     const { error } = await supabase
       .from('live_chat_messages')
       .insert({
@@ -195,38 +185,58 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
         user_id: user.id,
         username: profile.username,
         avatar_url: profile.avatar_url,
-        message: newMessage.trim()
+        message: finalMessage
       });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
     } else {
       setNewMessage('');
+      setReplyingTo(null); // Clear reply state after sending
     }
-
     setIsLoading(false);
   };
 
-  const getInitials = (name: string) => {
-    return name.slice(0, 2).toUpperCase();
+  const getInitials = (name: string) => name.slice(0, 2).toUpperCase();
+
+  // Helper to extract clean text
+  const getCleanMessage = (raw: string) => {
+    if (raw.startsWith('@@REPLY||')) {
+        const parts = raw.split('||');
+        if (parts.length >= 4) return parts.slice(3).join('||');
+    }
+    return raw;
+  };
+
+  // Render logic for Quoted Messages
+  const renderMessage = (rawMessage: string) => {
+    if (rawMessage.startsWith('@@REPLY||')) {
+       const parts = rawMessage.split('||');
+       if (parts.length >= 4) {
+          const rUser = parts[1];
+          const rQuote = parts[2];
+          const text = parts.slice(3).join('||');
+          return (
+             <div className="flex flex-col gap-1 w-full mt-1">
+                <div className="bg-primary/10 border-l-2 border-primary px-2 py-1 rounded-r-md text-[11px] text-muted-foreground opacity-90">
+                   <span className="font-semibold text-primary mr-1">{rUser}:</span>
+                   <span className="line-clamp-1 italic">"{rQuote}"</span>
+                </div>
+                <span>{text}</span>
+             </div>
+          );
+       }
+    }
+    return <span>{rawMessage}</span>;
   };
 
   if (!user) {
     return (
       <div className="bg-card border border-border rounded-xl p-4 h-[400px] flex flex-col items-center justify-center gap-4">
         <MessageCircle className="w-12 h-12 text-muted-foreground" />
-        <p className="text-muted-foreground text-center text-sm">
-          Login para makasali sa live chat
-        </p>
+        <p className="text-muted-foreground text-center text-sm">Login para makasali sa live chat</p>
         <Button asChild className="gap-2">
-          <Link to="/auth">
-            <LogIn className="w-4 h-4" />
-            Login / Sign Up
-          </Link>
+          <Link to="/auth"><LogIn className="w-4 h-4" />Login / Sign Up</Link>
         </Button>
       </div>
     );
@@ -236,54 +246,50 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
     return (
       <div className="bg-card border border-border rounded-xl p-4 h-[400px] flex flex-col items-center justify-center gap-4">
         <MessageCircle className="w-12 h-12 text-muted-foreground" />
-        <p className="text-muted-foreground text-center text-sm">
-          Set up your profile first
-        </p>
-        <Button asChild className="gap-2">
-          <Link to="/auth?setup=true">
-            Setup Profile
-          </Link>
-        </Button>
+        <p className="text-muted-foreground text-center text-sm">Set up your profile first</p>
+        <Button asChild className="gap-2"><Link to="/auth?setup=true">Setup Profile</Link></Button>
       </div>
     );
   }
 
   return (
     <div className="bg-card border border-border rounded-xl flex flex-col h-[400px]">
-      {/* Header */}
       <div className="p-3 border-b border-border flex items-center gap-2">
         <MessageCircle className="w-4 h-4 text-primary" />
         <span className="font-medium text-sm">Live Chat</span>
         <span className="text-xs text-muted-foreground">({messages.length})</span>
       </div>
 
-      {/* Messages */}
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         <div className="space-y-3">
           {messages.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-8">
-              Wala pang messages. Ikaw na mag-start!
-            </p>
+            <p className="text-center text-muted-foreground text-sm py-8">Wala pang messages. Ikaw na mag-start!</p>
           ) : (
             messages.map((msg) => (
-              <div key={msg.id} className="flex gap-2">
-                <Avatar className="w-7 h-7 flex-shrink-0">
+              <div key={msg.id} className="flex gap-2 group">
+                <Avatar className="w-7 h-7 flex-shrink-0 mt-1">
                   <AvatarImage src={msg.avatar_url || undefined} />
                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                     {getInitials(msg.username)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs">
+                  <div className="text-xs flex items-center gap-1">
                     <span className="font-medium text-primary">{msg.username}</span>
-                    <span className="text-muted-foreground ml-2 text-[10px]">
-                      {new Date(msg.created_at).toLocaleTimeString('en-PH', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+                    <span className="text-muted-foreground text-[10px]">
+                      {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                  </p>
-                  <p className="text-sm break-words">{msg.message}</p>
+                    
+                    {/* Reply Button (Lumalabas pag naka-hover) */}
+                    <button 
+                      onClick={() => setReplyingTo({username: msg.username, message: getCleanMessage(msg.message)})} 
+                      className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-primary/10 rounded"
+                      title="Reply to this message"
+                    >
+                      <Reply className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                    </button>
+                  </div>
+                  <div className="text-sm break-words mt-0.5">{renderMessage(msg.message)}</div>
                 </div>
               </div>
             ))
@@ -291,20 +297,33 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
         </div>
       </ScrollArea>
 
-      {/* DITO PUMAPASOK ANG CUTY ADS LOGIC */}
       {isChatUnlocked || isAdmin ? (
-        <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="text-sm h-9"
-            maxLength={500}
-          />
-          <Button type="submit" size="sm" disabled={isLoading || !newMessage.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
+        <div className="flex flex-col border-t border-border">
+          {/* Quoting Banner */}
+          {replyingTo && (
+            <div className="bg-primary/5 px-3 py-2 flex items-center justify-between text-xs border-b border-border/50 relative">
+              <div className="flex flex-col min-w-0 flex-1 border-l-2 border-primary pl-2">
+                <span className="font-semibold text-primary">Replying to {replyingTo.username}</span>
+                <span className="text-muted-foreground truncate italic">"{replyingTo.message}"</span>
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-background rounded-full ml-2 text-muted-foreground">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          <form onSubmit={handleSendMessage} className="p-3 flex gap-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={replyingTo ? "Type your reply..." : "Type a message..."}
+              className="text-sm h-9"
+              maxLength={500}
+            />
+            <Button type="submit" size="sm" disabled={isLoading || !newMessage.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+        </div>
       ) : (
         <div className="p-4 border-t border-border flex flex-col items-center gap-2 text-center bg-muted/10">
           <h3 className="font-bold text-sm flex items-center gap-2">
