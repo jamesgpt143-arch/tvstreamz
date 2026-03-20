@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, LogIn } from 'lucide-react';
+import { Send, MessageCircle, LogIn, Loader2, LockOpen, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,6 +35,13 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Cuty Ads States
+  const [isChatUnlocked, setIsChatUnlocked] = useState(false);
+  const [unlockLink, setUnlockLink] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -46,9 +53,11 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            checkAdminStatus(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
       }
     );
@@ -57,11 +66,23 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        checkAdminStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    setIsAdmin(!!data);
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -71,6 +92,47 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
       .maybeSingle();
     
     setProfile(data);
+  };
+
+  // Cuty Unlocking Logic
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('chat_unlocked') === 'true') {
+      const unlockTime = new Date().getTime();
+      localStorage.setItem('chat_unlock_time', unlockTime.toString());
+      setIsChatUnlocked(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      const savedTime = localStorage.getItem('chat_unlock_time');
+      if (savedTime) {
+        const threeHours = 3 * 60 * 60 * 1000;
+        if (new Date().getTime() - parseInt(savedTime) < threeHours) {
+          setIsChatUnlocked(true);
+        } else {
+          localStorage.removeItem('chat_unlock_time');
+        }
+      }
+    }
+  }, []);
+
+  const handleGenerateLink = async () => {
+    setIsGenerating(true);
+    try {
+      const returnUrl = window.location.origin + window.location.pathname + '?chat_unlocked=true';
+      const { data, error } = await supabase.functions.invoke('cuty-shorten', {
+        body: { destinationUrl: returnUrl }
+      });
+
+      if (error) throw error;
+      if (data?.shortUrl) {
+        setUnlockLink(data.shortUrl);
+      }
+    } catch (err) {
+      console.error("Error generating link:", err);
+      toast({ title: "Error", description: "Failed to generate ad link.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {
@@ -229,19 +291,42 @@ export const LiveChat = ({ channelId }: LiveChatProps) => {
         </div>
       </ScrollArea>
 
-      {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex gap-2">
-        <Input
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
-          className="text-sm h-9"
-          maxLength={500}
-        />
-        <Button type="submit" size="sm" disabled={isLoading || !newMessage.trim()}>
-          <Send className="w-4 h-4" />
-        </Button>
-      </form>
+      {/* DITO PUMAPASOK ANG CUTY ADS LOGIC */}
+      {isChatUnlocked || isAdmin ? (
+        <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="text-sm h-9"
+            maxLength={500}
+          />
+          <Button type="submit" size="sm" disabled={isLoading || !newMessage.trim()}>
+            <Send className="w-4 h-4" />
+          </Button>
+        </form>
+      ) : (
+        <div className="p-4 border-t border-border flex flex-col items-center gap-2 text-center bg-muted/10">
+          <h3 className="font-bold text-sm flex items-center gap-2">
+            <LockOpen className="w-4 h-4 text-primary" /> Chat is Locked
+          </h3>
+          <p className="text-xs text-muted-foreground mb-1">
+            Manood ng mabilis na ad para makapag-chat sa loob ng 3 oras. Mapipigilan nito ang mga spammers!
+          </p>
+          {!unlockLink ? (
+            <Button onClick={handleGenerateLink} disabled={isGenerating} size="sm" className="w-full">
+              {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {isGenerating ? "Generating link..." : "Unlock Chat"}
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
+              <a href={unlockLink} target="_self">
+                Proceed to Ad <ExternalLink className="w-4 h-4 ml-2" />
+              </a>
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
