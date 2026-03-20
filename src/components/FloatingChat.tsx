@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, X, Trash2, ShieldCheck, LogIn, Loader2, LockOpen, ExternalLink } from 'lucide-react';
+import { Send, MessageCircle, X, Trash2, ShieldCheck, LogIn, Loader2, LockOpen, ExternalLink, Reply } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmojiPicker } from './EmojiPicker';
 import { Link } from 'react-router-dom';
@@ -37,6 +37,9 @@ export const FloatingChat = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Reply State
+  const [replyingTo, setReplyingTo] = useState<{username: string, message: string} | null>(null);
+
   // Cuty Ads States
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
   const [unlockLink, setUnlockLink] = useState('');
@@ -103,7 +106,7 @@ export const FloatingChat = () => {
       const unlockTime = new Date().getTime();
       localStorage.setItem('chat_unlock_time', unlockTime.toString());
       setIsChatUnlocked(true);
-      setIsOpen(true); // Auto-open pagbalik galing ads
+      setIsOpen(true);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
       const savedTime = localStorage.getItem('chat_unlock_time');
@@ -183,7 +186,9 @@ export const FloatingChat = () => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
-    if (isAdmin && newMessage.trim() === '/clear_all') {
+    let finalMessage = newMessage.trim();
+
+    if (isAdmin && finalMessage === '/clear_all') {
       setIsLoading(true);
       const { error } = await supabase.from('live_chat_messages').delete().eq('channel_id', channelId);
       if (error) {
@@ -193,6 +198,7 @@ export const FloatingChat = () => {
         toast({ title: "Chat Cleared", description: "All messages have been deleted." });
       }
       setNewMessage(''); 
+      setReplyingTo(null);
       setIsLoading(false);
       return; 
     }
@@ -202,6 +208,11 @@ export const FloatingChat = () => {
     
     if (!displayUsername) return;
 
+    // Format if replying
+    if (replyingTo) {
+      finalMessage = `@@REPLY||${replyingTo.username}||${replyingTo.message}||${finalMessage}`;
+    }
+
     setIsLoading(true);
     const { error } = await supabase
       .from('live_chat_messages')
@@ -210,13 +221,14 @@ export const FloatingChat = () => {
         user_id: user.id,
         username: displayUsername,
         avatar_url: displayAvatar,
-        message: newMessage.trim()
+        message: finalMessage
       });
 
     if (error) {
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
     } else {
       setNewMessage('');
+      setReplyingTo(null); // Clear reply state after sending
     }
     setIsLoading(false);
   };
@@ -237,6 +249,37 @@ export const FloatingChat = () => {
       setMessages((prev) => prev.filter(msg => msg.id !== messageId));
       toast({ title: "Deleted", description: "Message removed" });
     }
+  };
+
+  // Helper to extract clean text (in case they reply to a reply)
+  const getCleanMessage = (raw: string) => {
+    if (raw.startsWith('@@REPLY||')) {
+        const parts = raw.split('||');
+        if (parts.length >= 4) return parts.slice(3).join('||');
+    }
+    return raw;
+  };
+
+  // Render logic for Quoted Messages
+  const renderMessage = (rawMessage: string) => {
+    if (rawMessage.startsWith('@@REPLY||')) {
+       const parts = rawMessage.split('||');
+       if (parts.length >= 4) {
+          const rUser = parts[1];
+          const rQuote = parts[2];
+          const text = parts.slice(3).join('||');
+          return (
+             <div className="flex flex-col gap-1 w-full mt-1">
+                <div className="bg-primary/10 border-l-2 border-primary px-2 py-1 rounded-r-md text-[11px] text-muted-foreground opacity-90">
+                   <span className="font-semibold text-primary mr-1">{rUser}:</span>
+                   <span className="line-clamp-1 italic">"{rQuote}"</span>
+                </div>
+                <span>{text}</span>
+             </div>
+          );
+       }
+    }
+    return <span>{rawMessage}</span>;
   };
 
   return (
@@ -274,14 +317,14 @@ export const FloatingChat = () => {
               ) : (
                 messages.map((msg) => (
                   <div key={msg.id} className="flex gap-2 group">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
+                    <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
                       <AvatarImage src={msg.avatar_url || undefined} />
                       <AvatarFallback className={`text-xs ${isAdminMessage(msg.username) ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
                         {isAdminMessage(msg.username) ? <ShieldCheck className="w-4 h-4" /> : getInitials(msg.username)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs flex items-center gap-1">
+                      <div className="text-xs flex items-center gap-1">
                         {isAdminMessage(msg.username) && <ShieldCheck className="w-3.5 h-3.5 text-primary" />}
                         <span className={`font-medium ${isAdminMessage(msg.username) ? 'text-primary font-bold' : 'text-primary'}`}>
                           {msg.username}
@@ -289,13 +332,23 @@ export const FloatingChat = () => {
                         <span className="text-muted-foreground text-[10px]">
                           {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        
+                        {/* Reply Button (Lumalabas pag naka-hover) */}
+                        <button 
+                          onClick={() => setReplyingTo({username: msg.username, message: getCleanMessage(msg.message)})} 
+                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-primary/10 rounded"
+                          title="Reply to this message"
+                        >
+                          <Reply className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                        </button>
+
                         {isAdmin && (
                           <button onClick={() => handleDeleteMessage(msg.id)} className="ml-auto p-1 hover:bg-destructive/10 rounded opacity-60 hover:opacity-100 transition-opacity">
                             <Trash2 className="w-3 h-3 text-destructive" />
                           </button>
                         )}
-                      </p>
-                      <p className="text-sm break-words">{msg.message}</p>
+                      </div>
+                      <div className="text-sm break-words mt-0.5">{renderMessage(msg.message)}</div>
                     </div>
                   </div>
                 ))
@@ -305,21 +358,34 @@ export const FloatingChat = () => {
 
           {user ? (
             profile || isAdmin ? (
-              // DITO PUMAPASOK ANG CUTY ADS LOGIC
               isChatUnlocked || isAdmin ? (
-                <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex items-center gap-2">
-                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="text-sm flex-1"
-                    maxLength={500}
-                  />
-                  <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </form>
+                <div className="flex flex-col border-t border-border">
+                  {/* Quoting Banner */}
+                  {replyingTo && (
+                    <div className="bg-primary/5 px-3 py-2 flex items-center justify-between text-xs border-b border-border/50 relative">
+                      <div className="flex flex-col min-w-0 flex-1 border-l-2 border-primary pl-2">
+                        <span className="font-semibold text-primary">Replying to {replyingTo.username}</span>
+                        <span className="text-muted-foreground truncate italic">"{replyingTo.message}"</span>
+                      </div>
+                      <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-background rounded-full ml-2 text-muted-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <form onSubmit={handleSendMessage} className="p-3 flex items-center gap-2">
+                    <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={replyingTo ? "Type your reply..." : "Type a message..."}
+                      className="text-sm flex-1"
+                      maxLength={500}
+                    />
+                    <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </form>
+                </div>
               ) : (
                 <div className="p-4 border-t border-border flex flex-col items-center gap-3 text-center bg-muted/10">
                   <h3 className="font-bold text-sm flex items-center gap-2">
