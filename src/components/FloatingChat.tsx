@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle, X, Trash2, ShieldCheck, LogIn } from 'lucide-react';
+import { Send, MessageCircle, X, Trash2, ShieldCheck, LogIn, Loader2, LockOpen, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmojiPicker } from './EmojiPicker';
 import { Link } from 'react-router-dom';
@@ -36,11 +36,18 @@ export const FloatingChat = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Cuty Ads States
+  const [isChatUnlocked, setIsChatUnlocked] = useState(false);
+  const [unlockLink, setUnlockLink] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   const channelId = 'global-chat';
 
+  // Auth & Admin Check
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -89,6 +96,48 @@ export const FloatingChat = () => {
     setProfile(data);
   };
 
+  // Cuty Unlocking Logic
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('chat_unlocked') === 'true') {
+      const unlockTime = new Date().getTime();
+      localStorage.setItem('chat_unlock_time', unlockTime.toString());
+      setIsChatUnlocked(true);
+      setIsOpen(true); // Auto-open pagbalik galing ads
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      const savedTime = localStorage.getItem('chat_unlock_time');
+      if (savedTime) {
+        const threeHours = 3 * 60 * 60 * 1000;
+        if (new Date().getTime() - parseInt(savedTime) < threeHours) {
+          setIsChatUnlocked(true);
+        } else {
+          localStorage.removeItem('chat_unlock_time');
+        }
+      }
+    }
+  }, []);
+
+  const handleGenerateLink = async () => {
+    setIsGenerating(true);
+    try {
+      const returnUrl = window.location.origin + window.location.pathname + '?chat_unlocked=true';
+      const { data, error } = await supabase.functions.invoke('cuty-shorten', {
+        body: { destinationUrl: returnUrl }
+      });
+
+      if (error) throw error;
+      if (data?.shortUrl) {
+        setUnlockLink(data.shortUrl);
+      }
+    } catch (err) {
+      console.error("Error generating link:", err);
+      toast({ title: "Error", description: "Failed to generate ad link.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -134,29 +183,19 @@ export const FloatingChat = () => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
-    // ==========================================
-    // HIDDEN ADMIN COMMAND: CLEAR ALL MESSAGES
-    // ==========================================
     if (isAdmin && newMessage.trim() === '/clear_all') {
       setIsLoading(true);
-      
-      const { error } = await supabase
-        .from('live_chat_messages')
-        .delete()
-        .eq('channel_id', channelId);
-
+      const { error } = await supabase.from('live_chat_messages').delete().eq('channel_id', channelId);
       if (error) {
         toast({ title: "Error", description: "Failed to clear chat", variant: "destructive" });
       } else {
         setMessages([]); 
         toast({ title: "Chat Cleared", description: "All messages have been deleted." });
       }
-      
       setNewMessage(''); 
       setIsLoading(false);
       return; 
     }
-    // ==========================================
     
     const displayUsername = isAdmin ? 'Admin' : profile?.username;
     const displayAvatar = isAdmin ? ADMIN_AVATAR : profile?.avatar_url;
@@ -187,7 +226,6 @@ export const FloatingChat = () => {
   };
 
   const getInitials = (name: string) => name.slice(0, 2).toUpperCase();
-
   const handleChatClick = () => setIsOpen(!isOpen);
   const isAdminMessage = (username: string) => username === 'Admin';
 
@@ -267,19 +305,43 @@ export const FloatingChat = () => {
 
           {user ? (
             profile || isAdmin ? (
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex items-center gap-2">
-                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="text-sm flex-1"
-                  maxLength={500}
-                />
-                <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
+              // DITO PUMAPASOK ANG CUTY ADS LOGIC
+              isChatUnlocked || isAdmin ? (
+                <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex items-center gap-2">
+                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="text-sm flex-1"
+                    maxLength={500}
+                  />
+                  <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
+              ) : (
+                <div className="p-4 border-t border-border flex flex-col items-center gap-3 text-center bg-muted/10">
+                  <h3 className="font-bold text-sm flex items-center gap-2">
+                    <LockOpen className="w-4 h-4 text-primary" /> Chat is Locked
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-1 px-2">
+                    Manood ng mabilis na ad para makapag-chat sa loob ng 3 oras. Mapipigilan nito ang mga spammers!
+                  </p>
+                  {!unlockLink ? (
+                    <Button onClick={handleGenerateLink} disabled={isGenerating} size="sm" className="w-full">
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {isGenerating ? "Generating link..." : "Unlock Chat"}
+                    </Button>
+                  ) : (
+                    <Button asChild size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
+                      <a href={unlockLink} target="_self">
+                        Proceed to Ad <ExternalLink className="w-4 h-4 ml-2" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              )
             ) : (
               <div className="p-3 border-t border-border flex flex-col items-center gap-2 text-center">
                 <p className="text-sm text-muted-foreground">Please complete your profile to chat.</p>
