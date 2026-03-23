@@ -10,7 +10,7 @@ interface VideoPlayerProps {
 }
 
 // Idinagdag natin ang Server 4 para masubukan mo kung okay siya sa sandbox
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 1', 'Server 4'];
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
