@@ -201,6 +201,9 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
   'Server 3': type === 'movie'
     ? `https://multiembed.mov/?video_id=${id}&tmdb=1`
     : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
+  'Server 4': type === 'movie'
+    ? `https://vidsrc.to/embed/movie/${id}`
+    : `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`,
 });
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
