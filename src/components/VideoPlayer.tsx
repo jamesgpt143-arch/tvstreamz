@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Server, Play } from 'lucide-react';
+import { Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
@@ -9,23 +9,20 @@ interface VideoPlayerProps {
   title: string;
 }
 
-// Server 1 (VidSrc) supports sandbox, others don't
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
+// Idinagdag natin ang Server 4 para masubukan mo kung okay siya sa sandbox
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 1', 'Server 4'];
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(serverEntries[0]?.[0] || '');
-  const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentUrl = servers[activeServer];
   const useSandbox = SANDBOX_COMPATIBLE_SERVERS.includes(activeServer);
 
-  const handlePlay = () => {
-    setIsPlaying(true);
-  };
+  // Palaging considered "isPlaying" dahil tinanggal na natin ang initial overlay
+  const isPlaying = true;
 
-  // Orientation-based auto-fullscreen (works on both web and Capacitor APK)
   useEffect(() => {
     return setupOrientationFullscreen(containerRef.current, isPlaying);
   }, [isPlaying]);
@@ -43,7 +40,6 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             size="sm"
             onClick={() => {
               setActiveServer(name);
-              setIsPlaying(false); // Reset play state when switching servers
             }}
             className="gap-2"
           >
@@ -57,44 +53,27 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
 
       {/* Video Frame */}
       <div ref={containerRef} className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
-        {!isPlaying ? (
-          // Play button overlay
-          <div 
-            className="absolute inset-0 flex items-center justify-center bg-black/60 z-10 cursor-pointer"
-            onClick={handlePlay}
-          >
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors hover:scale-105 transform">
-                <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
-              </div>
-              <span className="text-white font-medium">Click to Play</span>
-            </div>
-          </div>
-        ) : null}
-
-        {isPlaying && (
-          useSandbox ? (
-            <iframe
-              key={`sandboxed-${activeServer}`}
-              src={currentUrl}
-              title={title}
-              className="w-full h-full"
-              allowFullScreen
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              referrerPolicy="origin"
-              sandbox="allow-scripts allow-same-origin allow-presentation"
-            />
-          ) : (
-            <iframe
-              key={`normal-${activeServer}`}
-              src={currentUrl}
-              title={title}
-              className="w-full h-full"
-              allowFullScreen
-              allow="autoplay; encrypted-media; picture-in-picture"
-              referrerPolicy="origin"
-            />
-          )
+        {useSandbox ? (
+          <iframe
+            key={`sandboxed-${activeServer}`}
+            src={currentUrl}
+            title={title}
+            className="w-full h-full"
+            allowFullScreen
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            referrerPolicy="origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
+          />
+        ) : (
+          <iframe
+            key={`normal-${activeServer}`}
+            src={currentUrl}
+            title={title}
+            className="w-full h-full"
+            allowFullScreen
+            allow="autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="origin"
+          />
         )}
       </div>
 
