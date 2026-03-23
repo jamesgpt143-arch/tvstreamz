@@ -96,3 +96,51 @@ export const FloatingChat = () => {
                 <div className="w-12 h-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-2">
                   <Send className="w-6 h-6 ml-1" />
                 </div>
+                <h3 className="font-bold text-lg">Message Sent!</h3>
+                <p className="text-sm text-muted-foreground">Salamat! Babasahin namin ang iyong mensahe sa lalong madaling panahon.</p>
+              </div>
+            ) : user ? (
+              <form onSubmit={handleSendMessage} className="flex flex-col gap-4">
+                <div className="text-sm text-muted-foreground mb-2 text-center bg-muted/30 p-2 rounded">
+                  May request ka bang channel o nakitang sira? Mag-send ng direct message sa amin!
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Your Email</label>
+                  <Input value={user.email} disabled className="bg-muted/50 text-xs h-8" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Message</label>
+                  <Textarea 
+                    placeholder="Type your message, request, or report here..." 
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="min-h-[120px] text-sm resize-none"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" disabled={isLoading || !message.trim()} className="w-full mt-2">
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  {isLoading ? "Sending..." : "Send Message"}
+                </Button>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+                <MessageSquareQuote className="w-12 h-12 text-muted-foreground/50" />
+                <h3 className="font-bold">Log in required</h3>
+                <p className="text-sm text-muted-foreground mb-2">Kailangan mong mag-login para makapag-send ng message sa admin.</p>
+                <Button asChild className="w-full gap-2">
+                  <Link to="/auth">
+                    <LogIn className="w-4 h-4" /> Log In / Sign Up
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
