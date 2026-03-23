@@ -6,6 +6,10 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
+// GLOBAL CACHE PARA SA MGA NA-LIMIT NA PROXIES (Naka-lock ng 10 mins kapag sira)
+const badProxiesCache = new Map<string, number>();
+const PROXY_TIMEOUT_MS = 10 * 60 * 1000;
+
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
     const { data } = await supabase
@@ -128,7 +132,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       try {
         const proxyUrls = channel.useProxy ? await getProxyUrls(channel.proxyType || 'cloudflare') : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
         const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
-        const proxyUrl = orderedProxies[0] || '';
         
         let streamUrl = channel.manifestUri;
         
@@ -137,7 +140,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
-            
             if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
 
             const res = await fetch(resolveUrl);
@@ -160,18 +162,88 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
         proxyLabelMapRef.current = labelMap;
 
-        if (proxyUrl && isMounted) onProxyChange?.(labelMap.get(proxyUrl) || 'Direct');
-        else if (!channel.useProxy && isMounted) onProxyChange?.('Direct');
+        // ==========================================
+        // FAST PARALLEL PROXY CHECKER (Karera ng mga Proxies)
+        // ==========================================
+        let activeProxyUrl = '';
 
-        const configureShakaProxy = (player: shaka.Player, activeProxyUrl: string) => {
-          if (!activeProxyUrl) return;
+        if (channel.useProxy && orderedProxies.length > 0) {
+          // I-filter muna yung mga nasa bad cache para hindi isali sa karera
+          const proxiesToTest = orderedProxies.filter(testProxy => {
+            if (badProxiesCache.has(testProxy)) {
+              if (Date.now() - badProxiesCache.get(testProxy)! < PROXY_TIMEOUT_MS) {
+                console.log(`[Proxy Fast-Skip] Nilaktawan ang ${labelMap.get(testProxy)} dahil limit/sira ito.`);
+                return false; 
+              } else {
+                badProxiesCache.delete(testProxy); // Expired na ang lock
+              }
+            }
+            return true;
+          });
+
+          if (proxiesToTest.length > 0) {
+            if (isMounted) onProxyChange?.('Finding fastest proxy...');
+
+            try {
+              // Sabay-sabay nating i-fetch (race)
+              const proxyPromises = proxiesToTest.map(testProxy => {
+                return new Promise<string>(async (resolve, reject) => {
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s limit
+                  
+                  try {
+                    const testUrl = buildProxiedUrl(testProxy, streamUrl, channel.userAgent, channel.referrer);
+                    const res = await fetch(testUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    if (res.ok) {
+                      resolve(testProxy); // I-deklara na nanalo itong proxy na 'to!
+                    } else {
+                      // Pag limit (429) o sira (500), i-block agad
+                      if (res.status === 429 || res.status >= 500) {
+                         badProxiesCache.set(testProxy, Date.now());
+                      }
+                      reject(new Error(`Status ${res.status}`));
+                    }
+                  } catch (err) {
+                    clearTimeout(timeoutId);
+                    // Pag nag-timeout o cors error, i-block agad
+                    badProxiesCache.set(testProxy, Date.now());
+                    reject(err);
+                  }
+                });
+              });
+
+              // Promise.any = Kung sino ang unang maka-resolve (200 OK), siya ang gagamitin!
+              activeProxyUrl = await Promise.any(proxyPromises);
+              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
+              
+            } catch (err) {
+              // Kung nag-reject ang lahat ng proxies sa listahan
+              console.warn('[Proxy Race] Lahat ng proxy na ni-check ay bagsak.');
+            }
+          }
+
+          // Fallback kapag lahat ay pumalya o lahat nasa blocklist (try the first one to let player handle error natively)
+          if (!activeProxyUrl) {
+             activeProxyUrl = orderedProxies[0];
+             if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Primary (Fallback)');
+          }
+        } else {
+          if (isMounted && !channel.useProxy) onProxyChange?.('Direct');
+        }
+
+        const proxyUrl = activeProxyUrl;
+
+        const configureShakaProxy = (player: shaka.Player, proxyToUse: string) => {
+          if (!proxyToUse) return;
           const netEngine = player.getNetworkingEngine();
           if (!netEngine) return;
           
           netEngine.clearAllRequestFilters();
           const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
-          const proxyOrigin = new URL(activeProxyUrl).origin;
-          const proxyPathname = new URL(activeProxyUrl).pathname;
+          const proxyOrigin = new URL(proxyToUse).origin;
+          const proxyPathname = new URL(proxyToUse).pathname;
           
           netEngine.registerRequestFilter((type: any, request: any) => {
             const url = request.uris[0];
@@ -180,7 +252,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (url.includes('?url=') || url.includes('&url=')) return;
             
             if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
               return;
             }
 
@@ -192,16 +264,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               }
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(activeProxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
             }
-            request.uris[0] = buildProxiedUrl(activeProxyUrl, url, channel.userAgent, channel.referrer);
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
           });
         };
 
         const triggerAutoRefresh = () => {
           if (channel.tvappSlug && reloadTrigger < 2) { 
-            console.log("Token likely expired. Auto-refreshing stream...");
             if (isMounted) setReloadTrigger(prev => prev + 1);
             return true;
           }
@@ -228,7 +299,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             configureShakaProxy(player, proxyUrl);
 
             try {
-              await player.load(streamUrl);
+              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
               if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
               if (isMounted) {
@@ -242,9 +313,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           } else {
             videoRef.current.controls = true; 
             if (Hls.isSupported()) {
-              // ==========================================
-              // FIX: ADDED XHR SETUP TO INTERCEPT ALL CHUNKS
-              // ==========================================
               const hls = new Hls({ 
                 enableWorker: true, 
                 lowLatencyMode: true, 
@@ -252,11 +320,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 xhrSetup: (xhr, url) => {
                   if (proxyUrl) {
                     const proxyOrigin = new URL(proxyUrl).origin;
-                    
-                    // Kung proxied na, hayaan na
                     if (url.includes('?url=') || url.includes('&url=')) return;
 
-                    // Kung na-resolve accidentally ng browser sa proxy origin, i-build pabalik sa totoong url at i-proxy
                     if (url.startsWith(proxyOrigin)) {
                        const proxyPathname = new URL(proxyUrl).pathname;
                        const path = url.substring(proxyOrigin.length);
@@ -268,9 +333,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
                        const fullOriginalUrl = manifestBase + relativePath;
                        xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
-                    } 
-                    // Kung absolute url na nakalusot, sapilitang i-proxy
-                    else if (url.startsWith('http')) {
+                    } else if (url.startsWith('http')) {
                        xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
                     }
                   }
@@ -290,7 +353,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 }
               });
               
-              let currentProxyIndex = 0;
+              let currentProxyIndex = orderedProxies.indexOf(proxyUrl);
+              if (currentProxyIndex === -1) currentProxyIndex = 0;
+
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
                   currentProxyIndex++;
@@ -335,15 +400,18 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           configureShakaProxy(player, proxyUrl);
 
           try {
-            await player.load(streamUrl);
+            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             let dashRecovered = false;
-            for (let i = 1; i < orderedProxies.length; i++) {
+            let startIndex = orderedProxies.indexOf(proxyUrl);
+            if (startIndex === -1) startIndex = 0;
+
+            for (let i = startIndex + 1; i < orderedProxies.length; i++) {
               const fallbackProxy = orderedProxies[i];
               configureShakaProxy(player, fallbackProxy);
               try {
-                await player.load(streamUrl);
+                await player.load(buildProxiedUrl(fallbackProxy, streamUrl, channel.userAgent, channel.referrer));
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
