@@ -5,13 +5,14 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
 import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
 import { IptvSettings } from "@/components/admin/IptvSettings";
 import { NotificationManager } from "@/components/admin/NotificationManager";
+import { MessageManager } from "@/components/admin/MessageManager";
 
 interface DailyStats {
   date: string;
@@ -29,8 +30,6 @@ interface PageStats {
   path: string;
   count: number;
 }
-
-
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -206,7 +205,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="analytics" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Analytics
@@ -231,201 +230,197 @@ export default function AdminDashboard() {
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2">
+              <Mail className="h-4 w-4" />
+              Messages
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analytics" className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Views
-              </CardTitle>
-              <Eye className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totals.totalViews.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">All time page views</p>
-            </CardContent>
-          </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <Card className="bg-card border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Views
+                  </CardTitle>
+                  <Eye className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totals.totalViews.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">All time page views</p>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Today's Views
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totals.todayViews.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Views today</p>
-            </CardContent>
-          </Card>
+              <Card className="bg-card border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Today's Views
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totals.todayViews.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Views today</p>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Unique Visitors
-              </CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totals.uniqueVisitors.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">All time unique visitors</p>
-            </CardContent>
-          </Card>
+              <Card className="bg-card border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Unique Visitors
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totals.uniqueVisitors.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">All time unique visitors</p>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Weekly Visitors
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totals.weeklyVisitors.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Last 7 days</p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="bg-card border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Weekly Visitors
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totals.weeklyVisitors.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Last 7 days</p>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* Daily Stats Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Views Trend - Text List */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                {dailyStats.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No data yet</p>
-                ) : (
-                  dailyStats.slice().reverse().map((stat, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                    >
-                      <span className="text-sm font-medium text-foreground">{stat.date}</span>
-                      <span className="text-sm font-bold text-primary">{stat.views.toLocaleString()} views</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Daily Visitors - Text List */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                {dailyStats.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No data yet</p>
-                ) : (
-                  dailyStats.slice().reverse().map((stat, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                    >
-                      <span className="text-sm font-medium text-foreground">{stat.date}</span>
-                      <span className="text-sm font-bold text-primary">{stat.visitors.toLocaleString()} visitors</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Content */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Film className="h-5 w-5" />
-                Top Content
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {topContent.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No content views yet</p>
-                ) : (
-                  topContent.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                        <div>
-                          <p className="font-medium text-foreground line-clamp-1">
-                            {item.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground capitalize">
-                            {item.type}
-                          </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                    {dailyStats.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No data yet</p>
+                    ) : (
+                      dailyStats.slice().reverse().map((stat, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                        >
+                          <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                          <span className="text-sm font-bold text-primary">{stat.views.toLocaleString()} views</span>
                         </div>
-                      </div>
-                      <span className="font-bold text-foreground">{item.count} views</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Top Pages */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground">Top Pages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {topPages.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No page views yet</p>
-                ) : (
-                  topPages.map((page, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                        <p className="font-medium text-foreground">{page.path}</p>
-                      </div>
-                      <span className="font-bold text-foreground">{page.count} views</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                    {dailyStats.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No data yet</p>
+                    ) : (
+                      dailyStats.slice().reverse().map((stat, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                        >
+                          <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                          <span className="text-sm font-bold text-primary">{stat.visitors.toLocaleString()} visitors</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <Film className="h-5 w-5" />
+                    Top Content
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {topContent.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No content views yet</p>
+                    ) : (
+                      topContent.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                            <div>
+                              <p className="font-medium text-foreground line-clamp-1">
+                                {item.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground capitalize">
+                                {item.type}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="font-bold text-foreground">{item.count} views</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground">Top Pages</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {topPages.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No page views yet</p>
+                    ) : (
+                      topPages.map((page, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                            <p className="font-medium text-foreground">{page.path}</p>
+                          </div>
+                          <span className="font-bold text-foreground">{page.count} views</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="channels">
             <ChannelManager />
           </TabsContent>
-
 
           <TabsContent value="settings">
             <WelcomePopupSettings />
@@ -442,6 +437,11 @@ export default function AdminDashboard() {
           <TabsContent value="notifications">
             <NotificationManager />
           </TabsContent>
+
+          <TabsContent value="messages">
+            <MessageManager />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
