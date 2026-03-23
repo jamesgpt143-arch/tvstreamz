@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail, LayoutGrid, ChevronLeft } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
@@ -35,6 +35,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeView, setActiveView] = useState<string>('menu'); // NEW: Controls what page is shown
+
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [topContent, setTopContent] = useState<ContentStats[]>([]);
   const [topPages, setTopPages] = useState<PageStats[]>([]);
@@ -117,26 +119,15 @@ export default function AdminDashboard() {
       weeklyVisitors,
     });
 
-    // Get daily stats for last 30 days using aggregated function
-    const { data: dailyData } = await supabase
-      .rpc('get_daily_analytics_stats', { days_back: 30 });
-
-    // Process daily stats from aggregated data
+    const { data: dailyData } = await supabase.rpc('get_daily_analytics_stats', { days_back: 30 });
     const dailyStatsArray: DailyStats[] = (dailyData || []).map((item: { stat_date: string; view_count: number; visitor_count: number }) => ({
       date: format(new Date(item.stat_date), "MMM dd"),
       views: Number(item.view_count),
       visitors: Number(item.visitor_count),
     }));
-    
     setDailyStats(dailyStatsArray);
 
-    // Get top content
-    const { data: contentData } = await supabase
-      .from("site_analytics")
-      .select("content_title, content_type")
-      .not("content_id", "is", null)
-      .limit(500);
-
+    const { data: contentData } = await supabase.from("site_analytics").select("content_title, content_type").not("content_id", "is", null).limit(500);
     const contentMap = new Map<string, { type: string; count: number }>();
     contentData?.forEach((item) => {
       if (item.content_title) {
@@ -147,32 +138,30 @@ export default function AdminDashboard() {
         contentMap.get(key)!.count++;
       }
     });
-
     const topContentArray: ContentStats[] = [];
-    contentMap.forEach((value, key) => {
-      topContentArray.push({ title: key, type: value.type, count: value.count });
-    });
+    contentMap.forEach((value, key) => { topContentArray.push({ title: key, type: value.type, count: value.count }); });
     topContentArray.sort((a, b) => b.count - a.count);
     setTopContent(topContentArray.slice(0, 10));
 
-    // Get top pages
-    const { data: pageData } = await supabase
-      .from("site_analytics")
-      .select("page_path")
-      .limit(500);
-
+    const { data: pageData } = await supabase.from("site_analytics").select("page_path").limit(500);
     const pageMap = new Map<string, number>();
-    pageData?.forEach((item) => {
-      pageMap.set(item.page_path, (pageMap.get(item.page_path) || 0) + 1);
-    });
-
+    pageData?.forEach((item) => { pageMap.set(item.page_path, (pageMap.get(item.page_path) || 0) + 1); });
     const topPagesArray: PageStats[] = [];
-    pageMap.forEach((count, path) => {
-      topPagesArray.push({ path, count });
-    });
+    pageMap.forEach((count, path) => { topPagesArray.push({ path, count }); });
     topPagesArray.sort((a, b) => b.count - a.count);
     setTopPages(topPagesArray.slice(0, 5));
   };
+
+  // Menu Configuration
+  const adminPages = [
+    { id: 'messages', title: 'User Messages', icon: Mail, desc: 'Read requests, reports, and feedbacks', color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+    { id: 'channels', title: 'Manage Channels', icon: Tv, desc: 'Add or edit TV, Movies, and Anime', color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+    { id: 'analytics', title: 'Full Analytics', icon: BarChart3, desc: 'Detailed views, visitors, and top pages', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+    { id: 'iptv', title: 'IPTV Settings', icon: Wifi, desc: 'Configure M3U playlists and sources', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+    { id: 'notifications', title: 'Notifications', icon: Bell, desc: 'Send announcements to all users', color: 'text-pink-500', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
+    { id: 'settings', title: 'Welcome Popup', icon: MessageSquare, desc: 'Edit the initial welcome dialog', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
+    { id: 'page-popups', title: 'Page Popups', icon: ExternalLink, desc: 'Manage redirect links and ads', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  ];
 
   if (loading) {
     return (
@@ -181,9 +170,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 pt-24 pb-8">
           <Skeleton className="h-10 w-64 mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
+            {[...Array(4)].map((_, i) => ( <Skeleton key={i} className="h-32" /> ))}
           </div>
           <Skeleton className="h-80 mb-8" />
         </div>
@@ -191,258 +178,206 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 pt-24 pb-8">
-        <div className="flex items-center gap-3 mb-8">
-          <BarChart3 className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+      <div className="container mx-auto px-4 pt-24 pb-12">
+        
+        {/* Dynamic Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-xl">
+              <BarChart3 className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin Center</h1>
+              <p className="text-sm text-muted-foreground">Manage your streaming platform</p>
+            </div>
+          </div>
+          
+          {activeView !== 'menu' && (
+            <Button variant="outline" onClick={() => setActiveView('menu')} className="gap-2 shadow-sm hover:bg-primary/5">
+              <ChevronLeft className="w-4 h-4" /> Back to Menu
+            </Button>
+          )}
         </div>
 
-        <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="analytics" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="channels" className="gap-2">
-              <Tv className="h-4 w-4" />
-              Channels
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Welcome Popup
-            </TabsTrigger>
-            <TabsTrigger value="page-popups" className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Page Popups
-            </TabsTrigger>
-            <TabsTrigger value="iptv" className="gap-2">
-              <Wifi className="h-4 w-4" />
-              IPTV
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="gap-2">
-              <Bell className="h-4 w-4" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="gap-2">
-              <Mail className="h-4 w-4" />
-              Messages
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total Views
-                  </CardTitle>
-                  <Eye className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">
-                    {totals.totalViews.toLocaleString()}
+        {activeView === 'menu' ? (
+          <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
+            {/* Quick Stats Row (Laging naka-display sa menu) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-card border-border shadow-sm">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Total Views</p>
+                    <Eye className="h-4 w-4 text-primary" />
                   </div>
-                  <p className="text-xs text-muted-foreground">All time page views</p>
+                  <div className="text-2xl sm:text-3xl font-bold">{totals.totalViews.toLocaleString()}</div>
                 </CardContent>
               </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Today's Views
-                  </CardTitle>
-                  <Calendar className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">
-                    {totals.todayViews.toLocaleString()}
+              <Card className="bg-card border-border shadow-sm">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Today's Views</p>
+                    <Calendar className="h-4 w-4 text-green-500" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Views today</p>
+                  <div className="text-2xl sm:text-3xl font-bold">{totals.todayViews.toLocaleString()}</div>
                 </CardContent>
               </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Unique Visitors
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">
-                    {totals.uniqueVisitors.toLocaleString()}
+              <Card className="bg-card border-border shadow-sm">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Total Visitors</p>
+                    <Users className="h-4 w-4 text-blue-500" />
                   </div>
-                  <p className="text-xs text-muted-foreground">All time unique visitors</p>
+                  <div className="text-2xl sm:text-3xl font-bold">{totals.uniqueVisitors.toLocaleString()}</div>
                 </CardContent>
               </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Weekly Visitors
-                  </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">
-                    {totals.weeklyVisitors.toLocaleString()}
+              <Card className="bg-card border-border shadow-sm">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Weekly Visitors</p>
+                    <TrendingUp className="h-4 w-4 text-purple-500" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Last 7 days</p>
+                  <div className="text-2xl sm:text-3xl font-bold">{totals.weeklyVisitors.toLocaleString()}</div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-foreground flex items-center gap-2">
-                    <Eye className="h-5 w-5" />
-                    Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                    {dailyStats.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No data yet</p>
-                    ) : (
-                      dailyStats.slice().reverse().map((stat, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                        >
-                          <span className="text-sm font-medium text-foreground">{stat.date}</span>
-                          <span className="text-sm font-bold text-primary">{stat.views.toLocaleString()} views</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-foreground flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                    {dailyStats.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No data yet</p>
-                    ) : (
-                      dailyStats.slice().reverse().map((stat, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                        >
-                          <span className="text-sm font-medium text-foreground">{stat.date}</span>
-                          <span className="text-sm font-bold text-primary">{stat.visitors.toLocaleString()} visitors</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Grid Box Menu */}
+            <div>
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <LayoutGrid className="w-5 h-5 text-muted-foreground" /> Main Navigation
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {adminPages.map((page) => (
+                  <button
+                    key={page.id}
+                    onClick={() => setActiveView(page.id)}
+                    className={`flex flex-col text-left p-5 rounded-2xl border ${page.border} bg-card hover:shadow-md hover:border-primary/50 transition-all duration-200 group relative overflow-hidden`}
+                  >
+                    <div className={`p-3 rounded-xl ${page.bg} ${page.color} w-fit mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                      <page.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{page.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{page.desc}</p>
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-foreground">
-                    <Film className="h-5 w-5" />
-                    Top Content
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topContent.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No content views yet</p>
-                    ) : (
-                      topContent.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                            <div>
-                              <p className="font-medium text-foreground line-clamp-1">
-                                {item.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground capitalize">
-                                {item.type}
-                              </p>
+          </div>
+        ) : (
+          /* =========================================
+             RENDER ACTIVE COMPONENT BASED ON SELECTION
+             ========================================= */
+          <div className="animate-in slide-in-from-right-4 duration-300">
+            {activeView === 'messages' && <MessageManager />}
+            {activeView === 'channels' && <ChannelManager />}
+            {activeView === 'settings' && <WelcomePopupSettings />}
+            {activeView === 'page-popups' && <PagePopupSettings />}
+            {activeView === 'iptv' && <IptvSettings />}
+            {activeView === 'notifications' && <NotificationManager />}
+            
+            {activeView === 'analytics' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <Card className="bg-card border-border">
+                    <CardHeader>
+                      <CardTitle className="text-foreground flex items-center gap-2">
+                        <Eye className="h-5 w-5" />
+                        Views Trend {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                        {dailyStats.length === 0 ? ( <p className="text-muted-foreground text-sm">No data yet</p> ) : (
+                          dailyStats.slice().reverse().map((stat, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                              <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                              <span className="text-sm font-bold text-primary">{stat.views.toLocaleString()} views</span>
                             </div>
-                          </div>
-                          <span className="font-bold text-foreground">{item.count} views</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Top Pages</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topPages.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No page views yet</p>
-                    ) : (
-                      topPages.map((page, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                            <p className="font-medium text-foreground">{page.path}</p>
-                          </div>
-                          <span className="font-bold text-foreground">{page.count} views</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                  <Card className="bg-card border-border">
+                    <CardHeader>
+                      <CardTitle className="text-foreground flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Daily Visitors {dailyStats.length > 0 && `(${dailyStats[0]?.date} - ${dailyStats[dailyStats.length - 1]?.date})`}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-72 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                        {dailyStats.length === 0 ? ( <p className="text-muted-foreground text-sm">No data yet</p> ) : (
+                          dailyStats.slice().reverse().map((stat, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                              <span className="text-sm font-medium text-foreground">{stat.date}</span>
+                              <span className="text-sm font-bold text-primary">{stat.visitors.toLocaleString()} visitors</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-          <TabsContent value="channels">
-            <ChannelManager />
-          </TabsContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-card border-border">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-foreground">
+                        <Film className="h-5 w-5" /> Top Content
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {topContent.length === 0 ? ( <p className="text-muted-foreground text-sm">No content views yet</p> ) : (
+                          topContent.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                              <div className="flex items-center gap-3">
+                                <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                                <div>
+                                  <p className="font-medium text-foreground line-clamp-1">{item.title}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{item.type}</p>
+                                </div>
+                              </div>
+                              <span className="font-bold text-foreground">{item.count} views</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-          <TabsContent value="settings">
-            <WelcomePopupSettings />
-          </TabsContent>
-
-          <TabsContent value="page-popups">
-            <PagePopupSettings />
-          </TabsContent>
-
-          <TabsContent value="iptv">
-            <IptvSettings />
-          </TabsContent>
-
-          <TabsContent value="notifications">
-            <NotificationManager />
-          </TabsContent>
-
-          <TabsContent value="messages">
-            <MessageManager />
-          </TabsContent>
-
-        </Tabs>
+                  <Card className="bg-card border-border">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Top Pages</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {topPages.length === 0 ? ( <p className="text-muted-foreground text-sm">No page views yet</p> ) : (
+                          topPages.map((page, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                              <div className="flex items-center gap-3">
+                                <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                                <p className="font-medium text-foreground">{page.path}</p>
+                              </div>
+                              <span className="font-bold text-foreground">{page.count} views</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
