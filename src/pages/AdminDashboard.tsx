@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail, LayoutGrid, ChevronLeft } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail, LayoutGrid, ChevronLeft, Rocket } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
@@ -13,6 +13,7 @@ import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
 import { IptvSettings } from "@/components/admin/IptvSettings";
 import { NotificationManager } from "@/components/admin/NotificationManager";
 import { MessageManager } from "@/components/admin/MessageManager";
+import { AppUpdateManager } from "@/components/admin/AppUpdateManager"; // <--- BAGONG IMPORT
 
 interface DailyStats {
   date: string;
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeView, setActiveView] = useState<string>('menu'); // NEW: Controls what page is shown
+  const [activeView, setActiveView] = useState<string>('menu');
 
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [topContent, setTopContent] = useState<ContentStats[]>([]);
@@ -159,6 +160,7 @@ export default function AdminDashboard() {
     { id: 'analytics', title: 'Full Analytics', icon: BarChart3, desc: 'Detailed views, visitors, and top pages', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
     { id: 'iptv', title: 'IPTV Settings', icon: Wifi, desc: 'Configure M3U playlists and sources', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
     { id: 'notifications', title: 'Notifications', icon: Bell, desc: 'Send announcements to all users', color: 'text-pink-500', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
+    { id: 'app-update', title: 'App Updater', icon: Rocket, desc: 'Manage APK versions and update popups', color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' }, // <--- BAGONG MENU ITEM
     { id: 'settings', title: 'Welcome Popup', icon: MessageSquare, desc: 'Edit the initial welcome dialog', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
     { id: 'page-popups', title: 'Page Popups', icon: ExternalLink, desc: 'Manage redirect links and ads', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
   ];
@@ -206,7 +208,7 @@ export default function AdminDashboard() {
 
         {activeView === 'menu' ? (
           <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
-            {/* Quick Stats Row (Laging naka-display sa menu) */}
+            {/* Quick Stats Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-card border-border shadow-sm">
                 <CardContent className="p-4 sm:p-6">
@@ -269,9 +271,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         ) : (
-          /* =========================================
-             RENDER ACTIVE COMPONENT BASED ON SELECTION
-             ========================================= */
+          /* RENDER ACTIVE COMPONENT BASED ON SELECTION */
           <div className="animate-in slide-in-from-right-4 duration-300">
             {activeView === 'messages' && <MessageManager />}
             {activeView === 'channels' && <ChannelManager />}
@@ -279,6 +279,7 @@ export default function AdminDashboard() {
             {activeView === 'page-popups' && <PagePopupSettings />}
             {activeView === 'iptv' && <IptvSettings />}
             {activeView === 'notifications' && <NotificationManager />}
+            {activeView === 'app-update' && <AppUpdateManager />} {/* <--- DITO LALABAS ANG BAGONG MANAGER MO */}
             
             {activeView === 'analytics' && (
               <div className="space-y-6">
