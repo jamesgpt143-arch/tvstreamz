@@ -5,7 +5,7 @@ import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { Radio, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
+import { Radio, ArrowUpAZ, TrendingUp, Clock, Coffee } from 'lucide-react'; // Added Coffee icon
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import {
@@ -136,6 +136,22 @@ const LiveTV = () => {
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+              
+              {/* KO-FI SUPPORT CARD - Always first in the grid */}
+              <a 
+                href="https://ko-fi.com/james17582" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30 hover:border-amber-500/60 transition-all flex flex-col items-center justify-center p-2 text-center"
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500 rounded-full flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform">
+                  <Coffee className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-amber-500 text-xs sm:text-sm">Buy Us a Coffee</h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Support our servers!</p>
+              </a>
+
+              {/* Channel Cards */}
               {channels.map((channel) => (
                 <ChannelCard key={channel.id} channel={channel} />
               ))}
