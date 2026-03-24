@@ -30,6 +30,7 @@ import { BottomNav } from "./components/BottomNav";
 
 // DITO NATIN IDINAGDAG ANG IMPORT
 import CustomChannels from "./pages/CustomChannels";
+import { UpdatePrompt } from '@/components/UpdatePrompt'; // <--- BAGONG IMPORT PARA SA UPDATE POPUP
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,10 @@ const App = () => (
         
         <Toaster />
         <Sonner />
+        
+        {/* DITO NATIN ISININGIT ANG UPDATE POPUP (Overlay ito kaya dapat nasa labas ng Routes) */}
+        <UpdatePrompt />
+
         <BrowserRouter>
           <div className="pb-16 md:pb-0">
             <Routes>
@@ -63,7 +68,6 @@ const App = () => (
               
               <Route path="/temp-mail" element={<TempMail />} />
               
-              {/* DITO NATIN ISININGIT ANG BAGONG ROUTE */}
               <Route path="/custom-channels" element={<CustomChannels />} />
               
               <Route path="*" element={<NotFound />} />
