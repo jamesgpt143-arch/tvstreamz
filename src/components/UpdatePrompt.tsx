@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Download, Rocket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Capacitor } from '@capacitor/core'; // <--- BAGONG IMPORT
 
 // ITO ANG CURRENT VERSION NG APP MO.
-// Kapag gagawa ka ng bagong APK, papalitan mo ito (hal. "1.0.1") bago mo i-build.
 const CURRENT_APP_VERSION = "1.0.0"; 
 
 export const UpdatePrompt = () => {
@@ -12,6 +12,11 @@ export const UpdatePrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // KUNG HINDI NAKA-APK (PWA/Website lang), WAG NANG ILABAS ANG POPUP
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
     const checkUpdate = async () => {
       try {
         const { data } = await supabase
@@ -50,7 +55,7 @@ export const UpdatePrompt = () => {
           <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mb-4 shadow-lg">
             <Rocket className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-center">New Update Available!</h2>
+          <h2 className="text-xl font-bold text-center">New App Update!</h2>
           <span className="text-sm font-medium bg-primary/20 text-primary px-2 py-0.5 rounded-full mt-2">
             Version {updateInfo.latest_version}
           </span>
