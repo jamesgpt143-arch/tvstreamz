@@ -44,13 +44,13 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
         </div>
 
         {/* Rating badge - more prominent */}
-        <div className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-sm font-bold ${getRatingColor(rating)}`}>
+        <div className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-sm font-bold ${getRatingColor(rating || 0)}`}>
           <Star className="w-3.5 h-3.5" fill="currentColor" />
-          <span className="text-sm">{rating.toFixed(1)}</span>
+          <span className="text-sm">{(rating || 0).toFixed(1)}</span>
         </div>
 
         {/* HD/Quality badge */}
-        {rating >= 7 && (
+        {(rating || 0) >= 7 && (
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-bold">
             HD
           </div>
