@@ -367,7 +367,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                   }
                   
                   if (!triggerAutoRefresh()) {
-                    setError('Failed to load stream. The channel may be offline.');
+                    setError('Channel is currently offline.');
                     setIsLoading(false);
                     setIsRefreshing(false);
                   }
@@ -419,7 +419,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             }
             if (!dashRecovered && isMounted) {
               if (!triggerAutoRefresh()) {
-                setError('Failed to load stream.');
+                setError('Channel is currently offline.');
                 setIsLoading(false);
                 setIsRefreshing(false);
               }
@@ -465,10 +465,22 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         </div>
       )}
 
+      {/* DITO NAGBAGO: TV Color Bars kapag Offline o may Error */}
       {error && !iosWarning && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card gap-3 p-4 text-center z-20">
-          <AlertCircle className="w-12 h-12 text-destructive" />
-          <p className="text-muted-foreground">{error}</p>
+        <div 
+          className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/offline-bars.png')" }}
+        >
+          {/* Dark Blur Overlay para mabasa ang text */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
+          
+          <div className="relative z-10 flex flex-col items-center gap-3 p-4 text-center">
+            <AlertCircle className="w-12 h-12 text-destructive drop-shadow-md" />
+            <p className="text-white font-medium drop-shadow-md bg-black/50 px-4 py-2 rounded-lg border border-white/10">
+              {error}
+            </p>
+            <p className="text-xs text-gray-300">Please try another channel or use a backup link.</p>
+          </div>
         </div>
       )}
 
