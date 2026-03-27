@@ -50,7 +50,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
           <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
-              {currentItem.vote_average.toFixed(1)}
+              {(currentItem.vote_average || 0).toFixed(1)}
             </span>
             {year && (
               <span className="flex items-center gap-1">
