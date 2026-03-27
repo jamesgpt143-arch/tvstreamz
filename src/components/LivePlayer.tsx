@@ -135,7 +135,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         let streamUrl = channel.manifestUri;
         
-        // Auto-resolve TheTVApp
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -162,20 +161,16 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
         proxyLabelMapRef.current = labelMap;
 
-        // ==========================================
-        // FAST PARALLEL PROXY CHECKER (Karera ng mga Proxies)
-        // ==========================================
         let activeProxyUrl = '';
 
         if (channel.useProxy && orderedProxies.length > 0) {
-          // I-filter muna yung mga nasa bad cache para hindi isali sa karera
           const proxiesToTest = orderedProxies.filter(testProxy => {
             if (badProxiesCache.has(testProxy)) {
               if (Date.now() - badProxiesCache.get(testProxy)! < PROXY_TIMEOUT_MS) {
                 console.log(`[Proxy Fast-Skip] Nilaktawan ang ${labelMap.get(testProxy)} dahil limit/sira ito.`);
                 return false; 
               } else {
-                badProxiesCache.delete(testProxy); // Expired na ang lock
+                badProxiesCache.delete(testProxy);
               }
             }
             return true;
@@ -185,11 +180,10 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (isMounted) onProxyChange?.('Finding fastest proxy...');
 
             try {
-              // Sabay-sabay nating i-fetch (race)
               const proxyPromises = proxiesToTest.map(testProxy => {
                 return new Promise<string>(async (resolve, reject) => {
                   const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s limit
+                  const timeoutId = setTimeout(() => controller.abort(), 3500);
                   
                   try {
                     const testUrl = buildProxiedUrl(testProxy, streamUrl, channel.userAgent, channel.referrer);
@@ -197,9 +191,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                     clearTimeout(timeoutId);
                     
                     if (res.ok) {
-                      resolve(testProxy); // I-deklara na nanalo itong proxy na 'to!
+                      resolve(testProxy);
                     } else {
-                      // Pag limit (429) o sira (500), i-block agad
                       if (res.status === 429 || res.status >= 500) {
                          badProxiesCache.set(testProxy, Date.now());
                       }
@@ -207,24 +200,20 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                     }
                   } catch (err) {
                     clearTimeout(timeoutId);
-                    // Pag nag-timeout o cors error, i-block agad
                     badProxiesCache.set(testProxy, Date.now());
                     reject(err);
                   }
                 });
               });
 
-              // Promise.any = Kung sino ang unang maka-resolve (200 OK), siya ang gagamitin!
               activeProxyUrl = await Promise.any(proxyPromises);
               if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
               
             } catch (err) {
-              // Kung nag-reject ang lahat ng proxies sa listahan
               console.warn('[Proxy Race] Lahat ng proxy na ni-check ay bagsak.');
             }
           }
 
-          // Fallback kapag lahat ay pumalya o lahat nasa blocklist (try the first one to let player handle error natively)
           if (!activeProxyUrl) {
              activeProxyUrl = orderedProxies[0];
              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Primary (Fallback)');
@@ -294,8 +283,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             shakaRef.current = player;
             const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
             uiRef.current = ui;
-            ui.configure({ overflowMenuButtons: ['quality', 'captions', 'language', 'picture_in_picture', 'cast'], addBigPlayButton: true });
-            player.configure({ drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, abr: { enabled: true } });
+            
+            // DITO INAYOS ANG WIKA PARA SA HLS DRM
+            player.configure({ 
+              preferredAudioLanguage: 'en', // DEFAULT ENGLISH
+              drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, 
+              abr: { enabled: true } 
+            });
+            ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
+            
             configureShakaProxy(player, proxyUrl);
 
             try {
@@ -395,8 +391,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           shakaRef.current = player;
           const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
           uiRef.current = ui;
-          ui.configure({ overflowMenuButtons: ['quality', 'captions'], addBigPlayButton: true });
-          player.configure({ drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } });
+          
+          // DITO INAYOS ANG WIKA PARA SA MPD DASH
+          player.configure({ 
+            preferredAudioLanguage: 'en', // DEFAULT ENGLISH
+            drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } 
+          });
+          ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
+          
           configureShakaProxy(player, proxyUrl);
 
           try {
@@ -471,7 +473,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url('/offline-bars.png')" }}
         >
-          {/* Dark Blur Overlay para mabasa ang text */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
           
           <div className="relative z-10 flex flex-col items-center gap-3 p-4 text-center">
