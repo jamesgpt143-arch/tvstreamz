@@ -243,7 +243,7 @@ const Watch = () => {
               <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
                 <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold">
                   <Star className="w-4 h-4" fill="currentColor" />
-                  {details.vote_average.toFixed(1)}
+                  {(details.vote_average || 0).toFixed(1)}
                 </span>
                 {year && (
                   <span className="flex items-center gap-1">
