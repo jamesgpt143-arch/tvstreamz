@@ -25,12 +25,10 @@ import NotFound from "./pages/NotFound";
 import IPTV from "./pages/IPTV";
 
 import TempMail from "./pages/TempMail";
-import { FloatingChat } from "./components/FloatingChat";
 import { BottomNav } from "./components/BottomNav";
 
-// DITO NATIN IDINAGDAG ANG IMPORT
 import CustomChannels from "./pages/CustomChannels";
-import { UpdatePrompt } from '@/components/UpdatePrompt'; // <--- BAGONG IMPORT PARA SA UPDATE POPUP
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 const queryClient = new QueryClient();
 
@@ -42,7 +40,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         
-        {/* DITO NATIN ISININGIT ANG UPDATE POPUP (Overlay ito kaya dapat nasa labas ng Routes) */}
         <UpdatePrompt />
 
         <BrowserRouter>
@@ -74,7 +71,8 @@ const App = () => (
             </Routes>
             <BottomNav />
           </div>
-          <FloatingChat />
+          
+          {/* TINANGGAL NA ANG FLOATING CHAT DITO */}
           
         </BrowserRouter>
       </TooltipProvider>
