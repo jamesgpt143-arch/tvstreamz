@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Download, Rocket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Capacitor } from '@capacitor/core'; // <--- BAGONG IMPORT
-
-// ITO ANG CURRENT VERSION NG APP MO.
-const CURRENT_APP_VERSION = "1.0.0"; 
+import { Capacitor } from '@capacitor/core';
+import { APP_VERSION } from '@/lib/version'; // <--- ITO YUNG NAGCO-CONNECT SA VERSION MO
 
 export const UpdatePrompt = () => {
   const [updateInfo, setUpdateInfo] = useState<any>(null);
@@ -27,7 +25,8 @@ export const UpdatePrompt = () => {
 
         if (data?.value) {
           const config = data.value as any;
-          if (config.latest_version && config.latest_version !== CURRENT_APP_VERSION) {
+          // GAGAMITIN NA NIYA YUNG APP_VERSION MULA SA version.ts
+          if (config.latest_version && config.latest_version !== APP_VERSION) {
             setUpdateInfo(config);
             setShowPrompt(true);
           }
