@@ -6,7 +6,6 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 
-// GLOBAL CACHE PARA SA MGA NA-LIMIT NA PROXIES (Naka-lock ng 10 mins kapag sira)
 const badProxiesCache = new Map<string, number>();
 const PROXY_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -86,6 +85,28 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // FETCH CUSTOM OFFLINE TEXT MULA SA ADMIN PANEL
+  const [offlineText, setOfflineText] = useState({
+    title: "Channel is currently offline.",
+    message: "Please try another channel or use a backup link."
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchOfflineText = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
+      if (isMounted && data?.value) {
+        const conf = data.value as any;
+        setOfflineText({
+          title: conf.offline_title || "Channel is currently offline.",
+          message: conf.offline_message || "Please try another channel or use a backup link."
+        });
+      }
+    };
+    fetchOfflineText();
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     setReloadTrigger(0);
@@ -206,7 +227,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 });
               });
 
-              activeProxyUrl = await (Promise as any).any(proxyPromises);
+              activeProxyUrl = await Promise.any(proxyPromises);
               if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
               
             } catch (err) {
@@ -284,9 +305,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
             uiRef.current = ui;
             
-            // DITO INAYOS ANG WIKA PARA SA HLS DRM
             player.configure({ 
-              preferredAudioLanguage: 'en', // DEFAULT ENGLISH
+              preferredAudioLanguage: 'en',
               drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, 
               abr: { enabled: true } 
             });
@@ -392,9 +412,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           const ui = new shaka.ui.Overlay(player, containerRef.current, videoRef.current);
           uiRef.current = ui;
           
-          // DITO INAYOS ANG WIKA PARA SA MPD DASH
           player.configure({ 
-            preferredAudioLanguage: 'en', // DEFAULT ENGLISH
+            preferredAudioLanguage: 'en',
             drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } 
           });
           ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
@@ -467,7 +486,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         </div>
       )}
 
-      {/* DITO NAGBAGO: TV Color Bars kapag Offline o may Error */}
+      {/* DITO NA IPAPAKITA ANG CUSTOM TEXT NA GALING SA ADMIN PANEL */}
       {error && !iosWarning && (
         <div 
           className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-cover bg-center bg-no-repeat"
@@ -478,9 +497,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           <div className="relative z-10 flex flex-col items-center gap-3 p-4 text-center">
             <AlertCircle className="w-12 h-12 text-destructive drop-shadow-md" />
             <p className="text-white font-medium drop-shadow-md bg-black/50 px-4 py-2 rounded-lg border border-white/10">
-              {error}
+              {offlineText.title}
             </p>
-            <p className="text-xs text-gray-300">Please try another channel or use a backup link.</p>
+            <p className="text-xs text-gray-300 whitespace-pre-wrap">{offlineText.message}</p>
           </div>
         </div>
       )}
