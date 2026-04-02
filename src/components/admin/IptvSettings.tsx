@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Save, Wifi, Cloud, Server } from "lucide-react";
+import { Loader2, Save, Wifi, Cloud, Server, AlertCircle } from "lucide-react";
 
 interface IptvConfig {
   type: "stalker" | "xtream";
@@ -15,7 +15,6 @@ interface IptvConfig {
   server_url: string;
   username: string;
   password: string;
-  // Cloudflare proxy URLs
   cloudflare_proxy_url: string;
   cloudflare_proxy_url_backup: string;
   cloudflare_proxy_url_backup2: string;
@@ -23,7 +22,6 @@ interface IptvConfig {
   cloudflare_proxy_url_backup4: string;
   cloudflare_proxy_url_backup5: string;
   cloudflare_proxy_url_backup6: string;
-  // Supabase proxy URLs
   supabase_proxy_url: string;
   supabase_proxy_url_backup: string;
   supabase_proxy_url_backup2: string;
@@ -31,6 +29,9 @@ interface IptvConfig {
   supabase_proxy_url_backup4: string;
   supabase_proxy_url_backup5: string;
   supabase_proxy_url_backup6: string;
+  // BAGONG FIELDS PARA SA OFFLINE MESSAGE
+  offline_title: string;
+  offline_message: string;
 }
 
 const defaultConfig: IptvConfig = {
@@ -54,6 +55,9 @@ const defaultConfig: IptvConfig = {
   supabase_proxy_url_backup4: "",
   supabase_proxy_url_backup5: "",
   supabase_proxy_url_backup6: "",
+  // DEFAULT TEXTS
+  offline_title: "Channel is currently offline.",
+  offline_message: "Please try another channel or use a backup link.",
 };
 
 const PROXY_FIELDS = [
@@ -195,7 +199,7 @@ export const IptvSettings = () => {
   }
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-card border-border mb-8">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wifi className="h-5 w-5" />
@@ -298,7 +302,38 @@ export const IptvSettings = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        {/* BAGONG SECTION PARA SA OFFLINE MESSAGES */}
+        <div className="space-y-4 border-t border-border pt-4 mt-6">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            Player Offline Message
+          </div>
+          <p className="text-xs text-muted-foreground">
+            I-customize kung ano ang mababasa ng users kapag nagka-error o patay ang Live TV channel.
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="offline_title">Main Error Title</Label>
+            <Input
+              id="offline_title"
+              placeholder="Channel is currently offline."
+              value={config.offline_title || ""}
+              onChange={(e) => setConfig({ ...config, offline_title: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="offline_message">Sub-message / Instruction</Label>
+            <Input
+              id="offline_message"
+              placeholder="Please try another channel or use a backup link."
+              value={config.offline_message || ""}
+              onChange={(e) => setConfig({ ...config, offline_message: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4">
           <Button onClick={saveConfig} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Settings
