@@ -83,6 +83,51 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_channels: {
+        Row: {
+          created_at: string
+          drm_key: string | null
+          drm_key_id: string | null
+          id: string
+          license_type: string | null
+          license_url: string | null
+          logo_url: string | null
+          name: string
+          proxy_type: string | null
+          stream_type: string | null
+          stream_url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          drm_key?: string | null
+          drm_key_id?: string | null
+          id?: string
+          license_type?: string | null
+          license_url?: string | null
+          logo_url?: string | null
+          name: string
+          proxy_type?: string | null
+          stream_type?: string | null
+          stream_url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          drm_key?: string | null
+          drm_key_id?: string | null
+          id?: string
+          license_type?: string | null
+          license_url?: string | null
+          logo_url?: string | null
+          name?: string
+          proxy_type?: string | null
+          stream_type?: string | null
+          stream_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       live_chat_messages: {
         Row: {
           avatar_url: string | null
@@ -236,6 +281,39 @@ export type Database = {
           resolved_url?: string
           slug?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_requests: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          message: string
+          status: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message: string
+          status?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string
+          status?: string | null
+          user_id?: string | null
+          username?: string | null
         }
         Relationships: []
       }
