@@ -65,6 +65,7 @@ const App = () => (
               <Route path="/iptv" element={<IPTV />} />
               
               <Route path="/temp-mail" element={<TempMail />} />
+              <Route path="/text-to-speech" element={<TextToSpeech />} />
               
               <Route path="/custom-channels" element={<CustomChannels />} />
               
