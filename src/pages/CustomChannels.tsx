@@ -40,7 +40,7 @@ const CustomChannels = () => {
     name: '',
     stream_url: '',
     logo_url: '',
-    stream_type: 'hls' as const,
+    stream_type: 'hls' as 'hls' | 'mpd' | 'youtube',
     drm_key_id: '',
     drm_key: '',
     license_type: 'none' as string,
