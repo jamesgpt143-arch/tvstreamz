@@ -11,6 +11,8 @@ import TVShows from "./pages/TVShows";
 import Anime from "./pages/Anime";
 import LiveTV from "./pages/LiveTV";
 import WatchLive from "./pages/WatchLive";
+import LiveEvents from "./pages/LiveEvents";
+import WatchEvent from "./pages/WatchEvent";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
 import MyList from "./pages/MyList";
