@@ -53,7 +53,7 @@ const WatchEvent = () => {
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
 
-  // Create a pseudo-channel for LivePlayer
+  // IN-UPDATE: Enable ang proxy at naglagay ng referrer
   const pseudoChannel = streamUrl ? {
     id: `event-${eventSlug}`,
     name: title,
@@ -61,8 +61,10 @@ const WatchEvent = () => {
     manifestUri: streamUrl,
     type: 'hls' as const,
     category: sport,
-    useProxy: false,
-    proxyType: 'none' as const,
+    useProxy: true,                     // <--- Naging True
+    proxyType: 'cloudflare' as const,   // <--- Gagamit ng Cloudflare Workers mo
+    referrer: 'https://thetvapp.to/',   // <--- Important for CORS bypass
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   } : null;
 
   return (
