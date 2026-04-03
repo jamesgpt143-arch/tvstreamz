@@ -55,17 +55,30 @@ const WatchEvent = () => {
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
 
   // IN-UPDATE: Smart Proxy & Native CORS Bypass
-  const pseudoChannel = streamUrl ? {
+  let finalStreamUrl = streamUrl;
+  let customReferrer = 'https://thetvapp.to/';
+  
+  if (streamUrl && streamUrl.includes('#referrer=')) {
+    const parts = streamUrl.split('#referrer=');
+    finalStreamUrl = parts[0];
+    try {
+      customReferrer = decodeURIComponent(parts[1]);
+    } catch (e) {
+      console.warn("Failed to decode referrer", e);
+    }
+  }
+
+  const pseudoChannel = finalStreamUrl ? {
     id: `event-${eventSlug}`,
     name: title,
     logo: '',
-    manifestUri: streamUrl,
+    manifestUri: finalStreamUrl,
     type: 'hls' as const,
     category: sport,
     // KUNG NASA ANDROID APK: false (Direct Play). KUNG NASA WEB: true (Proxy)
     useProxy: !Capacitor.isNativePlatform(),
     proxyType: 'supabase' as const,
-    referrer: 'https://thetvapp.to/',
+    referrer: customReferrer,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   } : null;
 
