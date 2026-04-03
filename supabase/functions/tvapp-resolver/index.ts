@@ -133,14 +133,16 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
         });
         if (embedResp.ok) {
           const embedHtml = await embedResp.text();
+          const embedOrigin = new URL(embedUrl).origin + "/";
+          const embedReferrerHash = "#referrer=" + encodeURIComponent(embedOrigin);
           
           // Try base64 source extraction from embed page
           const embedAtob = extractAtobSource(embedHtml, "embed");
-          if (embedAtob) return embedAtob;
+          if (embedAtob) return embedAtob + embedReferrerHash;
           
           // Try direct m3u8
           const embedM3u8 = extractM3u8FromHtml(embedHtml, "embed");
-          if (embedM3u8) return embedM3u8;
+          if (embedM3u8) return embedM3u8 + embedReferrerHash;
         }
       } catch (err) {
         console.error(`[link] Embed fetch error:`, err);
