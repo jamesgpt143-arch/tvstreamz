@@ -11,8 +11,6 @@ import TVShows from "./pages/TVShows";
 import Anime from "./pages/Anime";
 import LiveTV from "./pages/LiveTV";
 import WatchLive from "./pages/WatchLive";
-import LiveEvents from "./pages/LiveEvents";
-import WatchEvent from "./pages/WatchEvent";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
 import MyList from "./pages/MyList";
@@ -57,8 +55,6 @@ const App = () => (
               <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
               <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
               <Route path="/live-tv" element={<LiveTV />} />
-              <Route path="/live-events" element={<LiveEvents />} />
-              <Route path="/live-event/*" element={<WatchEvent />} />
               <Route path="/live/:channelId" element={<WatchLive />} />
               <Route path="/watch/:type/:id" element={<Watch />} />
               <Route path="/search" element={<Search />} />

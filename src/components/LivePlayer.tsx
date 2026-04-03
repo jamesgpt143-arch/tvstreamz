@@ -243,7 +243,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 });
               });
 
-              activeProxyUrl = await (Promise as any).any(proxyPromises);
+              activeProxyUrl = await Promise.any(proxyPromises);
               if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
               
             } catch (err) {

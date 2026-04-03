@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { ChannelCard } from '@/components/ChannelCard';
 import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { Radio, ArrowUpAZ, TrendingUp, Clock, Coffee, Trophy } from 'lucide-react';
+import { Radio, ArrowUpAZ, TrendingUp, Clock, Coffee } from 'lucide-react'; // Added Coffee icon
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import {
@@ -81,13 +80,6 @@ const LiveTV = () => {
                 <h1 className="text-3xl md:text-4xl font-bold">Live TV</h1>
                 <p className="text-muted-foreground">Watch your favorite channels live</p>
               </div>
-              <Link
-                to="/live-events"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
-              >
-                <Trophy className="w-4 h-4" />
-                Live Events
-              </Link>
             </div>
 
             {/* Sort Dropdown */}

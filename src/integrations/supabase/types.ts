@@ -26,8 +26,6 @@ export type Database = {
           license_url: string | null
           logo_url: string | null
           name: string
-          offline_message: string | null
-          offline_title: string | null
           proxy_order: Json | null
           proxy_type: string
           referrer: string | null
@@ -50,8 +48,6 @@ export type Database = {
           license_url?: string | null
           logo_url?: string | null
           name: string
-          offline_message?: string | null
-          offline_title?: string | null
           proxy_order?: Json | null
           proxy_type?: string
           referrer?: string | null
@@ -74,8 +70,6 @@ export type Database = {
           license_url?: string | null
           logo_url?: string | null
           name?: string
-          offline_message?: string | null
-          offline_title?: string | null
           proxy_order?: Json | null
           proxy_type?: string
           referrer?: string | null
