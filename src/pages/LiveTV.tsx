@@ -6,7 +6,7 @@ import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { Radio, ArrowUpAZ, TrendingUp, Clock, Coffee } from 'lucide-react'; // Added Coffee icon
+import { Radio, ArrowUpAZ, TrendingUp, Clock, Coffee, Trophy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import {
