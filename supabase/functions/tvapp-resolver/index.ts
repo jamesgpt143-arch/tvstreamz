@@ -215,65 +215,39 @@ function extractM3u8FromHtml(html: string, source: string): string | null {
  */
 async function scrapeEvents(): Promise<any[]> {
   const events: any[] = [];
-  const categories = ["nba", "nfl", "nhl", "mlb", "soccer", "ncaa", "cfb"];
+  const seen = new Set<string>();
   
-  // Try the main page first
   try {
     const resp = await fetch(TVAPP_LINK_BASE, {
       headers: { "User-Agent": DEFAULT_UA },
     });
     if (resp.ok) {
       const html = await resp.text();
-      // Extract event links: /sport/team-vs-team/id
-      const linkPattern = /href=["']\/?([a-z]+\/[a-z0-9-]+\/\d+)["']/gi;
-      const matches = html.matchAll(linkPattern);
-      const seen = new Set<string>();
-      for (const match of matches) {
-        const path = match[1];
+      
+      // Extract full URLs: href="https://thetvapp.link/nba/slug/id" or href="/nba/slug/id"
+      // Also handle /watch/sport/slug format
+      const fullUrlPattern = /href=["'](?:https?:\/\/thetvapp\.link)?\/?((?:watch\/)?[a-z]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)*)["'][^>]*>([^<]+)/gi;
+      
+      for (const match of html.matchAll(fullUrlPattern)) {
+        let path = match[1];
+        const rawTitle = match[2].trim().replace(/:\s*$/, '').trim();
+        
+        // Skip non-event paths
+        if (path.includes('guide') || path.includes('channel') || path.includes('tv/')) continue;
+        
         if (seen.has(path)) continue;
         seen.add(path);
         
-        const parts = path.split('/');
-        if (parts.length >= 3) {
-          const sport = parts[0];
-          const gameSlug = parts[1];
-          const eventId = parts[2];
-          const title = gameSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-          events.push({ sport, slug: path, title, eventId });
-        }
+        // Determine sport from path
+        const parts = path.replace(/^watch\//, '').split('/');
+        const sport = parts[0];
+        const title = rawTitle || parts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        
+        events.push({ sport, slug: path, title, eventId: parts[parts.length - 1] });
       }
     }
   } catch (err) {
-    console.error(`[events] Main page scrape error:`, err);
-  }
-
-  // Also try category pages
-  for (const cat of categories) {
-    try {
-      const resp = await fetch(`${TVAPP_LINK_BASE}/${cat}`, {
-        headers: { "User-Agent": DEFAULT_UA },
-      });
-      if (!resp.ok) continue;
-      const html = await resp.text();
-      const linkPattern = new RegExp(`href=["']\\/?${cat}\\/([a-z0-9-]+)\\/(\\d+)["']`, 'gi');
-      const titlePattern = new RegExp(`<a[^>]+href=["']\\/?${cat}\\/([a-z0-9-]+)\\/\\d+["'][^>]*>([^<]+)`, 'gi');
-      
-      const titleMap = new Map<string, string>();
-      for (const tm of html.matchAll(titlePattern)) {
-        titleMap.set(tm[1], tm[2].trim());
-      }
-
-      for (const match of html.matchAll(linkPattern)) {
-        const gameSlug = match[1];
-        const eventId = match[2];
-        const path = `${cat}/${gameSlug}/${eventId}`;
-        const title = titleMap.get(gameSlug) || gameSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        
-        if (!events.find(e => e.slug === path)) {
-          events.push({ sport: cat, slug: path, title, eventId });
-        }
-      }
-    } catch {}
+    console.error(`[events] Scrape error:`, err);
   }
 
   console.log(`[events] Found ${events.length} events total`);
