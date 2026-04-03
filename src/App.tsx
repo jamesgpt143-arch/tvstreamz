@@ -57,6 +57,8 @@ const App = () => (
               <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
               <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
               <Route path="/live-tv" element={<LiveTV />} />
+              <Route path="/live-events" element={<LiveEvents />} />
+              <Route path="/live-event/*" element={<WatchEvent />} />
               <Route path="/live/:channelId" element={<WatchLive />} />
               <Route path="/watch/:type/:id" element={<Watch />} />
               <Route path="/search" element={<Search />} />
