@@ -5,7 +5,7 @@ import { DEFAULT_PROXY_ORDER, PROXY_LABELS, type ProxyKey } from '@/lib/channels
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch'; 
+import { Switch } from '@/components/ui/switch'; // kept for Active toggle
 import {
   Select,
   SelectContent,
@@ -25,21 +25,28 @@ import { toast } from 'sonner';
 // Helper to convert YouTube URLs to embed format
 const convertToYouTubeEmbed = (url: string): string => {
   if (!url) return url;
+  
+  // Already an embed URL
   if (url.includes('youtube.com/embed/')) return url;
   
   let videoId: string | null = null;
+  
+  // Match youtube.com/watch?v=VIDEO_ID
   const watchMatch = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
   if (watchMatch) videoId = watchMatch[1];
   
+  // Match youtu.be/VIDEO_ID
   const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
   if (shortMatch) videoId = shortMatch[1];
   
+  // Match youtube.com/live/VIDEO_ID
   const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
   if (liveMatch) videoId = liveMatch[1];
   
   if (videoId) {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
   }
+  
   return url;
 };
 
@@ -71,8 +78,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
     tvapp_slug: channel?.tvapp_slug || '',
     proxy_type: (channel as any)?.proxy_type || 'none',
-    offline_title: (channel as any)?.offline_title || '',     // <-- BAGONG FIELD
-    offline_message: (channel as any)?.offline_message || '', // <-- BAGONG FIELD
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -105,8 +110,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
         tvapp_slug: formData.tvapp_slug || null,
         use_proxy: formData.proxy_type !== 'none',
         proxy_type: formData.proxy_type || 'none',
-        offline_title: formData.offline_title || null,
-        offline_message: formData.offline_message || null,
       };
 
       if (isEditing && channel) {
@@ -151,6 +154,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               value={formData.stream_url}
               onChange={(e) => {
                 let url = e.target.value;
+                // Auto-convert YouTube URLs when stream type is youtube
                 if (formData.stream_type === 'youtube') {
                   url = convertToYouTubeEmbed(url);
                 }
@@ -160,6 +164,11 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 ? "Paste any YouTube URL (auto-converts to embed)" 
                 : "https://example.com/stream.m3u8"}
             />
+            {formData.stream_type === 'youtube' && (
+              <p className="text-xs text-muted-foreground">
+                Supports: youtube.com/watch?v=..., youtu.be/..., youtube.com/live/...
+              </p>
+            )}
           </div>
 
           {/* Stream Type */}
@@ -171,7 +180,9 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 setFormData({ ...formData, stream_type: value })
               }
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="hls">HLS (.m3u8)</SelectItem>
                 <SelectItem value="mpd">DASH (.mpd)</SelectItem>
@@ -198,7 +209,9 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               value={formData.category || 'general'}
               onValueChange={(value) => setFormData({ ...formData, category: value })}
             >
-              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.filter(c => c !== 'All').map((cat) => (
                   <SelectItem key={cat} value={cat}>{cat}</SelectItem>
@@ -208,36 +221,12 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             </Select>
           </div>
 
-          {/* CUSTOM OFFLINE MESSAGE SECTION */}
-          <div className="space-y-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-sm font-medium text-red-500">Custom Offline Message (Optional)</p>
-            <p className="text-xs text-muted-foreground mb-2">
-              Kung lalagyan mo ito, ito ang ipapakita sa user kapag sira ang channel imbes na ang default settings. Maganda ito kung gusto mong sabihing <b>"VPN Required"</b> o <b>"Under Maintenance"</b>.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="offline_title">Custom Title</Label>
-              <Input
-                id="offline_title"
-                value={formData.offline_title || ''}
-                onChange={(e) => setFormData({ ...formData, offline_title: e.target.value })}
-                placeholder="e.g., VPN REQUIRED!"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="offline_message">Custom Message</Label>
-              <Input
-                id="offline_message"
-                value={formData.offline_message || ''}
-                onChange={(e) => setFormData({ ...formData, offline_message: e.target.value })}
-                placeholder="e.g., Kailangan ng VPN (Malaysia) para mag-play ito."
-              />
-            </div>
-          </div>
-
           {/* DRM Configuration (for MPD/HLS streams) */}
           {(formData.stream_type === 'mpd' || formData.stream_type === 'hls') && (
             <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
               <p className="text-sm font-medium">DRM Configuration (Optional)</p>
+              
+              {/* DRM Type Selection */}
               <div className="space-y-2">
                 <Label htmlFor="license_type">DRM Type</Label>
                 <Select
@@ -246,7 +235,9 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                     setFormData({ ...formData, license_type: value === 'none' ? null : value as 'clearkey' | 'widevine' })
                   }
                 >
-                  <SelectTrigger><SelectValue placeholder="Select DRM type" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select DRM type" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No DRM</SelectItem>
                     <SelectItem value="clearkey">ClearKey</SelectItem>
@@ -255,42 +246,106 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 </Select>
               </div>
 
+              {/* ClearKey Fields */}
               {formData.license_type === 'clearkey' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="drm_key_id">Key ID</Label>
-                    <Input id="drm_key_id" value={formData.drm_key_id || ''} onChange={(e) => setFormData({ ...formData, drm_key_id: e.target.value })} className="font-mono text-sm" />
+                    <Input
+                      id="drm_key_id"
+                      value={formData.drm_key_id || ''}
+                      onChange={(e) => setFormData({ ...formData, drm_key_id: e.target.value })}
+                      placeholder="31363232353335323435353337353331"
+                      className="font-mono text-sm"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="drm_key">Key</Label>
-                    <Input id="drm_key" value={formData.drm_key || ''} onChange={(e) => setFormData({ ...formData, drm_key: e.target.value })} className="font-mono text-sm" />
+                    <Input
+                      id="drm_key"
+                      value={formData.drm_key || ''}
+                      onChange={(e) => setFormData({ ...formData, drm_key: e.target.value })}
+                      placeholder="35416a68643065697575493337566135"
+                      className="font-mono text-sm"
+                    />
                   </div>
                 </div>
               )}
 
+              {/* Widevine Fields */}
               {formData.license_type === 'widevine' && (
                 <div className="space-y-2">
                   <Label htmlFor="license_url">Widevine License URL</Label>
-                  <Input id="license_url" value={formData.license_url || ''} onChange={(e) => setFormData({ ...formData, license_url: e.target.value })} className="font-mono text-sm" />
+                  <Input
+                    id="license_url"
+                    value={formData.license_url || ''}
+                    onChange={(e) => setFormData({ ...formData, license_url: e.target.value })}
+                    placeholder="https://license-server.com/license"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the Widevine license server URL
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Custom Headers */}
+          {/* Custom User Agent */}
           <div className="space-y-2">
-            <Label htmlFor="user_agent">Custom User-Agent</Label>
-            <Input id="user_agent" value={formData.user_agent || ''} onChange={(e) => setFormData({ ...formData, user_agent: e.target.value })} className="font-mono text-xs" />
+            <Label htmlFor="user_agent">Custom User-Agent (Optional)</Label>
+            <Input
+              id="user_agent"
+              value={formData.user_agent || ''}
+              onChange={(e) => setFormData({ ...formData, user_agent: e.target.value })}
+              placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Custom User-Agent header para sa stream requests. Iwanan kung default ang gagamitin.
+            </p>
           </div>
 
+          {/* Custom Referrer */}
           <div className="space-y-2">
-            <Label htmlFor="referrer">Custom Referrer</Label>
-            <Input id="referrer" value={formData.referrer || ''} onChange={(e) => setFormData({ ...formData, referrer: e.target.value })} className="font-mono text-xs" />
+            <Label htmlFor="referrer">Custom Referrer (Optional)</Label>
+            <Input
+              id="referrer"
+              value={formData.referrer || ''}
+              onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
+              placeholder="https://example.com"
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Custom Referer header para sa stream requests. Iwanan kung hindi kailangan.
+            </p>
           </div>
 
+          {/* TVApp Slug */}
           <div className="space-y-2">
             <Label htmlFor="tvapp_slug">TVApp Slug (Auto-resolve)</Label>
-            <Input id="tvapp_slug" value={formData.tvapp_slug || ''} onChange={(e) => setFormData({ ...formData, tvapp_slug: e.target.value })} className="font-mono text-sm" />
+            <Input
+              id="tvapp_slug"
+              value={formData.tvapp_slug || ''}
+              onChange={(e) => setFormData({ ...formData, tvapp_slug: e.target.value })}
+              placeholder="e.g. espn, fox-sports-1"
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kung may slug, auto-resolve ang fresh stream URL bago mag-play. Iwanan kung hindi TVApp stream.
+            </p>
+          </div>
+
+          {/* Sort Order */}
+          <div className="space-y-2">
+            <Label htmlFor="sort_order">Sort Order</Label>
+            <Input
+              id="sort_order"
+              type="number"
+              value={formData.sort_order ?? 0}
+              onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+              placeholder="0"
+            />
           </div>
 
           {/* Proxy Provider */}
@@ -300,28 +355,66 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               value={formData.proxy_type || 'none'}
               onValueChange={(value) => setFormData({ ...formData, proxy_type: value })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Direct (No Proxy)</SelectItem>
                 <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
                 <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">Piliin kung saan dadaan ang stream requests</p>
           </div>
 
+          {/* Proxy Order - shown when proxy is enabled */}
           {formData.proxy_type !== 'none' && (
             <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
               <Label>Proxy Priority Order</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                I-arrange ang pagkakasunod-sunod ng proxy. Ang nasa itaas ang unang gagamitin.
+              </p>
               <div className="space-y-1">
                 {proxyOrder.map((key, index) => (
-                  <div key={key} className="flex items-center gap-2 p-2 rounded bg-background border border-border">
+                  <div
+                    key={key}
+                    className="flex items-center gap-2 p-2 rounded bg-background border border-border"
+                  >
                     <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
                     <span className="text-sm flex-1 font-medium">{PROXY_LABELS[key]}</span>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={index === 0} onClick={() => moveProxy(index, 'up')}><ArrowUp className="w-3.5 h-3.5" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={index === proxyOrder.length - 1} onClick={() => moveProxy(index, 'down')}><ArrowDown className="w-3.5 h-3.5" /></Button>
+                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === 0}
+                      onClick={() => moveProxy(index, 'up')}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === proxyOrder.length - 1}
+                      onClick={() => moveProxy(index, 'down')}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 ))}
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => setFormData({ ...formData, proxy_order: null })}
+              >
+                Reset to Default
+              </Button>
             </div>
           )}
 
@@ -331,17 +424,24 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               <Label htmlFor="is_active">Active</Label>
               <p className="text-xs text-muted-foreground">Channel will be visible to users</p>
             </div>
-            <Switch id="is_active" checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="sort_order">Sort Order</Label>
-            <Input id="sort_order" type="number" value={formData.sort_order ?? 0} onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })} />
+            <Switch
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+            />
           </div>
 
           {/* Actions */}
           <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1" disabled={isPending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" className="flex-1" disabled={isPending}>
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isEditing ? 'Update' : 'Create'}
