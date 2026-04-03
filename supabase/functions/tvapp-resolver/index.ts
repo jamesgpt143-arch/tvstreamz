@@ -91,6 +91,7 @@ async function resolveViaScrape(path: string): Promise<string | null> {
 /**
  * Method 3: Resolve via thetvapp.link (for live events like NBA games)
  * These pages embed a player from an external domain (e.g., gooz.aapmains.net)
+ * The stream URL is base64-encoded in the Clappr player initialization
  */
 async function resolveViaLink(eventPath: string): Promise<string | null> {
   const url = `${TVAPP_LINK_BASE}/${eventPath}`;
@@ -116,60 +117,30 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
     const directM3u8 = extractM3u8FromHtml(html, "link");
     if (directM3u8) return directM3u8;
 
-    // Try to find embedded iframe
-    const iframePatterns = [
-      /iframe[^>]+src=["']([^"']+)["']/gi,
-      /embed[^>]+src=["']([^"']+)["']/gi,
-      /player[^>]+src=["']([^"']+)["']/gi,
-    ];
+    // Try to find base64-encoded source in Clappr player init (atob pattern)
+    const atobResult = extractAtobSource(html, "link-page");
+    if (atobResult) return atobResult;
 
-    const embedUrls: string[] = [];
-    for (const pattern of iframePatterns) {
-      const matches = html.matchAll(pattern);
-      for (const match of matches) {
-        const src = match[1];
-        if (src && !src.includes('google') && !src.includes('facebook') && !src.includes('ads')) {
-          embedUrls.push(src.startsWith('http') ? src : new URL(src, url).toString());
-        }
-      }
-    }
-
-    console.log(`[link] Found ${embedUrls.length} embed URLs`);
-
-    // Fetch each embed URL and try to extract m3u8
-    for (const embedUrl of embedUrls) {
+    // Try to find embedded iframe and fetch embed page
+    const iframeMatch = html.match(/(?:iframe|div)[^>]+src=["']([^"']*(?:embed|stream)[^"']*)["']/i);
+    if (iframeMatch) {
+      const embedUrl = iframeMatch[1].startsWith('http') ? iframeMatch[1] : new URL(iframeMatch[1], url).toString();
       console.log(`[link] Fetching embed: ${embedUrl}`);
+      
       try {
         const embedResp = await fetch(embedUrl, {
-          headers: {
-            "User-Agent": DEFAULT_UA,
-            Referer: url,
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          },
+          headers: { "User-Agent": DEFAULT_UA, Referer: url },
         });
-
-        if (!embedResp.ok) continue;
-        const embedHtml = await embedResp.text();
-
-        const m3u8 = extractM3u8FromHtml(embedHtml, "embed");
-        if (m3u8) return m3u8;
-
-        // Some embeds have nested iframes
-        const nestedIframes = embedHtml.matchAll(/iframe[^>]+src=["']([^"']+)["']/gi);
-        for (const nestedMatch of nestedIframes) {
-          const nestedSrc = nestedMatch[1];
-          if (!nestedSrc || nestedSrc.includes('google') || nestedSrc.includes('ads')) continue;
-          const nestedUrl = nestedSrc.startsWith('http') ? nestedSrc : new URL(nestedSrc, embedUrl).toString();
-          console.log(`[link] Fetching nested embed: ${nestedUrl}`);
-          try {
-            const nestedResp = await fetch(nestedUrl, {
-              headers: { "User-Agent": DEFAULT_UA, Referer: embedUrl },
-            });
-            if (!nestedResp.ok) continue;
-            const nestedHtml = await nestedResp.text();
-            const nestedM3u8 = extractM3u8FromHtml(nestedHtml, "nested-embed");
-            if (nestedM3u8) return nestedM3u8;
-          } catch {}
+        if (embedResp.ok) {
+          const embedHtml = await embedResp.text();
+          
+          // Try base64 source extraction from embed page
+          const embedAtob = extractAtobSource(embedHtml, "embed");
+          if (embedAtob) return embedAtob;
+          
+          // Try direct m3u8
+          const embedM3u8 = extractM3u8FromHtml(embedHtml, "embed");
+          if (embedM3u8) return embedM3u8;
         }
       } catch (err) {
         console.error(`[link] Embed fetch error:`, err);
@@ -182,8 +153,40 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 }
 
 /**
- * Extract m3u8 URL from HTML content
+ * Extract base64-encoded source URL from Clappr player (window.atob pattern)
  */
+function extractAtobSource(html: string, source: string): string | null {
+  // Match: source: window.atob('base64string') or atob("base64string")
+  const atobPatterns = [
+    /(?:source|src)\s*:\s*(?:window\.)?atob\s*\(\s*['"]([A-Za-z0-9+/=]+)['"]\s*\)/g,
+    /atob\s*\(\s*['"]([A-Za-z0-9+/=]{20,})['"]\s*\)/g,
+  ];
+
+  for (const pattern of atobPatterns) {
+    const matches = html.matchAll(pattern);
+    for (const match of matches) {
+      try {
+        const decoded = atob(match[1]);
+        console.log(`[${source}] Decoded atob: ${decoded}`);
+        if (decoded.startsWith('http')) {
+          // If it's a playlist URL, fetch it to get the actual m3u8
+          if (decoded.includes('/playlist/') || decoded.includes('/load-playlist')) {
+            console.log(`[${source}] Fetching playlist URL: ${decoded}`);
+            return decoded; // Return the playlist URL directly — it serves m3u8 content
+          }
+          if (decoded.includes('.m3u8')) {
+            return decoded;
+          }
+          // Return any http URL as potential stream source
+          return decoded;
+        }
+      } catch (e) {
+        console.error(`[${source}] atob decode failed:`, e);
+      }
+    }
+  }
+  return null;
+}
 function extractM3u8FromHtml(html: string, source: string): string | null {
   const patterns = [
     /https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/g,
