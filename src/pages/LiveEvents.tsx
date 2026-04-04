@@ -69,17 +69,21 @@ const LiveEvents = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.map((event) => {
-                let displayTime = 'Today';
+                let displayTime = event.eventTime || 'TBA';
                 let displayDate = '';
                 
                 if (event.eventTime) {
                   try {
-                    // Extract strings like "Apr 3 8:00 PM EST" to Date object
-                    const currentYear = new Date().getFullYear();
-                    const dateObj = new Date(`${event.eventTime} ${currentYear}`);
+                    // Kunin ang date ngayon sa US EST
+                    const todayUS = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+                    // Alisin ang EST word para malinis ang parsings
+                    const cleanTime = event.eventTime.replace(/(EST|EDT)/i, '').trim();
+                    
+                    // Gumawa ng exact date string format: "MM/DD/YYYY HH:MM AM EST"
+                    const dateObj = new Date(`${todayUS} ${cleanTime} EST`);
                     
                     if (!isNaN(dateObj.getTime())) {
-                      // Convert to PH Time (Asia/Manila)
+                      // Convert to PH Time
                       displayTime = dateObj.toLocaleString('en-US', {
                         timeZone: 'Asia/Manila',
                         hour: 'numeric',
@@ -93,10 +97,10 @@ const LiveEvents = () => {
                         day: 'numeric'
                       });
                     } else {
-                      displayTime = event.eventTime.replace('EST', '').trim();
+                      displayTime = event.eventTime.replace(/(EST|EDT)/i, '').trim();
                     }
                   } catch(e) {
-                    displayTime = event.eventTime.replace('EST', '').trim();
+                    displayTime = event.eventTime.replace(/(EST|EDT)/i, '').trim();
                   }
                 }
 
