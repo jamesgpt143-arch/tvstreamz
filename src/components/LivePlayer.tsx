@@ -172,12 +172,10 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         let streamUrl = channel.manifestUri;
         
-        if (channel.tvappSlug || channel.eventSlug) {
+        if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?${
-              channel.eventSlug ? `event_slug=${encodeURIComponent(channel.eventSlug)}` : `slug=${encodeURIComponent(channel.tvappSlug!)}`
-            }`;
+            let resolveUrl = `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?slug=${encodeURIComponent(channel.tvappSlug)}`;
             if (reloadTrigger > 0) resolveUrl += `&force_refresh=true`;
 
             const res = await fetch(resolveUrl);

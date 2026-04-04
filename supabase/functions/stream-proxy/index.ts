@@ -245,23 +245,13 @@ serve(async (req) => {
       response.headers.get("content-type") || "application/octet-stream";
     const body = await response.arrayBuffer();
 
-    let isHLS =
+    const isHLS =
       targetUrl.includes(".m3u8") || contentType.includes("mpegurl");
     const isDASH =
       targetUrl.includes(".mpd") || contentType.includes("dash+xml");
 
-    // Detect HLS content from body if not detected by URL/content-type
-    if (!isHLS && !isDASH) {
-      const peek = new TextDecoder().decode(body.slice(0, 100)).trimStart();
-      if (peek.startsWith("#EXTM3U")) {
-        isHLS = true;
-        console.log(`[stream-proxy] Detected HLS from body for: ${targetUrl}`);
-      }
-    }
-
     if (isHLS || isDASH) {
       const text = new TextDecoder().decode(body);
-      // Use final URL after redirects for base URL calculation
       const baseUrl =
         targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
       // Build public proxy base URL
