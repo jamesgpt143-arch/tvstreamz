@@ -169,34 +169,52 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
  */
 async function followPlaylistUrl(playlistUrl: string, source: string): Promise<string | null> {
   console.log(`[${source}] Following playlist URL: ${playlistUrl}`);
-  try {
-    let current = playlistUrl;
-    for (let i = 0; i < 5; i++) {
-      const resp = await fetch(current, {
-        headers: { "User-Agent": DEFAULT_UA, Referer: TVAPP_LINK_BASE + "/" },
-        redirect: "manual",
-      });
-      const location = resp.headers.get("location");
-      if (location && resp.status >= 300 && resp.status < 400) {
-        current = location.startsWith("http") ? location : new URL(location, current).toString();
-        if (current.includes(".m3u8")) return current;
-        continue;
-      }
-      if (resp.ok) {
-        if (current.includes(".m3u8")) return current;
-        const body = await resp.text();
-        if (body.trimStart().startsWith("#EXTM3U")) {
-          console.log(`[${source}] Playlist URL serves m3u8 content directly`);
-          return current; // The URL itself serves m3u8 — return it as-is
+  // Try multiple referers since the playlist may be domain-locked
+  const referers = [
+    new URL(playlistUrl).origin + "/",
+    TVAPP_LINK_BASE + "/",
+    TVAPP_BASE + "/",
+  ];
+  
+  for (const referer of referers) {
+    try {
+      let current = playlistUrl;
+      for (let i = 0; i < 5; i++) {
+        const resp = await fetch(current, {
+          headers: { 
+            "User-Agent": DEFAULT_UA, 
+            Referer: referer,
+            Origin: new URL(referer).origin,
+          },
+          redirect: "manual",
+        });
+        
+        console.log(`[${source}] Playlist fetch status: ${resp.status} (referer: ${referer})`);
+        
+        const location = resp.headers.get("location");
+        if (location && resp.status >= 300 && resp.status < 400) {
+          current = location.startsWith("http") ? location : new URL(location, current).toString();
+          if (current.includes(".m3u8")) return current;
+          continue;
         }
-        const m3u8Match = body.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
-        if (m3u8Match) return m3u8Match[0];
+        if (resp.ok) {
+          if (current.includes(".m3u8")) return current;
+          const body = await resp.text();
+          if (body.trimStart().startsWith("#EXTM3U")) {
+            console.log(`[${source}] Playlist URL serves m3u8 content directly`);
+            return current;
+          }
+          const m3u8Match = body.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
+          if (m3u8Match) return m3u8Match[0];
+        }
+        break;
       }
-      break;
+    } catch (err) {
+      console.error(`[${source}] Playlist follow error with referer ${referer}:`, err);
     }
-  } catch (err) {
-    console.error(`[${source}] Playlist follow error:`, err);
   }
+  // If we can't follow it, return the original URL — the stream-proxy can try
+  console.log(`[${source}] Could not follow playlist, returning original URL`);
   return null;
 }
 
