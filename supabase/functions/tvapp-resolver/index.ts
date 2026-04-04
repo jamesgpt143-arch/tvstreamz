@@ -155,6 +155,39 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 /**
  * Extract base64-encoded source URL from Clappr player (window.atob pattern)
  */
+async function followPlaylistUrl(playlistUrl: string, source: string): Promise<string | null> {
+  console.log(`[${source}] Following playlist URL: ${playlistUrl}`);
+  try {
+    let current = playlistUrl;
+    for (let i = 0; i < 5; i++) {
+      const resp = await fetch(current, {
+        headers: { "User-Agent": DEFAULT_UA, Referer: TVAPP_LINK_BASE + "/" },
+        redirect: "manual",
+      });
+      const location = resp.headers.get("location");
+      if (location && resp.status >= 300 && resp.status < 400) {
+        current = location.startsWith("http") ? location : new URL(location, current).toString();
+        if (current.includes(".m3u8")) return current;
+        continue;
+      }
+      if (resp.ok) {
+        if (current.includes(".m3u8")) return current;
+        const body = await resp.text();
+        if (body.trimStart().startsWith("#EXTM3U")) {
+          console.log(`[${source}] Playlist URL serves m3u8 content directly`);
+          return current; // The URL itself serves m3u8 — return it as-is
+        }
+        const m3u8Match = body.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
+        if (m3u8Match) return m3u8Match[0];
+      }
+      break;
+    }
+  } catch (err) {
+    console.error(`[${source}] Playlist follow error:`, err);
+  }
+  return null;
+}
+
 function extractAtobSource(html: string, source: string): string | null {
   // Match: source: window.atob('base64string') or atob("base64string")
   const atobPatterns = [
@@ -169,15 +202,10 @@ function extractAtobSource(html: string, source: string): string | null {
         const decoded = atob(match[1]);
         console.log(`[${source}] Decoded atob: ${decoded}`);
         if (decoded.startsWith('http')) {
-          // If it's a playlist URL, fetch it to get the actual m3u8
-          if (decoded.includes('/playlist/') || decoded.includes('/load-playlist')) {
-            console.log(`[${source}] Fetching playlist URL: ${decoded}`);
-            return decoded; // Return the playlist URL directly — it serves m3u8 content
-          }
           if (decoded.includes('.m3u8')) {
             return decoded;
           }
-          // Return any http URL as potential stream source
+          // Return any http URL as potential stream source (will be followed later)
           return decoded;
         }
       } catch (e) {
