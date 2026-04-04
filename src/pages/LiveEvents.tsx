@@ -20,12 +20,14 @@ const LiveEvents = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch(`https://api.codetabs.com/v1/proxy?quest=https://thetvapp.to/nba`);
+        // Use allorigins to bypass CORS
+        const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://thetvapp.to/nba')}`);
         
         if (!response.ok) throw new Error('Failed to fetch events');
         
         const html = await response.text();
-        const eventPattern = /href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([^<]+)/gi;
+        // Robust regex to extract href and everything inside <a>
+        const eventPattern = /<a[^>]*href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([\s\S]*?)<\/a>/gi;
         const scrapedEvents: LiveEvent[] = [];
         const seen = new Set<string>();
         
@@ -33,7 +35,10 @@ const LiveEvents = () => {
           let path = match[1];
           if (path.startsWith('/')) path = path.substring(1);
           
-          let title = match[2] ? match[2].trim().replace(/:\s*$/, '').trim() : '';
+          // Clean HTML tags and newlines
+          let titleRaw = match[2] || '';
+          let title = titleRaw.replace(/<[^>]*>/g, '').replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+          
           let eventTime = '';
           if (title.includes('@')) {
             const parts = title.split('@');
