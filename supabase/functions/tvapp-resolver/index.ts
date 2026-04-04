@@ -289,13 +289,15 @@ async function scrapeEvents(): Promise<any[]> {
     if (resp.ok) {
       const html = await resp.text();
       
-      const eventPattern = /href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([^<]+)/gi;
+      const eventPattern = /<a[^>]*href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([\s\S]*?)<\/a>/gi;
       
       for (const match of html.matchAll(eventPattern)) {
         let path = match[1];
         if (path.startsWith('/')) path = path.substring(1);
         
-        let title = match[2] ? match[2].trim().replace(/:\s*$/, '').trim() : '';
+        // Clean HTML tags and newlines
+        let titleRaw = match[2] || '';
+        let title = titleRaw.replace(/<[^>]*>/g, '').replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
         let eventTime = '';
         if (title.includes('@')) {
           const parts = title.split('@');
