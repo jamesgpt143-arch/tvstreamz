@@ -20,13 +20,35 @@ const LiveEvents = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/tvapp-resolver?list_events=true`);
+        const response = await fetch(`https://api.codetabs.com/v1/proxy?quest=https://thetvapp.to/nba`);
         
         if (!response.ok) throw new Error('Failed to fetch events');
         
-        const data = await response.json();
-        setEvents(data.events || []);
+        const html = await response.text();
+        const eventPattern = /href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([^<]+)/gi;
+        const scrapedEvents: LiveEvent[] = [];
+        const seen = new Set<string>();
+        
+        for (const match of html.matchAll(eventPattern)) {
+          let path = match[1];
+          if (path.startsWith('/')) path = path.substring(1);
+          
+          let title = match[2] ? match[2].trim().replace(/:\s*$/, '').trim() : '';
+          let eventTime = '';
+          if (title.includes('@')) {
+            const parts = title.split('@');
+            title = parts[0].trim();
+            eventTime = parts[1].trim() + ' EST';
+          }
+          
+          if (seen.has(path)) continue;
+          seen.add(path);
+          
+          const eventId = path.split('/')[1] || path;
+          scrapedEvents.push({ sport: 'nba', slug: path, title, eventId, eventTime });
+        }
+        
+        setEvents(scrapedEvents);
       } catch (err: any) {
         setError(err.message || 'Error loading events');
       } finally {
