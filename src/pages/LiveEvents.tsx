@@ -20,40 +20,13 @@ const LiveEvents = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // Use allorigins to bypass CORS
-        const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://thetvapp.to/nba')}`);
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/tvapp-resolver?list_events=true`);
         
         if (!response.ok) throw new Error('Failed to fetch events');
         
-        const html = await response.text();
-        // Robust regex to extract href and everything inside <a>
-        const eventPattern = /<a[^>]*href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([\s\S]*?)<\/a>/gi;
-        const scrapedEvents: LiveEvent[] = [];
-        const seen = new Set<string>();
-        
-        for (const match of html.matchAll(eventPattern)) {
-          let path = match[1];
-          if (path.startsWith('/')) path = path.substring(1);
-          
-          // Clean HTML tags and newlines
-          let titleRaw = match[2] || '';
-          let title = titleRaw.replace(/<[^>]*>/g, '').replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-          
-          let eventTime = '';
-          if (title.includes('@')) {
-            const parts = title.split('@');
-            title = parts[0].trim();
-            eventTime = parts[1].trim() + ' EST';
-          }
-          
-          if (seen.has(path)) continue;
-          seen.add(path);
-          
-          const eventId = path.split('/')[1] || path;
-          scrapedEvents.push({ sport: 'nba', slug: path, title, eventId, eventTime });
-        }
-        
-        setEvents(scrapedEvents);
+        const data = await response.json();
+        setEvents(data.events || []);
       } catch (err: any) {
         setError(err.message || 'Error loading events');
       } finally {
