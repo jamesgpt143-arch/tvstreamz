@@ -18,9 +18,9 @@ const corsHeaders = {
 const DEFAULT_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-const TVAPP_BASE = "https://thetvapp.to";
+const TVAPP_BASE = "https://the-tv.app";
 const TVPASS_BASE = "https://tvpass.org";
-const TVAPP_LINK_BASE = "https://thetvapp.link";
+const TVAPP_LINK_BASE = "https://the-tv.app";
 
 async function resolveViaTvpass(slug: string): Promise<string | null> {
   if (slug.includes('/')) return null;
