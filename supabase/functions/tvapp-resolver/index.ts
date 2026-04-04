@@ -138,13 +138,18 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
           headers: { "User-Agent": DEFAULT_UA, Referer: url },
         });
         if (embedResp.ok) {
+          // Capture cookies from embed response for playlist access
+          const setCookies = embedResp.headers.getSetCookie?.() || [];
+          const cookieStr = setCookies.map(c => c.split(';')[0]).join('; ');
+          console.log(`[link] Got ${setCookies.length} cookies from embed`);
+          
           const embedHtml = await embedResp.text();
           
           // Try base64 source extraction from embed page
           const embedAtob = extractAtobSource(embedHtml, "embed");
           if (embedAtob) {
             if (!embedAtob.includes('.m3u8')) {
-              const followed = await followPlaylistUrl(embedAtob, "embed");
+              const followed = await followPlaylistUrl(embedAtob, "embed", embedUrl, cookieStr);
               if (followed) return followed;
             }
             return embedAtob;
