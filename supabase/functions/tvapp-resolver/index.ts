@@ -172,10 +172,11 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 /**
  * Extract base64-encoded source URL from Clappr player (window.atob pattern)
  */
-async function followPlaylistUrl(playlistUrl: string, source: string): Promise<string | null> {
-  console.log(`[${source}] Following playlist URL: ${playlistUrl}`);
-  // Try multiple referers since the playlist may be domain-locked
+async function followPlaylistUrl(playlistUrl: string, source: string, embedReferer?: string, cookies?: string): Promise<string | null> {
+  console.log(`[${source}] Following playlist URL: ${playlistUrl} (cookies: ${cookies ? 'yes' : 'no'})`);
+  // Try embed referer first, then others
   const referers = [
+    ...(embedReferer ? [embedReferer] : []),
     new URL(playlistUrl).origin + "/",
     TVAPP_LINK_BASE + "/",
     TVAPP_BASE + "/",
@@ -185,14 +186,14 @@ async function followPlaylistUrl(playlistUrl: string, source: string): Promise<s
     try {
       let current = playlistUrl;
       for (let i = 0; i < 5; i++) {
-        const resp = await fetch(current, {
-          headers: { 
-            "User-Agent": DEFAULT_UA, 
-            Referer: referer,
-            Origin: new URL(referer).origin,
-          },
-          redirect: "manual",
-        });
+        const headers: Record<string, string> = { 
+          "User-Agent": DEFAULT_UA, 
+          Referer: referer,
+          Origin: new URL(referer).origin,
+        };
+        if (cookies) headers["Cookie"] = cookies;
+        
+        const resp = await fetch(current, { headers, redirect: "manual" });
         
         console.log(`[${source}] Playlist fetch status: ${resp.status} (referer: ${referer})`);
         
@@ -211,6 +212,9 @@ async function followPlaylistUrl(playlistUrl: string, source: string): Promise<s
           }
           const m3u8Match = body.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
           if (m3u8Match) return m3u8Match[0];
+          // Log first 200 chars for debugging
+          console.log(`[${source}] Playlist body preview: ${body.substring(0, 200)}`);
+          return null; // Got 200 but not m3u8 content
         }
         break;
       }
@@ -218,7 +222,6 @@ async function followPlaylistUrl(playlistUrl: string, source: string): Promise<s
       console.error(`[${source}] Playlist follow error with referer ${referer}:`, err);
     }
   }
-  // If we can't follow it, return the original URL — the stream-proxy can try
   console.log(`[${source}] Could not follow playlist, returning original URL`);
   return null;
 }
