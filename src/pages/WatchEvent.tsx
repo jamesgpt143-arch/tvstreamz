@@ -9,6 +9,7 @@ import { ChevronLeft, Radio, Loader2, AlertCircle } from 'lucide-react';
 const WatchEvent = () => {
   const { '*': eventSlug } = useParams();
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -17,6 +18,7 @@ const WatchEvent = () => {
     if (!eventSlug) return;
     setLoading(true);
     setError(null);
+    setEmbedUrl(null);
 
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -31,7 +33,14 @@ const WatchEvent = () => {
 
       const data = await resp.json();
       if (data.resolved_url) {
-        setStreamUrl(data.resolved_url);
+        // If resolved URL is a direct m3u8, use the player
+        if (data.resolved_url.includes('.m3u8')) {
+          setStreamUrl(data.resolved_url);
+        } else {
+          // Non-m3u8 URL (e.g. playlist loader) — use embed approach
+          // Build the embed URL from the event slug
+          setEmbedUrl(`https://thetvapp.link/${eventSlug}`);
+        }
       } else {
         setError(data.error || 'Could not resolve stream');
       }
@@ -53,7 +62,7 @@ const WatchEvent = () => {
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
 
-  // Create a pseudo-channel for LivePlayer
+  // Create a pseudo-channel for LivePlayer (only used for direct m3u8)
   const pseudoChannel = streamUrl ? {
     id: `event-${eventSlug}`,
     name: title,
@@ -61,8 +70,8 @@ const WatchEvent = () => {
     manifestUri: streamUrl,
     type: 'hls' as const,
     category: sport,
-    useProxy: false,
-    proxyType: 'none' as const,
+    useProxy: true,
+    proxyType: 'supabase' as const,
   } : null;
 
   return (
@@ -115,6 +124,17 @@ const WatchEvent = () => {
                   <p className="text-sm text-destructive mb-3">{error}</p>
                   <Button size="sm" onClick={resolveStream}>Retry</Button>
                 </div>
+              </div>
+            ) : embedUrl ? (
+              <div className="aspect-video bg-black rounded-xl overflow-hidden">
+                <iframe
+                  src={embedUrl}
+                  className="w-full h-full border-0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                />
               </div>
             ) : pseudoChannel ? (
               <LivePlayer
