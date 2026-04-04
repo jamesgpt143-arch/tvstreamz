@@ -9,6 +9,7 @@ interface LiveEvent {
   slug: string;
   title: string;
   eventId: string;
+  eventTime?: string;
 }
 
 const LiveEvents = () => {
@@ -67,7 +68,39 @@ const LiveEvents = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {events.map((event) => (
+              {events.map((event) => {
+                let displayTime = 'Today';
+                let displayDate = '';
+                
+                if (event.eventTime) {
+                  try {
+                    // Extract strings like "Apr 3 8:00 PM EST" to Date object
+                    const currentYear = new Date().getFullYear();
+                    const dateObj = new Date(`${event.eventTime} ${currentYear}`);
+                    
+                    if (!isNaN(dateObj.getTime())) {
+                      // Convert to PH Time (Asia/Manila)
+                      displayTime = dateObj.toLocaleString('en-US', {
+                        timeZone: 'Asia/Manila',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      
+                      displayDate = dateObj.toLocaleString('en-US', {
+                        timeZone: 'Asia/Manila',
+                        month: 'short',
+                        day: 'numeric'
+                      });
+                    } else {
+                      displayTime = event.eventTime.replace('EST', '').trim();
+                    }
+                  } catch(e) {
+                    displayTime = event.eventTime.replace('EST', '').trim();
+                  }
+                }
+
+                return (
                 <Link
                   key={event.slug}
                   to={`/live-event/${event.slug}`}
@@ -80,9 +113,9 @@ const LiveEvents = () => {
                         <span className="uppercase font-medium bg-orange-500/20 text-orange-500 px-2 py-0.5 rounded">
                           {event.sport || 'NBA'}
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 font-medium text-foreground">
                           <Calendar className="w-3 h-3" />
-                          <span>Today</span>
+                          <span>{displayDate ? `${displayDate} | ${displayTime} (PH)` : displayTime}</span>
                         </div>
                       </div>
                     </div>
@@ -91,7 +124,8 @@ const LiveEvents = () => {
                     </div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

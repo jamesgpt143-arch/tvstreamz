@@ -1,0 +1,1 @@
+fetch("https://thetvapp.to/nba").then(r=>r.text()).then(t => { const eventPattern = /<a[^>]*href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([\s\S]*?)<\/a>/gi; for(const m of t.matchAll(eventPattern)) { console.log("Extracted:", m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()); } })

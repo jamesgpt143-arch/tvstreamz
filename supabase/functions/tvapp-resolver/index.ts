@@ -296,12 +296,18 @@ async function scrapeEvents(): Promise<any[]> {
         if (path.startsWith('/')) path = path.substring(1);
         
         let title = match[2] ? match[2].trim().replace(/:\s*$/, '').trim() : '';
+        let eventTime = '';
+        if (title.includes('@')) {
+          const parts = title.split('@');
+          title = parts[0].trim();
+          eventTime = parts[1].trim() + ' EST'; // thetvapp times are usually EST
+        }
         
         if (seen.has(path)) continue;
         seen.add(path);
         
         const eventId = path.split('/')[1] || path;
-        events.push({ sport: 'nba', slug: path, title, eventId });
+        events.push({ sport: 'nba', slug: path, title, eventId, eventTime });
       }
     }
   } catch (err) {
