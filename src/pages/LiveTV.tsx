@@ -82,6 +82,13 @@ const LiveTV = () => {
                 <p className="text-muted-foreground">Watch your favorite channels live</p>
               </div>
 
+              <Link
+                to="/live-events"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-colors text-sm font-medium ml-4"
+              >
+                <Trophy className="w-4 h-4" />
+                NBA Events
+              </Link>
             </div>
 
             {/* Sort Dropdown */}

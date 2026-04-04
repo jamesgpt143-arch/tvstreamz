@@ -94,7 +94,7 @@ async function resolveViaScrape(path: string): Promise<string | null> {
  * The stream URL is base64-encoded in the Clappr player initialization
  */
 async function resolveViaLink(eventPath: string): Promise<string | null> {
-  const url = `${TVAPP_LINK_BASE}/${eventPath}`;
+  const url = `${TVAPP_BASE}/${eventPath}`;
   console.log(`[link] Trying: ${url}`);
 
   try {
@@ -102,7 +102,7 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
       headers: {
         "User-Agent": DEFAULT_UA,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        Referer: `${TVAPP_LINK_BASE}/`,
+        Referer: `${TVAPP_BASE}/`,
       },
     });
 
@@ -178,7 +178,6 @@ async function followPlaylistUrl(playlistUrl: string, source: string, embedRefer
   const referers = [
     ...(embedReferer ? [embedReferer] : []),
     new URL(playlistUrl).origin + "/",
-    TVAPP_LINK_BASE + "/",
     TVAPP_BASE + "/",
   ];
   
@@ -277,46 +276,39 @@ function extractM3u8FromHtml(html: string, source: string): string | null {
 }
 
 /**
- * Scrape live events listing from thetvapp.link
+ * Scrape live events listing from thetvapp.to/nba
  */
 async function scrapeEvents(): Promise<any[]> {
   const events: any[] = [];
   const seen = new Set<string>();
   
   try {
-    const resp = await fetch(TVAPP_LINK_BASE, {
+    const resp = await fetch(`${TVAPP_BASE}/nba`, {
       headers: { "User-Agent": DEFAULT_UA },
     });
     if (resp.ok) {
       const html = await resp.text();
       
-      // Extract full URLs: href="https://thetvapp.link/nba/slug/id" or href="/nba/slug/id"
-      // Also handle /watch/sport/slug format
-      const fullUrlPattern = /href=["'](?:https?:\/\/thetvapp\.link)?\/?((?:watch\/)?[a-z]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)*)["'][^>]*>([^<]+)/gi;
+      const eventPattern = /href=["'](\/event\/[a-z0-9-]+)['"][^>]*>([^<]+)/gi;
       
-      for (const match of html.matchAll(fullUrlPattern)) {
+      for (const match of html.matchAll(eventPattern)) {
         let path = match[1];
-        const rawTitle = match[2].trim().replace(/:\s*$/, '').trim();
+        if (path.startsWith('/')) path = path.substring(1);
         
-        // Skip non-event paths
-        if (path.includes('guide') || path.includes('channel') || path.includes('tv/')) continue;
+        let title = match[2] ? match[2].trim().replace(/:\s*$/, '').trim() : '';
         
         if (seen.has(path)) continue;
         seen.add(path);
         
-        // Determine sport from path
-        const parts = path.replace(/^watch\//, '').split('/');
-        const sport = parts[0];
-        const title = rawTitle || parts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        
-        events.push({ sport, slug: path, title, eventId: parts[parts.length - 1] });
+        const eventId = path.split('/')[1] || path;
+        events.push({ sport: 'nba', slug: path, title, eventId });
       }
     }
   } catch (err) {
     console.error(`[events] Scrape error:`, err);
   }
 
-  console.log(`[events] Found ${events.length} events total`);
+  console.log(`[events] Found ${events.length} nba events`);
   return events;
 }
 
