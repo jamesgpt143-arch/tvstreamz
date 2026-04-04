@@ -119,7 +119,13 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 
     // Try to find base64-encoded source in Clappr player init (atob pattern)
     const atobResult = extractAtobSource(html, "link-page");
-    if (atobResult) return atobResult;
+    if (atobResult) {
+      if (!atobResult.includes('.m3u8')) {
+        const followed = await followPlaylistUrl(atobResult, "link-page");
+        if (followed) return followed;
+      }
+      return atobResult;
+    }
 
     // Try to find embedded iframe and fetch embed page
     const iframeMatch = html.match(/(?:iframe|div)[^>]+src=["']([^"']*(?:embed|stream)[^"']*)["']/i);
