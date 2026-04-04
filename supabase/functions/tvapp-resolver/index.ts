@@ -119,7 +119,13 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 
     // Try to find base64-encoded source in Clappr player init (atob pattern)
     const atobResult = extractAtobSource(html, "link-page");
-    if (atobResult) return atobResult;
+    if (atobResult) {
+      if (!atobResult.includes('.m3u8')) {
+        const followed = await followPlaylistUrl(atobResult, "link-page");
+        if (followed) return followed;
+      }
+      return atobResult;
+    }
 
     // Try to find embedded iframe and fetch embed page
     const iframeMatch = html.match(/(?:iframe|div)[^>]+src=["']([^"']*(?:embed|stream)[^"']*)["']/i);
@@ -132,11 +138,22 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
           headers: { "User-Agent": DEFAULT_UA, Referer: url },
         });
         if (embedResp.ok) {
+          // Capture cookies from embed response for playlist access
+          const setCookies = embedResp.headers.getSetCookie?.() || [];
+          const cookieStr = setCookies.map(c => c.split(';')[0]).join('; ');
+          console.log(`[link] Got ${setCookies.length} cookies from embed`);
+          
           const embedHtml = await embedResp.text();
           
           // Try base64 source extraction from embed page
           const embedAtob = extractAtobSource(embedHtml, "embed");
-          if (embedAtob) return embedAtob;
+          if (embedAtob) {
+            if (!embedAtob.includes('.m3u8')) {
+              const followed = await followPlaylistUrl(embedAtob, "embed", embedUrl, cookieStr);
+              if (followed) return followed;
+            }
+            return embedAtob;
+          }
           
           // Try direct m3u8
           const embedM3u8 = extractM3u8FromHtml(embedHtml, "embed");
@@ -155,6 +172,60 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 /**
  * Extract base64-encoded source URL from Clappr player (window.atob pattern)
  */
+async function followPlaylistUrl(playlistUrl: string, source: string, embedReferer?: string, cookies?: string): Promise<string | null> {
+  console.log(`[${source}] Following playlist URL: ${playlistUrl} (cookies: ${cookies ? 'yes' : 'no'})`);
+  // Try embed referer first, then others
+  const referers = [
+    ...(embedReferer ? [embedReferer] : []),
+    new URL(playlistUrl).origin + "/",
+    TVAPP_LINK_BASE + "/",
+    TVAPP_BASE + "/",
+  ];
+  
+  for (const referer of referers) {
+    try {
+      let current = playlistUrl;
+      for (let i = 0; i < 5; i++) {
+        const headers: Record<string, string> = { 
+          "User-Agent": DEFAULT_UA, 
+          Referer: referer,
+          Origin: new URL(referer).origin,
+        };
+        if (cookies) headers["Cookie"] = cookies;
+        
+        const resp = await fetch(current, { headers, redirect: "manual" });
+        
+        console.log(`[${source}] Playlist fetch status: ${resp.status} (referer: ${referer})`);
+        
+        const location = resp.headers.get("location");
+        if (location && resp.status >= 300 && resp.status < 400) {
+          current = location.startsWith("http") ? location : new URL(location, current).toString();
+          if (current.includes(".m3u8")) return current;
+          continue;
+        }
+        if (resp.ok) {
+          if (current.includes(".m3u8")) return current;
+          const body = await resp.text();
+          if (body.trimStart().startsWith("#EXTM3U")) {
+            console.log(`[${source}] Playlist URL serves m3u8 content directly`);
+            return current;
+          }
+          const m3u8Match = body.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
+          if (m3u8Match) return m3u8Match[0];
+          // Log first 200 chars for debugging
+          console.log(`[${source}] Playlist body preview: ${body.substring(0, 200)}`);
+          return null; // Got 200 but not m3u8 content
+        }
+        break;
+      }
+    } catch (err) {
+      console.error(`[${source}] Playlist follow error with referer ${referer}:`, err);
+    }
+  }
+  console.log(`[${source}] Could not follow playlist, returning original URL`);
+  return null;
+}
+
 function extractAtobSource(html: string, source: string): string | null {
   // Match: source: window.atob('base64string') or atob("base64string")
   const atobPatterns = [
@@ -169,15 +240,10 @@ function extractAtobSource(html: string, source: string): string | null {
         const decoded = atob(match[1]);
         console.log(`[${source}] Decoded atob: ${decoded}`);
         if (decoded.startsWith('http')) {
-          // If it's a playlist URL, fetch it to get the actual m3u8
-          if (decoded.includes('/playlist/') || decoded.includes('/load-playlist')) {
-            console.log(`[${source}] Fetching playlist URL: ${decoded}`);
-            return decoded; // Return the playlist URL directly — it serves m3u8 content
-          }
           if (decoded.includes('.m3u8')) {
             return decoded;
           }
-          // Return any http URL as potential stream source
+          // Return any http URL as potential stream source (will be followed later)
           return decoded;
         }
       } catch (e) {
