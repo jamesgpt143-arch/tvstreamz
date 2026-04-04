@@ -61,8 +61,8 @@ const WatchEvent = () => {
     manifestUri: streamUrl,
     type: 'hls' as const,
     category: sport,
-    useProxy: false,
-    proxyType: 'none' as const,
+    useProxy: true,
+    proxyType: 'supabase' as const,
   } : null;
 
   return (
