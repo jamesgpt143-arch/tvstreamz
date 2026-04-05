@@ -1,50 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
-import { LivePlayer } from '@/components/LivePlayer';
 import { ShareButton } from '@/components/ShareButton';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Radio, Loader2, AlertCircle } from 'lucide-react';
 
+const TVAPP_LINK_BASE = 'https://thetvapp.link';
+
 const WatchEvent = () => {
   const { '*': eventSlug } = useParams();
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
-
-  const resolveStream = useCallback(async () => {
-    if (!eventSlug) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const resp = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/tvapp-resolver?event_slug=${encodeURIComponent(eventSlug)}`,
-        {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        }
-      );
-
-      const data = await resp.json();
-      if (data.resolved_url) {
-        setStreamUrl(data.resolved_url);
-      } else {
-        setError(data.error || 'Could not resolve stream');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to resolve stream');
-    } finally {
-      setLoading(false);
-    }
-  }, [eventSlug]);
 
   useEffect(() => {
-    resolveStream();
-  }, [resolveStream]);
+    // Brief loading state for UX
+    const timer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, [eventSlug]);
 
   // Build a display title from the slug
   const title = eventSlug
@@ -53,23 +24,8 @@ const WatchEvent = () => {
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
 
-  // Build proxied stream URL through stream-proxy to avoid CORS issues
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const proxyStreamUrl = streamUrl
-    ? `https://${projectId}.supabase.co/functions/v1/stream-proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent('https://thetvapp.link/')}`
-    : null;
-
-  // Create a pseudo-channel for LivePlayer
-  const pseudoChannel = proxyStreamUrl ? {
-    id: `event-${eventSlug}`,
-    name: title,
-    logo: '',
-    manifestUri: proxyStreamUrl,
-    type: 'hls' as const,
-    category: sport,
-    useProxy: false,
-    proxyType: 'none' as const,
-  } : null;
+  // Build the iframe URL directly to the event page
+  const iframeSrc = eventSlug ? `${TVAPP_LINK_BASE}/${eventSlug}` : null;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -94,40 +50,38 @@ const WatchEvent = () => {
                   {sport && (
                     <span className="text-muted-foreground font-medium">{sport}</span>
                   )}
-                  {isOnline ? (
-                    <>
-                      <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                      <span className="text-green-500">Live</span>
-                    </>
-                  ) : (
-                    <span className="text-destructive">Offline</span>
-                  )}
+                  <Radio className="w-3 h-3 text-green-500 animate-pulse" />
+                  <span className="text-green-500">Live</span>
                 </div>
               </div>
             </div>
 
-            {/* Player */}
+            {/* Player via iframe */}
             {loading ? (
               <div className="aspect-video bg-card rounded-xl flex items-center justify-center">
                 <div className="text-center">
                   <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Resolving stream...</p>
+                  <p className="text-sm text-muted-foreground">Loading stream...</p>
                 </div>
               </div>
-            ) : error ? (
+            ) : iframeSrc ? (
+              <div className="aspect-video bg-black rounded-xl overflow-hidden">
+                <iframe
+                  src={iframeSrc}
+                  className="w-full h-full border-0"
+                  allow="autoplay; fullscreen; encrypted-media"
+                  allowFullScreen
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
               <div className="aspect-video bg-card rounded-xl flex items-center justify-center">
                 <div className="text-center px-4">
                   <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
-                  <p className="text-sm text-destructive mb-3">{error}</p>
-                  <Button size="sm" onClick={resolveStream}>Retry</Button>
+                  <p className="text-sm text-destructive">No event URL available</p>
                 </div>
               </div>
-            ) : pseudoChannel ? (
-              <LivePlayer
-                channel={pseudoChannel}
-                onStatusChange={setIsOnline}
-              />
-            ) : null}
+            )}
 
             <div className="flex justify-start mt-3">
               <ShareButton title={`Watch ${title} - Live`} />
