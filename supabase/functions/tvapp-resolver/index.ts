@@ -135,7 +135,7 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
           const embedHtml = await embedResp.text();
           
           // Try base64 source extraction from embed page
-          const embedAtob = extractAtobSource(embedHtml, "embed");
+          const embedAtob = await extractAtobSource(embedHtml, "embed");
           if (embedAtob) return embedAtob;
           
           // Try direct m3u8
