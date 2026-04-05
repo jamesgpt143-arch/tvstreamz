@@ -56,7 +56,7 @@ const WatchEvent = () => {
   // Build proxied stream URL through stream-proxy to avoid CORS issues
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   const proxyStreamUrl = streamUrl
-    ? `https://${projectId}.supabase.co/functions/v1/stream-proxy?url=${encodeURIComponent(streamUrl)}`
+    ? `https://${projectId}.supabase.co/functions/v1/stream-proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent('https://thetvapp.link/')}`
     : null;
 
   // Create a pseudo-channel for LivePlayer
