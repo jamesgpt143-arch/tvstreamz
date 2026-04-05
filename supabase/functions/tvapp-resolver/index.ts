@@ -155,7 +155,7 @@ async function resolveViaLink(eventPath: string): Promise<string | null> {
 /**
  * Extract base64-encoded source URL from Clappr player (window.atob pattern)
  */
-function extractAtobSource(html: string, source: string): string | null {
+async function extractAtobSource(html: string, source: string): Promise<string | null> {
   // Match: source: window.atob('base64string') or atob("base64string")
   const atobPatterns = [
     /(?:source|src)\s*:\s*(?:window\.)?atob\s*\(\s*['"]([A-Za-z0-9+/=]+)['"]\s*\)/g,
@@ -169,10 +169,44 @@ function extractAtobSource(html: string, source: string): string | null {
         const decoded = atob(match[1]);
         console.log(`[${source}] Decoded atob: ${decoded}`);
         if (decoded.startsWith('http')) {
-          // If it's a playlist URL, fetch it to get the actual m3u8
+          // If it's a playlist URL, fetch it server-side to get the actual m3u8
           if (decoded.includes('/playlist/') || decoded.includes('/load-playlist')) {
-            console.log(`[${source}] Fetching playlist URL: ${decoded}`);
-            return decoded; // Return the playlist URL directly — it serves m3u8 content
+            console.log(`[${source}] Fetching playlist URL server-side: ${decoded}`);
+            try {
+              const playlistResp = await fetch(decoded, {
+                headers: { "User-Agent": DEFAULT_UA, Referer: TVAPP_LINK_BASE + "/" },
+              });
+              if (playlistResp.ok) {
+                const playlistBody = await playlistResp.text();
+                // If it's m3u8 content, the decoded URL itself is the stream
+                if (playlistBody.trimStart().startsWith('#EXTM3U') || playlistBody.trimStart().startsWith('#EXT')) {
+                  console.log(`[${source}] Playlist URL returns m3u8 content directly`);
+                  return decoded;
+                }
+                // Try to extract m3u8 from playlist response
+                const m3u8Match = playlistBody.match(/https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/);
+                if (m3u8Match) {
+                  console.log(`[${source}] Found m3u8 in playlist response: ${m3u8Match[0]}`);
+                  return m3u8Match[0];
+                }
+                // Try JSON response
+                try {
+                  const json = JSON.parse(playlistBody);
+                  const jsonUrl = json.url || json.source || json.stream || json.file || json.playlist;
+                  if (jsonUrl && typeof jsonUrl === 'string') {
+                    console.log(`[${source}] Found URL in playlist JSON: ${jsonUrl}`);
+                    return jsonUrl;
+                  }
+                } catch { /* not JSON */ }
+                console.log(`[${source}] Playlist response (first 500 chars): ${playlistBody.substring(0, 500)}`);
+              } else {
+                console.log(`[${source}] Playlist fetch failed: ${playlistResp.status}`);
+              }
+            } catch (fetchErr) {
+              console.error(`[${source}] Playlist fetch error:`, fetchErr);
+            }
+            // Return the playlist URL anyway as fallback — it'll be proxied
+            return decoded;
           }
           if (decoded.includes('.m3u8')) {
             return decoded;
