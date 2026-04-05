@@ -53,12 +53,18 @@ const WatchEvent = () => {
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
 
+  // Build proxied stream URL through stream-proxy to avoid CORS issues
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const proxyStreamUrl = streamUrl
+    ? `https://${projectId}.supabase.co/functions/v1/stream-proxy?url=${encodeURIComponent(streamUrl)}`
+    : null;
+
   // Create a pseudo-channel for LivePlayer
-  const pseudoChannel = streamUrl ? {
+  const pseudoChannel = proxyStreamUrl ? {
     id: `event-${eventSlug}`,
     name: title,
     logo: '',
-    manifestUri: streamUrl,
+    manifestUri: proxyStreamUrl,
     type: 'hls' as const,
     category: sport,
     useProxy: false,
