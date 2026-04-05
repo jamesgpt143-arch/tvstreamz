@@ -1,31 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { ShareButton } from '@/components/ShareButton';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Radio, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Radio, ExternalLink, Clock, Play } from 'lucide-react';
 
 const TVAPP_LINK_BASE = 'https://thetvapp.link';
 
 const WatchEvent = () => {
   const { '*': eventSlug } = useParams();
-  const [loading, setLoading] = useState(true);
+  const [phTime, setPhTime] = useState('');
 
   useEffect(() => {
-    // Brief loading state for UX
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, [eventSlug]);
+    const updateTime = () => {
+      setPhTime(
+        new Intl.DateTimeFormat('en-PH', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Manila',
+        }).format(new Date())
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Build a display title from the slug
   const title = eventSlug
     ? eventSlug.split('/').slice(0, 2).pop()?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Live Event'
     : 'Live Event';
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
-
-  // Build the iframe URL directly to the event page
-  const iframeSrc = eventSlug ? `${TVAPP_LINK_BASE}/${eventSlug}` : null;
+  const sourceUrl = eventSlug ? `${TVAPP_LINK_BASE}/${eventSlug}` : null;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -41,50 +49,66 @@ const WatchEvent = () => {
             </Button>
           </div>
 
-          <div className="max-w-4xl mx-auto w-full">
-            {/* Event Info */}
-            <div className="flex items-center gap-3 mb-3">
-              <div>
-                <h1 className="text-lg font-bold">{title}</h1>
-                <div className="flex items-center gap-2 text-xs">
+          <div className="max-w-2xl mx-auto w-full">
+            {/* Event Card */}
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   {sport && (
-                    <span className="text-muted-foreground font-medium">{sport}</span>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/20 text-primary">
+                      {sport}
+                    </span>
                   )}
-                  <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                  <span className="text-green-500">Live</span>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Radio className="w-3 h-3 text-destructive animate-pulse" />
+                    <span className="text-destructive font-medium">LIVE</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  <span>PH Time: {phTime}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Player via iframe */}
-            {loading ? (
-              <div className="aspect-video bg-card rounded-xl flex items-center justify-center">
-                <div className="text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Loading stream...</p>
-                </div>
-              </div>
-            ) : iframeSrc ? (
-              <div className="aspect-video bg-black rounded-xl overflow-hidden">
-                <iframe
-                  src={iframeSrc}
-                  className="w-full h-full border-0"
-                  allow="autoplay; fullscreen; encrypted-media"
-                  allowFullScreen
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            ) : (
-              <div className="aspect-video bg-card rounded-xl flex items-center justify-center">
-                <div className="text-center px-4">
-                  <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
-                  <p className="text-sm text-destructive">No event URL available</p>
-                </div>
-              </div>
-            )}
+              {/* Title */}
+              <h1 className="text-xl font-bold">{title}</h1>
 
-            <div className="flex justify-start mt-3">
-              <ShareButton title={`Watch ${title} - Live`} />
+              {/* Player Area / Watch Button */}
+              <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border/50">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
+                    <Play className="w-8 h-8 text-primary ml-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Stream opens in a new tab</p>
+                    <p className="text-xs text-muted-foreground">Due to source restrictions, this event plays on the provider's site</p>
+                  </div>
+                  {sourceUrl && (
+                    <Button asChild size="lg" className="gap-2">
+                      <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4" />
+                        Watch Now
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between">
+                <ShareButton title={`Watch ${title} - Live`} />
+                {sourceUrl && (
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  >
+                    Open source <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>

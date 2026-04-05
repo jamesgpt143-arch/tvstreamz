@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Radio, Trophy, RefreshCw } from 'lucide-react';
+import { Loader2, Radio, Trophy, RefreshCw, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,6 +38,24 @@ const LiveEvents = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [phTime, setPhTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      setPhTime(
+        new Intl.DateTimeFormat('en-PH', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Manila',
+        }).format(new Date())
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -84,10 +102,16 @@ const LiveEvents = () => {
               LIVE
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchEvents} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              <span>PH: {phTime}</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchEvents} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Sport filters */}
