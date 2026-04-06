@@ -24,111 +24,102 @@ export function LinkValidator() {
   const [loading, setLoading] = useState(true);
   const [validatingAll, setValidatingAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [proxyConfig, setProxyConfig] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
-    fetchChannels();
+    fetchData();
   }, []);
 
-  const fetchChannels = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("channels")
-        .select("id, name, stream_url, proxy_type, use_proxy")
-        .order('name');
-      
-      if (error) throw error;
-
-      const formatted = (data || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        url: c.stream_url,
-        proxyType: c.proxy_type || 'none',
-        useProxy: c.use_proxy ?? false,
-        status: "idle" as const
-      }));
-      setChannels(formatted);
-    } catch (error: any) {
-      toast({ title: "Error fetching channels", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const validateLink = async (channel: ChannelStatus) => {
-    updateStatus(channel.id, "checking");
-    try {
-      // If channel doesn't use proxy, validate directly via edge function
-      if (!channel.useProxy || channel.proxyType === 'none') {
-        const { data, error } = await supabase.functions.invoke('link-validator', {
-          body: { url: channel.url }
-        });
-        if (error) throw error;
-        if (data?.ok) {
-          updateStatus(channel.id, "active", `HTTP ${data.status} (${data.contentType?.split(';')[0] || 'ok'})`);
-        } else {
-          updateStatus(channel.id, "offline", `HTTP ${data?.status || 0}: ${data?.error || data?.statusText || 'Offline'}`);
-        }
-        return;
-      }
-
-      // Get proxy settings
+      // 1. Fetch Proxy Settings
       const { data: settings } = await supabase
         .from('site_settings')
         .select('value')
         .eq('key', 'iptv_config')
         .maybeSingle();
       
-      const config = settings?.value as Record<string, string> | null;
-      
-      // Pick the right proxy URL based on proxyType
-      const prefix = channel.proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
-      const proxyBase = config?.[prefix] || '';
-      
-      if (!proxyBase) {
-        throw new Error(`No ${channel.proxyType} proxy configured in settings`);
+      if (settings?.value) {
+        setProxyConfig(settings.value as Record<string, string>);
       }
 
-      // For supabase proxy, use the stream-proxy edge function format
-      if (channel.proxyType === 'supabase') {
-        const proxyUrl = new URL(proxyBase);
-        proxyUrl.searchParams.set('url', channel.url);
-        // Add headers the stream might need
-        if (channel.url.includes('thetvapp')) {
-          proxyUrl.searchParams.set('referer', 'https://thetvapp.to/');
-        }
-        
-        const response = await fetch(proxyUrl.toString(), {
-          method: 'GET',
-          headers: { 'Accept': '*/*' }
-        });
+      // 2. Fetch Channels
+      const { data: channelData, error } = await supabase
+        .from("channels")
+        .select("id, name, stream_url, proxy_type, use_proxy")
+        .order('name');
+      
+      if (error) throw error;
 
-        if (response.ok || response.status === 206) {
-          const contentType = response.headers.get('content-type') || 'unknown';
-          updateStatus(channel.id, "active", `HTTP ${response.status} (${contentType.split(';')[0]})`);
+      const formatted = (channelData || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        url: c.stream_url,
+        proxyType: c.proxy_type || 'cloudflare',
+        useProxy: !!c.use_proxy,
+        status: "idle" as const
+      }));
+      setChannels(formatted);
+    } catch (error: any) {
+      toast({ title: "Error fetching data", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateLink = async (channel: ChannelStatus) => {
+    if (channel.status === "checking") return;
+    updateStatus(channel.id, "checking");
+    
+    try {
+      // If channel doesn't use proxy, or proxy type is none, we still use the cloudflare worker 
+      // just to bypass CORS and get the status code, but without extra proxy headers.
+      const proxyKey = channel.proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
+      const proxyBase = proxyConfig?.[proxyKey] || proxyConfig?.['cloudflare_proxy_url'] || '';
+      
+      if (!proxyBase || !proxyBase.startsWith('http')) {
+        // Fallback to direct check via Edge Function if no proxy configured
+        const { data, error } = await supabase.functions.invoke('link-validator', {
+          body: { url: channel.url }
+        });
+        if (error) throw error;
+        if (data?.ok || data?.status === 200 || data?.status === 206) {
+          updateStatus(channel.id, "active", `HTTP ${data.status} (Direct)`);
         } else {
-          updateStatus(channel.id, "offline", `HTTP ${response.status}: ${response.statusText || 'Offline'}`);
+          updateStatus(channel.id, "offline", `HTTP ${data?.status || 'Error'}`);
         }
+        return;
+      }
+
+      let proxyUrl: URL;
+      try {
+        proxyUrl = new URL(proxyBase);
+      } catch (e) {
+        throw new Error("Malformed proxy URL in Site Settings");
+      }
+      
+      proxyUrl.searchParams.set('url', channel.url);
+      
+      // Auto-add referer if it's a known restricted source
+      if (channel.url.includes('thetvapp.to') || channel.url.includes('akamai')) {
+        proxyUrl.searchParams.set('referer', 'https://thetvapp.to/');
+      }
+
+      const response = await fetch(proxyUrl.toString(), { 
+        method: 'GET',
+        headers: { 'Accept': '*/*' }
+      });
+
+      if (response.ok || response.status === 200 || response.status === 206) {
+        const contentType = response.headers.get('content-type') || 'unknown';
+        updateStatus(channel.id, "active", `HTTP ${response.status} via ${channel.proxyType.toUpperCase()}`);
       } else {
-        // Cloudflare proxy
-        const proxyUrl = new URL(proxyBase);
-        proxyUrl.searchParams.set('url', channel.url);
-
-        const response = await fetch(proxyUrl.toString(), {
-          method: 'GET',
-          headers: { 'Accept': '*/*' }
-        });
-
-        if (response.ok || response.status === 206) {
-          const contentType = response.headers.get('content-type') || 'unknown';
-          updateStatus(channel.id, "active", `HTTP ${response.status} (${contentType.split(';')[0]})`);
-        } else {
-          updateStatus(channel.id, "offline", `HTTP ${response.status}: ${response.statusText || 'Offline'}`);
-        }
+        updateStatus(channel.id, "offline", `HTTP ${response.status} via ${channel.proxyType.toUpperCase()}`);
       }
     } catch (error: any) {
       console.error(`Validation failed for ${channel.url}:`, error);
-      updateStatus(channel.id, "error", error.message || "Proxy error");
+      updateStatus(channel.id, "error", error.message || "Connection Failed");
     }
   };
 
@@ -137,16 +128,22 @@ export function LinkValidator() {
   };
 
   const validateAll = async () => {
+    if (validatingAll) return;
     setValidatingAll(true);
     const filtered = channels.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Process in batches of 3 to avoid hammering the network/browser
     const batchSize = 3;
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
     for (let i = 0; i < filtered.length; i += batchSize) {
       const batch = filtered.slice(i, i + batchSize);
       await Promise.all(batch.map(c => validateLink(c)));
+      
+      if (i + batchSize < filtered.length) {
+        await delay(1000);
+      }
     }
     setValidatingAll(false);
     toast({ title: "Validation complete", description: `Checked ${filtered.length} channels.` });
@@ -180,7 +177,7 @@ export function LinkValidator() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={fetchChannels}
+                onClick={fetchData}
                 disabled={validatingAll}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -263,7 +260,11 @@ export function LinkValidator() {
                           onClick={() => validateLink(channel)}
                           disabled={channel.status === "checking" || validatingAll}
                         >
-                          <Play className="h-4 w-4" />
+                          {channel.status === "checking" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
                         </Button>
                       </TableCell>
                     </TableRow>
