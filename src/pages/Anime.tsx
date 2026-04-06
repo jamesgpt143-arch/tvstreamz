@@ -1,368 +1,230 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
-import { 
-  fetchAnimeTV, 
-  fetchAnimeMovies, 
-  fetchTopRatedAnime, 
-  fetchAiringAnime,
-  fetchNewAnimeEpisodes,
-  discoverContent,
-  searchMulti,
-  TVShow, 
-  Movie,
-  Genre
-} from '@/lib/tmdb';
+import { discoverContent, TV_GENRES, Movie, TVShow } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, TrendingUp, Star, Tv, Film, XCircle, ChevronLeft } from 'lucide-react';
+import { Loader2, Filter, Calendar, Star, Tv, Film } from 'lucide-react';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { AnimeHero } from '@/components/anime/AnimeHero';
-import { GenreFilter } from '@/components/anime/GenreFilter';
-import { Input } from '@/components/ui/input';
-
-type ViewMode = 'browse' | 'search' | 'category';
-type AnimeCategory = 'new_releases' | 'airing_now' | 'movies' | 'top_rated';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Anime = () => {
   usePagePopup('anime');
-  
-  const [trending, setTrending] = useState<(TVShow | Movie)[]>([]);
-  const [airing, setAiring] = useState<TVShow[]>([]);
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [newReleases, setNewReleases] = useState<TVShow[]>([]);
-  const [browseItems, setBrowseItems] = useState<(TVShow | Movie)[]>([]);
-  
-  const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
+
+  const [items, setItems] = useState<(Movie | TVShow)[]>([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>('browse');
-  const [searchResults, setSearchResults] = useState<(TVShow | Movie)[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<AnimeCategory | null>(null);
-  const [categoryItems, setCategoryItems] = useState<(TVShow | Movie)[]>([]);
+  
+  // Filter States
+  const [type, setType] = useState<'tv' | 'movie'>('tv');
+  const [sortBy, setSortBy] = useState('popularity.desc');
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
+  const [year, setYear] = useState<string>('all');
+  const [minRating, setMinRating] = useState<string>('0');
 
-  const fetchInitialData = async () => {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => (currentYear - i).toString());
+
+  const fetchAnime = async (p: number) => {
     setIsLoading(true);
     try {
-      const [trendingData, airingData, moviesData, newData] = await Promise.all([
-        fetchAnimeTV(1),
-        fetchAiringAnime(1),
-        fetchAnimeMovies(1),
-        fetchNewAnimeEpisodes(1)
-      ]);
-      setTrending(trendingData);
-      setAiring(airingData);
-      setMovies(moviesData);
-      setNewReleases(newData);
-      setBrowseItems(trendingData);
-    } catch (error) {
-      console.error('Failed to fetch initial anime data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchBrowseData = async (genreId: number | null, p: number) => {
-    setIsLoading(true);
-    try {
-      // Must include genre 16 (Animation)
-      const data = await discoverContent('tv', {
+      // Para sa Anime page, laging may genre 16 (Animation)
+      // Karaniwan ay Japanese (ja), pero hahayaan nating naka-all language para sa western animation gaya ng request mo dati
+      const data = await discoverContent(type, {
         page: p,
-        genre: genreId || 16, 
-        sortBy: 'popularity.desc'
+        genre: selectedGenre === 'all' ? 16 : Number(selectedGenre),
+        year: year === 'all' ? undefined : Number(year),
+        minRating: minRating === '0' ? undefined : Number(minRating),
+        sortBy: sortBy,
       });
-      setBrowseItems(p === 1 ? data : [...browseItems, ...data]);
+      
+      setItems(p === 1 ? data : [...items, ...data]);
     } catch (error) {
-      console.error('Failed to fetch browse data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCategoryData = async (cat: AnimeCategory, p: number) => {
-    setIsLoading(true);
-    try {
-      let data: (TVShow | Movie)[] = [];
-      switch (cat) {
-        case 'new_releases': data = await fetchNewAnimeEpisodes(p); break;
-        case 'airing_now': data = await fetchAiringAnime(p); break;
-        case 'movies': data = await fetchAnimeMovies(p); break;
-        case 'top_rated': data = await fetchTopRatedAnime(p); break;
-      }
-      setCategoryItems(p === 1 ? data : [...categoryItems, ...data]);
-    } catch (error) {
-      console.error('Failed to fetch category data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchSearchData = async (query: string) => {
-    if (!query.trim()) return;
-    setIsLoading(true);
-    try {
-      const results = await searchMulti(query, 1);
-      // Filter for Animation genre (16)
-      const animated = results.filter(item => item.genre_ids?.includes(16));
-      setSearchResults(animated);
-      setViewMode('search');
-    } catch (error) {
-      console.error('Failed to search anime:', error);
+      console.error('Failed to fetch anime:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim().length > 2) {
-      const delayDebounceFn = setTimeout(() => {
-        fetchSearchData(searchQuery);
-      }, 500);
-      return () => clearTimeout(delayDebounceFn);
-    } else if (!searchQuery.trim() && viewMode === 'search') {
-      setViewMode('browse');
-    }
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (selectedGenre !== null) {
-      setPage(1);
-      fetchBrowseData(selectedGenre, 1);
-    }
-  }, [selectedGenre]);
+    setItems([]);
+    setPage(1);
+    fetchAnime(1);
+  }, [type, sortBy, selectedGenre, year, minRating]);
 
   const loadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    if (viewMode === 'category' && selectedCategory) {
-      fetchCategoryData(selectedCategory, nextPage);
-    } else {
-      fetchBrowseData(selectedGenre, nextPage);
+    fetchAnime(nextPage);
+  };
+
+  const getDynamicTitle = () => {
+    const genreName = TV_GENRES.find(g => g.id.toString() === selectedGenre)?.name;
+    const prefix = genreName && selectedGenre !== 'all' ? `${genreName} ` : '';
+    const typeLabel = type === 'movie' ? 'Movies' : 'Series';
+    
+    if (year !== 'all') {
+      return `${prefix}Anime ${typeLabel} from ${year}`;
     }
-  };
 
-  const openCategory = (cat: AnimeCategory) => {
-    setSelectedCategory(cat);
-    setViewMode('category');
-    setPage(1);
-    fetchCategoryData(cat, 1);
-  };
-
-  const closeCategory = () => {
-    setViewMode('browse');
-    setSelectedCategory(null);
-    setCategoryItems([]);
-  };
-
-  const getCategoryTitle = (cat: AnimeCategory | null) => {
-    switch (cat) {
-      case 'new_releases': return 'Recently Released';
-      case 'airing_now': return 'Airing This Season';
-      case 'movies': return 'Anime Movies';
-      case 'top_rated': return 'Highest Rated';
-      default: return 'Animation';
+    switch (sortBy) {
+      case 'popularity.desc': return `Popular ${prefix}Anime ${typeLabel}`;
+      case 'vote_average.desc': return `Top Rated ${prefix}Anime ${typeLabel}`;
+      case 'first_air_date.desc': 
+      case 'primary_release_date.desc': 
+        return `Latest ${prefix}Anime ${typeLabel}`;
+      default: return `Anime ${typeLabel}`;
     }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchSearchData(searchQuery);
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="pt-20 pb-20">
-        {/* Featured Hero */}
-        {viewMode === 'browse' && !searchQuery && !selectedGenre && trending.length > 0 && (
-          <AnimeHero items={trending} />
-        )}
-
-        <div className="container mx-auto px-4 md:px-6">
+      <main className="pt-24 pb-20 md:pb-12">
+        <div className="container mx-auto px-4">
           
-          {/* Header & Search */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 mt-8">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight mb-2">Anime Center</h1>
-              <p className="text-muted-foreground">Discover the best of animation.</p>
-            </div>
-            <form onSubmit={handleSearch} className="relative w-full max-w-md group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                type="text"
-                placeholder="Search series, movies..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 bg-muted/40 border-border/50 rounded-full focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-              />
-            </form>
+          <div className="mb-10">
+            <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight group flex items-center gap-3">
+              {getDynamicTitle()}
+              <div className="flex gap-1 ml-4 scale-75">
+                <Button 
+                  size="sm" 
+                  variant={type === 'tv' ? 'default' : 'outline'}
+                  onClick={() => setType('tv')}
+                  className="rounded-full px-4"
+                >
+                  <Tv className="w-4 h-4 mr-2" /> Series
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={type === 'movie' ? 'default' : 'outline'}
+                  onClick={() => setType('movie')}
+                  className="rounded-full px-4"
+                >
+                  <Film className="w-4 h-4 mr-2" /> Movies
+                </Button>
+              </div>
+            </h1>
+            <p className="text-muted-foreground transition-all duration-300">
+              {items.length} titles available
+            </p>
           </div>
 
-          {/* MAIN CONTENT AREA */}
-          {viewMode === 'browse' ? (
-            <div className="space-y-16">
-              <GenreFilter 
-                selectedGenre={selectedGenre} 
-                onGenreSelect={setSelectedGenre} 
-              />
-
-              {selectedGenre === null ? (
-                <>
-                  {/* Recently Released */}
-                  <section>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <TrendingUp className="w-6 h-6 text-primary" />
-                        Recently Released
-                      </h2>
-                      <Button variant="link" onClick={() => openCategory('new_releases')} className="text-primary hover:underline">
-                        See All
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {newReleases.slice(0, 6).map((item) => (
-                        <div key={item.id} className="relative group">
-                          <ContentCard item={item} type="tv" />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-black text-[10px] font-bold uppercase tracking-tighter shadow-lg">
-                            New Episode
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  {/* Airing Now */}
-                  <section>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <Tv className="w-6 h-6 text-primary" />
-                        Airing This Season
-                      </h2>
-                      <Button variant="link" onClick={() => openCategory('airing_now')} className="text-primary hover:underline">
-                        See All
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {airing.slice(0, 12).map((item) => (
-                        <ContentCard key={item.id} item={item} type="tv" />
-                      ))}
-                    </div>
-                  </section>
-
-                  {/* Movies */}
-                  <section>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <Film className="w-6 h-6 text-primary" />
-                        Animation Movies
-                      </h2>
-                      <Button variant="link" onClick={() => openCategory('movies')} className="text-primary hover:underline">
-                        See All
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {movies.slice(0, 12).map((item) => (
-                        <ContentCard key={item.id} item={item} type="movie" />
-                      ))}
-                    </div>
-                  </section>
-                </>
-              ) : (
-                /* Genre Results */
-                <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="flex items-center gap-4 mb-8">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedGenre(null)} className="rounded-full">
-                      Back to All
-                    </Button>
-                    <h2 className="text-2xl font-bold">Results</h2>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {browseItems.map((item) => (
-                      <ContentCard key={item.id} item={item as Movie} type={'title' in item ? 'movie' : 'tv'} />
-                    ))}
-                  </div>
-                  <div className="flex justify-center mt-12">
-                    {isLoading ? (
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    ) : (
-                      <Button variant="outline" onClick={loadMore} className="rounded-full px-10 border-border/50">
-                        Load More
-                      </Button>
-                    )}
-                  </div>
-                </section>
-              )}
+          {/* New Filter Bar */}
+          <div className="flex flex-wrap items-end gap-6 mb-12 p-6 bg-card/30 backdrop-blur-sm border border-border/50 rounded-3xl shadow-xl">
+            {/* Sort */}
+            <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                <Filter className="w-3 h-3 text-primary" /> Sort
+              </label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                  <SelectItem value="popularity.desc">Most Popular</SelectItem>
+                  <SelectItem value={type === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc'}>Newest First</SelectItem>
+                  <SelectItem value={type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc'}>Oldest First</SelectItem>
+                  <SelectItem value="vote_average.desc">Highest Rated</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : viewMode === 'category' ? (
-            /* Category All View */
-            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-4 mb-10">
-                <Button variant="outline" size="icon" onClick={closeCategory} className="rounded-full h-10 w-10">
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <h2 className="text-3xl font-bold">{getCategoryTitle(selectedCategory)}</h2>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {categoryItems.map((item) => (
-                  <ContentCard 
-                    key={item.id} 
-                    item={item as Movie} 
-                    type={selectedCategory === 'movies' ? 'movie' : 'tv'} 
-                  />
-                ))}
-              </div>
-              <div className="flex justify-center mt-12">
-                {isLoading ? (
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                ) : (
-                  <Button variant="outline" onClick={loadMore} className="rounded-full px-10 border-border/50">
-                    Load More {getCategoryTitle(selectedCategory)}
-                  </Button>
-                )}
-              </div>
-            </section>
-          ) : (
-            /* Search Results */
-            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Search className="w-6 h-6 text-primary" />
-                  Search Results for "{searchQuery}"
-                </h2>
-                <Button variant="ghost" onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-primary">
-                  Clear Search
-                </Button>
-              </div>
-              {isLoading ? (
-                <div className="flex justify-center p-20">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                  {searchResults.map((item) => (
-                    <ContentCard 
-                      key={item.id} 
-                      item={item as Movie} 
-                      type={'title' in item ? 'movie' : 'tv'} 
-                    />
+
+            {/* Genre */}
+            <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                <Star className="w-3 h-3 text-primary" /> Genre
+              </label>
+              <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                  <SelectValue placeholder="All Genres" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                  <SelectItem value="all">All Sub-genres</SelectItem>
+                  {TV_GENRES.filter(g => g.id !== 16).map(g => (
+                    <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 bg-muted/20 border-2 border-dashed border-border/50 rounded-3xl">
-                  <XCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-xl font-medium text-muted-foreground">No animated series found matching your search.</p>
-                  <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
-                    Show popular instead
-                  </Button>
-                </div>
-              )}
-            </section>
-          )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Year */}
+            <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                <Calendar className="w-3 h-3 text-primary" /> Year
+              </label>
+              <Select value={year} onValueChange={setYear}>
+                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                  <SelectValue placeholder="All Years" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                  <SelectItem value="all">All Years</SelectItem>
+                  {years.map(y => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Min Rating */}
+            <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                <Star className="w-3 h-3 text-primary" /> Min Rating
+              </label>
+              <Select value={minRating} onValueChange={setMinRating}>
+                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                  <SelectValue placeholder="All Ratings" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                  <SelectItem value="0">All Ratings</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(r => (
+                    <SelectItem key={r} value={r.toString()}>{r}+ Stars</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Items Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            {items.map((item) => (
+              <ContentCard key={item.id} item={item} type={type} />
+            ))}
+          </div>
+
+          {/* Loading / Load More */}
+          <div className="flex justify-center mt-16">
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="text-sm text-muted-foreground animate-pulse">Loading anime catalog...</p>
+              </div>
+            ) : items.length > 0 ? (
+              <Button 
+                variant="outline" 
+                onClick={loadMore} 
+                className="rounded-full px-12 h-12 border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all shadow-lg hover:shadow-primary/10"
+              >
+                Load More Content
+              </Button>
+            ) : (
+              <div className="text-center py-20 opacity-50">
+                <p className="text-xl">No anime found matching your filters.</p>
+                <Button variant="link" onClick={() => {
+                  setSortBy('popularity.desc');
+                  setSelectedGenre('all');
+                  setYear('all');
+                  setMinRating('0');
+                }} className="mt-2">Reset all filters</Button>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

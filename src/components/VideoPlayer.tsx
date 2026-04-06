@@ -9,8 +9,8 @@ interface VideoPlayerProps {
   title: string;
 }
 
-// Idinagdag natin ang Server 4 para masubukan mo kung okay siya sa sandbox
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 1'];
+// Ang Server 3 (vidsrc.cc) ang ating "No Ads" option dahil ito ay stable sa sandbox
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 3'];
 
 export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
@@ -62,7 +62,7 @@ export const VideoPlayer = ({ servers, title }: VideoPlayerProps) => {
             allowFullScreen
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             referrerPolicy="origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
+            sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
           />
         ) : (
           <iframe

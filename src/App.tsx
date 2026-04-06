@@ -8,7 +8,6 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import Index from "./pages/Index";
 import Movies from "./pages/Movies";
 import TVShows from "./pages/TVShows";
-import Anime from "./pages/Anime";
 import LiveTV from "./pages/LiveTV";
 import WatchLive from "./pages/WatchLive";
 import LiveEvents from "./pages/LiveEvents";
@@ -110,7 +109,6 @@ const App = () => {
                     <Route path="/" element={<Index />} />
                     <Route path="/movies" element={<Movies />} />
                     <Route path="/tv-shows" element={<TVShows />} />
-                    <Route path="/anime" element={<Anime />} />
                     <Route path="/manga" element={<Manga />} />
                     <Route path="/manga/:mangaId" element={<MangaDetails />} />
                     <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />

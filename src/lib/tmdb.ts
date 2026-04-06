@@ -189,15 +189,18 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
 
 export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
   'Server 1': type === 'movie' 
-    ? `https://vidsrc.cc/v2/embed/movie/${id}` 
-    : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`,
+    ? `https://vidsrc-embed.ru/embed/movie/${id}` 
+    : `https://vidsrc-embed.ru/embed/tv/${id}/${season}/${episode}`,
   'Server 2': type === 'movie' 
     ? `https://vidlink.pro/movie/${id}` 
     : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
-  'Server 3': type === 'movie'
+  'Server 3': type === 'movie' 
+    ? `https://vidsrc.cc/v2/embed/movie/${id}` 
+    : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`,
+  'Server 4': type === 'movie'
     ? `https://multiembed.mov/?video_id=${id}&tmdb=1`
     : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
-  'Server 4': type === 'movie'
+  'Server 5': type === 'movie'
     ? `https://zxcstream.xyz/embed/movie/${id}`
     : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}`,
 });
@@ -227,7 +230,10 @@ export const fetchTopRatedAnime = async (page = 1): Promise<TVShow[]> => {
 };
 
 export const fetchAiringAnime = async (page = 1): Promise<TVShow[]> => {
-  const response = await fetch(`${API_BASE_URL}/tv/on_the_air?api_key=${API_KEY}&with_genres=16&page=${page}`);
+  const today = new Date().toISOString().split('T')[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Using discover/tv to ensure genre filtering works, and strictly for Japanese shows currently airing
+  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&air_date.gte=${today}&air_date.lte=${nextWeek}&page=${page}`);
   const data = await response.json();
   return data.results;
 };
@@ -264,13 +270,26 @@ export const discoverContent = async (
     year?: number;
     minRating?: number;
     sortBy?: string;
+    originalLanguage?: string;
   } = {}
 ): Promise<Movie[] | TVShow[]> => {
-  const { page = 1, genre, year, minRating, sortBy = 'popularity.desc' } = options;
+  const { page = 1, genre, year,    minRating, 
+    sortBy = 'popularity.desc', 
+    originalLanguage 
+  } = options;
   
+  const today = new Date().toISOString().split('T')[0];
   let url = `${API_BASE_URL}/discover/${type}?api_key=${API_KEY}&page=${page}&sort_by=${sortBy}`;
   
+  // Filter out items that are not released yet
+  if (type === 'movie') {
+    url += `&primary_release_date.lte=${today}`;
+  } else {
+    url += `&air_date.lte=${today}`;
+  }
+
   if (genre) url += `&with_genres=${genre}`;
+  if (originalLanguage) url += `&with_original_language=${originalLanguage}`;
   if (year) {
     if (type === 'movie') {
       url += `&primary_release_year=${year}`;

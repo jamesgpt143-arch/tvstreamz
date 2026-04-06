@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { TrailerModal } from '@/components/TrailerModal';
@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const Watch = () => {
+  const navigate = useNavigate();
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -215,11 +216,20 @@ const Watch = () => {
       <main className="relative pt-20 pb-12">
         <div className="container mx-auto px-4">
           {/* Back Button */}
-          <Button asChild variant="ghost" className="mb-4 gap-2">
-            <Link to={type === 'movie' ? '/movies' : '/tv-shows'}>
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </Link>
+          <Button 
+            variant="ghost" 
+            className="mb-4 gap-2"
+            onClick={() => {
+              if (window.history.length > 2) {
+                navigate(-1);
+              } else {
+                const isAnime = details?.genres?.some(g => g.id === 16);
+                navigate(type === 'movie' ? '/movies' : (isAnime ? '/anime' : '/tv-shows'));
+              }
+            }}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back
           </Button>
 
           <div className="grid lg:grid-cols-[300px_1fr] gap-8 mb-8">
