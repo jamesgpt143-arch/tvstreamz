@@ -55,10 +55,24 @@ export function LinkValidator() {
     }
   };
 
-  const validateLink = async (id: string, url: string) => {
-    updateStatus(id, "checking");
+  const validateLink = async (channel: ChannelStatus) => {
+    updateStatus(channel.id, "checking");
     try {
-      // 1. Get proxy settings from site_settings (similar to LivePlayer)
+      // If channel doesn't use proxy, validate directly via edge function
+      if (!channel.useProxy || channel.proxyType === 'none') {
+        const { data, error } = await supabase.functions.invoke('link-validator', {
+          body: { url: channel.url }
+        });
+        if (error) throw error;
+        if (data?.ok) {
+          updateStatus(channel.id, "active", `HTTP ${data.status} (${data.contentType?.split(';')[0] || 'ok'})`);
+        } else {
+          updateStatus(channel.id, "offline", `HTTP ${data?.status || 0}: ${data?.error || data?.statusText || 'Offline'}`);
+        }
+        return;
+      }
+
+      // Get proxy settings
       const { data: settings } = await supabase
         .from('site_settings')
         .select('value')
@@ -66,31 +80,55 @@ export function LinkValidator() {
         .maybeSingle();
       
       const config = settings?.value as Record<string, string> | null;
-      const proxyBase = config?.['cloudflare_proxy_url'] || '';
+      
+      // Pick the right proxy URL based on proxyType
+      const prefix = channel.proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
+      const proxyBase = config?.[prefix] || '';
       
       if (!proxyBase) {
-        throw new Error("No proxy configured in settings");
+        throw new Error(`No ${channel.proxyType} proxy configured in settings`);
       }
 
-      // 2. Build proxied validation URL
-      const proxyUrl = new URL(proxyBase);
-      proxyUrl.searchParams.set('url', url);
+      // For supabase proxy, use the stream-proxy edge function format
+      if (channel.proxyType === 'supabase') {
+        const proxyUrl = new URL(proxyBase);
+        proxyUrl.searchParams.set('url', channel.url);
+        // Add headers the stream might need
+        if (channel.url.includes('thetvapp')) {
+          proxyUrl.searchParams.set('referer', 'https://thetvapp.to/');
+        }
+        
+        const response = await fetch(proxyUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': '*/*' }
+        });
 
-      // 3. Perform validation via proxy
-      const response = await fetch(proxyUrl.toString(), { 
-        method: 'GET',
-        headers: { 'Accept': '*/*' }
-      });
-
-      if (response.status === 200 || response.ok) {
-        const contentType = response.headers.get('content-type') || 'unknown';
-        updateStatus(id, "active", `HTTP 200 (${contentType.split(';')[0]})`);
+        if (response.ok || response.status === 206) {
+          const contentType = response.headers.get('content-type') || 'unknown';
+          updateStatus(channel.id, "active", `HTTP ${response.status} (${contentType.split(';')[0]})`);
+        } else {
+          updateStatus(channel.id, "offline", `HTTP ${response.status}: ${response.statusText || 'Offline'}`);
+        }
       } else {
-        updateStatus(id, "offline", `HTTP ${response.status}: ${response.statusText || 'Offline'}`);
+        // Cloudflare proxy
+        const proxyUrl = new URL(proxyBase);
+        proxyUrl.searchParams.set('url', channel.url);
+
+        const response = await fetch(proxyUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': '*/*' }
+        });
+
+        if (response.ok || response.status === 206) {
+          const contentType = response.headers.get('content-type') || 'unknown';
+          updateStatus(channel.id, "active", `HTTP ${response.status} (${contentType.split(';')[0]})`);
+        } else {
+          updateStatus(channel.id, "offline", `HTTP ${response.status}: ${response.statusText || 'Offline'}`);
+        }
       }
     } catch (error: any) {
-      console.error(`Validation failed for ${url}:`, error);
-      updateStatus(id, "error", error.message || "Proxy error");
+      console.error(`Validation failed for ${channel.url}:`, error);
+      updateStatus(channel.id, "error", error.message || "Proxy error");
     }
   };
 
