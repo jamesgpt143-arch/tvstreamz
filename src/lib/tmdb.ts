@@ -114,18 +114,14 @@ export const TV_GENRES: Genre[] = [
 ];
 
 export const ANIME_GENRES: Genre[] = [
-  { id: 1, name: 'Action' },
-  { id: 2, name: 'Adventure' },
-  { id: 4, name: 'Comedy' },
-  { id: 8, name: 'Drama' },
-  { id: 10, name: 'Fantasy' },
-  { id: 14, name: 'Horror' },
-  { id: 7, name: 'Mystery' },
-  { id: 22, name: 'Romance' },
-  { id: 24, name: 'Sci-Fi' },
-  { id: 36, name: 'Slice of Life' },
-  { id: 30, name: 'Sports' },
-  { id: 37, name: 'Supernatural' },
+  { id: 10759, name: 'Action' },
+  { id: 35, name: 'Comedy' },
+  { id: 18, name: 'Drama' },
+  { id: 10765, name: 'Fantasy' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10749, name: 'Romance' },
+  { id: 80, name: 'Crime' },
+  { id: 10762, name: 'Kids' },
 ];
 
 export const getImageUrl = (path: string | null, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500') => {
@@ -231,7 +227,14 @@ export const fetchTopRatedAnime = async (page = 1): Promise<TVShow[]> => {
 };
 
 export const fetchAiringAnime = async (page = 1): Promise<TVShow[]> => {
-  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&with_original_language=ja&with_status=0&sort_by=popularity.desc&page=${page}`);
+  const response = await fetch(`${API_BASE_URL}/tv/on_the_air?api_key=${API_KEY}&with_genres=16&page=${page}`);
+  const data = await response.json();
+  return data.results;
+};
+
+export const fetchNewAnimeEpisodes = async (page = 1): Promise<TVShow[]> => {
+  // Get animation that aired within the last 7 days
+  const response = await fetch(`${API_BASE_URL}/discover/tv?api_key=${API_KEY}&with_genres=16&air_date.lte=${new Date().toISOString().split('T')[0]}&air_date.gte=${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&sort_by=first_air_date.desc&page=${page}`);
   const data = await response.json();
   return data.results;
 };
