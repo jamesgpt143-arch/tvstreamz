@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail, LayoutGrid, ChevronLeft, Rocket } from "lucide-react";
+import { BarChart3, Eye, Users, TrendingUp, Calendar, Film, Tv, MessageSquare, ExternalLink, Wifi, Bell, Mail, LayoutGrid, ChevronLeft, Rocket, Globe, RefreshCw } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { ChannelManager } from "@/components/admin/ChannelManager";
 import { WelcomePopupSettings } from "@/components/admin/WelcomePopupSettings";
@@ -13,7 +13,9 @@ import { PagePopupSettings } from "@/components/admin/PagePopupSettings";
 import { IptvSettings } from "@/components/admin/IptvSettings";
 import { NotificationManager } from "@/components/admin/NotificationManager";
 import { MessageManager } from "@/components/admin/MessageManager";
-import { AppUpdateManager } from "@/components/admin/AppUpdateManager"; // <--- BAGONG IMPORT
+import { AppUpdateManager } from "@/components/admin/AppUpdateManager";
+import { SiteSettingsManager } from "@/components/admin/SiteSettingsManager";
+import { LinkValidator } from "@/components/admin/LinkValidator";
 
 interface DailyStats {
   date: string;
@@ -163,6 +165,8 @@ export default function AdminDashboard() {
     { id: 'app-update', title: 'App Updater', icon: Rocket, desc: 'Manage APK versions and update popups', color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' }, // <--- BAGONG MENU ITEM
     { id: 'settings', title: 'Welcome Popup', icon: MessageSquare, desc: 'Edit the initial welcome dialog', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
     { id: 'page-popups', title: 'Page Popups', icon: ExternalLink, desc: 'Manage redirect links and ads', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+    { id: 'site-settings', title: 'Site Config', icon: Globe, desc: 'Maintenance, SEO, and Announcements', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+    { id: 'link-validator', title: 'Link Validator', icon: RefreshCw, desc: 'Check if stream URLs are still active', color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
   ];
 
   if (loading) {
@@ -279,7 +283,9 @@ export default function AdminDashboard() {
             {activeView === 'page-popups' && <PagePopupSettings />}
             {activeView === 'iptv' && <IptvSettings />}
             {activeView === 'notifications' && <NotificationManager />}
-            {activeView === 'app-update' && <AppUpdateManager />} {/* <--- DITO LALABAS ANG BAGONG MANAGER MO */}
+            {activeView === 'app-update' && <AppUpdateManager />}
+            {activeView === 'site-settings' && <SiteSettingsManager />}
+            {activeView === 'link-validator' && <LinkValidator />}
             
             {activeView === 'analytics' && (
               <div className="space-y-6">
