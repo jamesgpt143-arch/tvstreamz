@@ -146,7 +146,7 @@ export function LinkValidator() {
     const batchSize = 3;
     for (let i = 0; i < filtered.length; i += batchSize) {
       const batch = filtered.slice(i, i + batchSize);
-      await Promise.all(batch.map(c => validateLink(c.id, c.url)));
+      await Promise.all(batch.map(c => validateLink(c)));
     }
     setValidatingAll(false);
     toast({ title: "Validation complete", description: `Checked ${filtered.length} channels.` });
