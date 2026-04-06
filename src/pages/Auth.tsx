@@ -12,18 +12,16 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isSetupMode = searchParams.get('setup') === 'true';
-  
+
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  
-  // Auth state
+
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Profile setup state
   const [needsProfile, setNeedsProfile] = useState(false);
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -31,41 +29,37 @@ export default function Auth() {
   useEffect(() => {
     const checkUserAndProfile = async (currentSession: any) => {
       setSession(currentSession);
-      if (currentSession?.user) {
-        // Check if user has a profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', currentSession.user.id)
-          .maybeSingle();
 
-        if (!profile || isSetupMode) {
-          setNeedsProfile(true);
-        } else {
-          navigate("/");
-        }
+      if (!currentSession?.user) {
+        setNeedsProfile(false);
+        setCheckingAuth(false);
+        return;
       }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', currentSession.user.id)
+        .maybeSingle();
+
+      setNeedsProfile(!profile || isSetupMode);
       setCheckingAuth(false);
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      checkUserAndProfile(session);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      void checkUserAndProfile(currentSession);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      checkUserAndProfile(currentSession);
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      void checkUserAndProfile(session);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, isSetupMode]);
+  }, [isSetupMode]);
 
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const showSignedInState = Boolean(session?.user && !needsProfile && !isSetupMode);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,19 +95,22 @@ export default function Auth() {
   const handleProfileSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !session?.user) return;
-    
+
     setLoading(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: session.user.id,
-          username: username.trim(),
-          avatar_url: avatarUrl.trim() || null
-        }, { onConflict: 'user_id' });
+        .upsert(
+          {
+            user_id: session.user.id,
+            username: username.trim(),
+            avatar_url: avatarUrl.trim() || null,
+          },
+          { onConflict: 'user_id' }
+        );
 
       if (error) throw error;
-      
+
       toast({ title: "Profile Ready!", description: "You can now chat." });
       navigate("/");
     } catch (error: any) {
@@ -126,6 +123,37 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  const handleSignOut = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      setEmail("");
+      setPassword("");
+      setUsername("");
+      setAvatarUrl("");
+
+      toast({ title: "Signed out", description: "You can now sign in with a different account." });
+    } catch (error: any) {
+      toast({
+        title: "Sign out failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -142,18 +170,36 @@ export default function Auth() {
             </span>
           </div>
           <CardTitle className="text-foreground">
-            {needsProfile ? 'Set Up Your Profile' : 'Welcome'}
+            {needsProfile ? 'Set Up Your Profile' : showSignedInState ? 'Already signed in' : 'Welcome'}
           </CardTitle>
           <CardDescription>
-            {needsProfile 
-              ? 'Choose a username to display in the live chat.' 
-              : 'Sign in or create an account to continue'}
+            {needsProfile
+              ? 'Choose a username to display in the live chat.'
+              : showSignedInState
+                ? 'Sign out below if you want to switch to a different account.'
+                : 'Sign in or create an account to continue'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          
-          {needsProfile ? (
-            /* PROFILE SETUP FORM */
+          {showSignedInState ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-left">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Current account</p>
+                <p className="mt-1 break-all text-sm font-medium text-foreground">
+                  {session?.user?.email || 'Signed in user'}
+                </p>
+              </div>
+
+              <Button type="button" className="w-full" onClick={handleSignOut} disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign out to switch account
+              </Button>
+
+              <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/")} disabled={loading}>
+                Continue to Home
+              </Button>
+            </div>
+          ) : needsProfile ? (
             <form onSubmit={handleProfileSetup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username (Required)</Label>
@@ -183,7 +229,6 @@ export default function Auth() {
               </Button>
             </form>
           ) : (
-            /* EMAIL / PASSWORD FORM */
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -212,26 +257,28 @@ export default function Auth() {
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isRegistering ? "Create Account" : "Sign In"}
               </Button>
-              
+
               <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={() => setIsRegistering(!isRegistering)}
                   className="text-sm text-primary hover:underline"
                 >
-                  {isRegistering 
-                    ? "Already have an account? Sign in" 
+                  {isRegistering
+                    ? "Already have an account? Sign in"
                     : "Need an account? Sign up for free"}
                 </button>
               </div>
             </form>
           )}
 
-          <div className="mt-6 text-center">
-            <Button variant="ghost" onClick={() => navigate("/")}>
-              Back to Home
-            </Button>
-          </div>
+          {!showSignedInState && (
+            <div className="mt-6 text-center">
+              <Button variant="ghost" onClick={() => navigate("/")}>
+                Back to Home
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
