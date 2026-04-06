@@ -43,6 +43,8 @@ export function LinkValidator() {
         id: c.id,
         name: c.name,
         url: c.stream_url,
+        proxyType: c.proxy_type || 'none',
+        useProxy: c.use_proxy ?? false,
         status: "idle" as const
       }));
       setChannels(formatted);
