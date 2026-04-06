@@ -260,7 +260,7 @@ export function LinkValidator() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
-                          onClick={() => validateLink(channel.id, channel.url)}
+                          onClick={() => validateLink(channel)}
                           disabled={channel.status === "checking" || validatingAll}
                         >
                           <Play className="h-4 w-4" />
