@@ -32,7 +32,7 @@ export function LinkValidator() {
     try {
       const { data, error } = await supabase
         .from("channels")
-        .select("id, name, stream_url")
+        .select("id, name, stream_url, proxy_type, use_proxy")
         .order('name');
       
       if (error) throw error;
