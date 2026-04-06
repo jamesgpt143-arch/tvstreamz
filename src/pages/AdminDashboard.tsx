@@ -57,29 +57,33 @@ export default function AdminDashboard() {
   const checkAdminAndLoadData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         navigate("/auth");
         return;
       }
 
-      // Check if user is admin
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
         .eq("role", "admin");
 
-      if (!roles || roles.length === 0) {
-        navigate("/");
+      if (rolesError || !roles || roles.length === 0) {
+        navigate("/auth");
         return;
       }
 
       setIsAdmin(true);
-      await loadAnalytics();
+
+      try {
+        await loadAnalytics();
+      } catch (analyticsError) {
+        console.error("Error loading analytics:", analyticsError);
+      }
     } catch (error) {
       console.error("Error checking admin status:", error);
-      navigate("/");
+      navigate("/auth");
     } finally {
       setLoading(false);
     }
