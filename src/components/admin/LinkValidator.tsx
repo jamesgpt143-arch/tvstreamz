@@ -12,6 +12,8 @@ interface ChannelStatus {
   id: string;
   name: string;
   url: string;
+  proxyType: string;
+  useProxy: boolean;
   status: "idle" | "checking" | "active" | "offline" | "error";
   error?: string;
 }
