@@ -28,7 +28,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
   const mediaType = currentItem.media_type || 'movie';
 
   return (
-    <section className="relative h-[80vh] md:h-[90vh] w-full overflow-hidden">
+    <section className="relative h-[50vh] md:h-[60vh] lg:h-[65vh] w-full overflow-hidden">
       {/* Background Image with Cinematic Masks */}
       <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
         <div
