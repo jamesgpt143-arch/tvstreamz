@@ -77,7 +77,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             </div>
           </div>
 
-          <p className="text-zinc-400 mb-10 line-clamp-3 md:line-clamp-4 text-base md:text-xl leading-relaxed max-w-xl animate-reveal [animation-delay:600ms]">
+          <p className="text-zinc-400 mb-6 line-clamp-2 md:line-clamp-3 text-sm md:text-base leading-relaxed max-w-xl animate-reveal [animation-delay:600ms]">
             {currentItem.overview}
           </p>
 
