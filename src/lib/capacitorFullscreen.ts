@@ -67,9 +67,14 @@ export const exitFullscreen = async () => {
       console.warn('ScreenOrientation unlock failed:', e);
     }
     try {
+      await StatusBar?.setOverlaysWebView({ overlay: false });
       await StatusBar?.show();
     } catch (e) {
       console.warn('StatusBar show failed:', e);
+    }
+    // Also exit web fullscreen
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
     }
   } else if (document.fullscreenElement) {
     document.exitFullscreen?.().catch(() => {});
