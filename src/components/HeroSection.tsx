@@ -28,7 +28,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
   const mediaType = currentItem.media_type || 'movie';
 
   return (
-    <section className="relative h-[80vh] md:h-[90vh] w-full overflow-hidden">
+    <section className="relative h-[50vh] md:h-[60vh] lg:h-[65vh] w-full overflow-hidden">
       {/* Background Image with Cinematic Masks */}
       <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
         <div
@@ -47,8 +47,8 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
       </div>
 
       {/* Floating Info & Content */}
-      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-center pt-44 pb-44 md:pt-40 md:pb-64 z-20">
-        <div className="max-w-3xl pt-4 md:pt-0">
+      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-end pb-12 md:pb-16 z-20">
+        <div className="max-w-3xl">
           {/* Top Label */}
           <div className="flex items-center gap-3 mb-6 animate-reveal">
             <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
@@ -62,7 +62,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-7xl lg:text-8xl font-black mb-6 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
+          <h1 className="text-2xl md:text-5xl lg:text-6xl font-black mb-4 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
             {title}
           </h1>
 
@@ -77,18 +77,18 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             </div>
           </div>
 
-          <p className="text-zinc-400 mb-10 line-clamp-3 md:line-clamp-4 text-base md:text-xl leading-relaxed max-w-xl animate-reveal [animation-delay:600ms]">
+          <p className="text-zinc-400 mb-6 line-clamp-2 md:line-clamp-3 text-sm md:text-base leading-relaxed max-w-xl animate-reveal [animation-delay:600ms]">
             {currentItem.overview}
           </p>
 
           <div className="flex flex-wrap gap-4 animate-reveal [animation-delay:800ms]">
-            <Button asChild size="lg" className="h-16 px-10 rounded-2xl bg-primary hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
+            <Button asChild size="lg" className="h-12 px-8 rounded-xl bg-primary hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Play className="w-6 h-6 fill-black group-hover:scale-110 transition-transform" />
                 Watch Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-16 px-10 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white font-black uppercase tracking-widest gap-3 transition-all hover:scale-105 active:scale-95">
+            <Button asChild variant="outline" size="lg" className="h-12 px-8 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white font-black uppercase tracking-widest gap-3 transition-all hover:scale-105 active:scale-95">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Info className="w-6 h-6" />
                 More Details
@@ -99,7 +99,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
       </div>
 
       {/* Modern Dots Indicator */}
-      <div className="absolute bottom-12 right-12 flex flex-col gap-4 z-30">
+      <div className="absolute bottom-6 right-8 flex flex-col gap-3 z-30">
         {featuredItems.map((_, index) => (
           <button
             key={index}
