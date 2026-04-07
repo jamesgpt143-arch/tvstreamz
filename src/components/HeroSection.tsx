@@ -99,7 +99,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
       </div>
 
       {/* Modern Dots Indicator */}
-      <div className="absolute bottom-12 right-12 flex flex-col gap-4 z-30">
+      <div className="absolute bottom-6 right-8 flex flex-col gap-3 z-30">
         {featuredItems.map((_, index) => (
           <button
             key={index}
