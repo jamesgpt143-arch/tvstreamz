@@ -88,7 +88,7 @@ export const Navbar = () => {
         ? 'bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl' 
         : 'bg-transparent py-6'
     }`}>
-      <div className="container mx-auto px-6 md:px-12">
+      <div className="container mx-auto px-4 md:px-12">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3 group">

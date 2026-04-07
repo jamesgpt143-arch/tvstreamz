@@ -42,12 +42,13 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
         {/* Layered Gradient Masks for Depth */}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-transparent z-10" />
         <div className="absolute inset-0 bg-black/20 z-0" />
       </div>
 
       {/* Floating Info & Content */}
-      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-center pt-32 pb-44 md:pt-40 md:pb-64 z-20">
-        <div className="max-w-3xl pt-0">
+      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-center pt-44 pb-44 md:pt-40 md:pb-64 z-20">
+        <div className="max-w-3xl pt-4 md:pt-0">
           {/* Top Label */}
           <div className="flex items-center gap-3 mb-6 animate-reveal">
             <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
@@ -61,7 +62,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             )}
           </div>
 
-          <h1 className="text-4xl md:text-7xl lg:text-8xl font-black mb-6 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
+          <h1 className="text-3xl md:text-7xl lg:text-8xl font-black mb-6 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
             {title}
           </h1>
 
