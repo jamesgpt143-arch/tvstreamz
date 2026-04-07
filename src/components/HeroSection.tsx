@@ -88,7 +88,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
                 Watch Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-16 px-10 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white font-black uppercase tracking-widest gap-3 transition-all hover:scale-105 active:scale-95">
+            <Button asChild variant="outline" size="lg" className="h-12 px-8 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white font-black uppercase tracking-widest gap-3 transition-all hover:scale-105 active:scale-95">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Info className="w-6 h-6" />
                 More Details
