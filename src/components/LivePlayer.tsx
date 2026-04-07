@@ -5,6 +5,7 @@ import Hls from 'hls.js';
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
+import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 
 const badProxiesCache = new Map<string, number>();
 const PROXY_TIMEOUT_MS = 10 * 60 * 1000;
@@ -128,6 +129,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     setReloadTrigger(0);
     setIsRefreshing(false);
   }, [channel.id]);
+
+  // Auto-fullscreen on landscape for Capacitor/mobile
+  useEffect(() => {
+    return setupOrientationFullscreen(containerRef.current, !error && !iosWarning);
+  }, [error, iosWarning]);
 
   const checkIOSCompatibility = useMemo(() => {
     if (!isIOS()) return null;
