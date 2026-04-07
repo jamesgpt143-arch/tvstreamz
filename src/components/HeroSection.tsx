@@ -62,7 +62,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-7xl lg:text-8xl font-black mb-6 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
+          <h1 className="text-2xl md:text-5xl lg:text-6xl font-black mb-4 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
             {title}
           </h1>
 
