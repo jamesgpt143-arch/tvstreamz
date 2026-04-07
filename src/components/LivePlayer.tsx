@@ -130,6 +130,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     setIsRefreshing(false);
   }, [channel.id]);
 
+  // Auto-fullscreen on landscape for Capacitor/mobile
+  useEffect(() => {
+    return setupOrientationFullscreen(containerRef.current, !error && !iosWarning);
+  }, [error, iosWarning]);
+
   const checkIOSCompatibility = useMemo(() => {
     if (!isIOS()) return null;
     if (channel.clearKey || channel.widevineUrl) return 'Hindi supported ang stream na ito sa iPhone/iPad dahil sa DRM restrictions.';
