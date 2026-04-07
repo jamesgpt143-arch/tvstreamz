@@ -95,9 +95,6 @@ export const setupOrientationFullscreen = (
   if (!isMobile && !isCapacitor()) return () => {};
 
   if (isCapacitor()) {
-    // On Capacitor, we don't auto-rotate based on orientation.
-    // Instead, the Shaka/iframe fullscreen button should call enterFullscreen/exitFullscreen.
-    // But we still listen for orientation to auto-exit when going portrait.
     let listenerHandle: any = null;
 
     const setup = async () => {
@@ -109,7 +106,9 @@ export const setupOrientationFullscreen = (
           'screenOrientationChange',
           (result: { type: string }) => {
             const isLandscape = result.type.includes('landscape');
-            if (!isLandscape) {
+            if (isLandscape) {
+              enterFullscreen(element);
+            } else {
               exitFullscreen();
             }
           }
