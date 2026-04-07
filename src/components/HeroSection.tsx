@@ -82,7 +82,7 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
           </p>
 
           <div className="flex flex-wrap gap-4 animate-reveal [animation-delay:800ms]">
-            <Button asChild size="lg" className="h-16 px-10 rounded-2xl bg-primary hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
+            <Button asChild size="lg" className="h-12 px-8 rounded-xl bg-primary hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
                 <Play className="w-6 h-6 fill-black group-hover:scale-110 transition-transform" />
                 Watch Now
