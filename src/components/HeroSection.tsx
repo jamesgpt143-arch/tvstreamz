@@ -47,8 +47,8 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
       </div>
 
       {/* Floating Info & Content */}
-      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-center pt-44 pb-44 md:pt-40 md:pb-64 z-20">
-        <div className="max-w-3xl pt-4 md:pt-0">
+      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-end pb-12 md:pb-16 z-20">
+        <div className="max-w-3xl">
           {/* Top Label */}
           <div className="flex items-center gap-3 mb-6 animate-reveal">
             <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
