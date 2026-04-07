@@ -95,7 +95,7 @@ export const Navbar = () => {
               <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-transform group-hover:scale-110">
                 <Tv className="w-6 h-6 text-black" fill="black" />
               </div>
-              <span className="text-2xl font-black tracking-tighter text-white">
+              <span className="text-2xl font-black tracking-tighter text-white hidden sm:block">
                 TV<span className="text-orange-500">STREAMZ</span>
               </span>
             </Link>
