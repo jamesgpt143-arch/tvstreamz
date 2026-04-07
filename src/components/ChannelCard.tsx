@@ -44,12 +44,9 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
       </div>
 
       <div className="p-5">
-        <h3 className="font-black text-sm sm:text-lg text-white group-hover:text-primary transition-colors line-clamp-1 uppercase tracking-tight">
+        <h3 className="font-black text-sm sm:text-lg text-white group-hover:text-primary transition-colors uppercase tracking-tight">
           {channel.name}
         </h3>
-        <p className="text-[10px] text-zinc-500 mt-1 uppercase font-black tracking-[0.2em]">
-          {channel.type === 'youtube' ? 'Digital Stream' : 'Live Broadcast'}
-        </p>
       </div>
     </Link>
   );
