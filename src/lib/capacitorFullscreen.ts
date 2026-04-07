@@ -32,25 +32,24 @@ export const enterFullscreen = async (element?: HTMLElement | null) => {
   if (isCapacitor()) {
     await loadPlugins();
     try {
-      // Force landscape only on APK
       await ScreenOrientation?.lock({ orientation: 'landscape' });
     } catch (e) {
       console.warn('ScreenOrientation lock failed:', e);
     }
     try {
-      // Completely hide status bar for immersive mode
       await StatusBar?.setOverlaysWebView({ overlay: true });
       await StatusBar?.hide();
     } catch (e) {
       console.warn('StatusBar hide failed:', e);
     }
     
-    // Also trigger standard web fullscreen for the element to ensure consistent UI
-    if (element) {
-      element.requestFullscreen?.().catch(() => {});
+    // Use web fullscreen API for immersive mode in WebView
+    if (element && !document.fullscreenElement) {
+      try {
+        await element.requestFullscreen();
+      } catch {}
     }
   } else if (element) {
-    // Standard browser behavior: just fullscreen, no lock
     element.requestFullscreen?.().catch(() => {});
   }
 };
@@ -68,9 +67,14 @@ export const exitFullscreen = async () => {
       console.warn('ScreenOrientation unlock failed:', e);
     }
     try {
+      await StatusBar?.setOverlaysWebView({ overlay: false });
       await StatusBar?.show();
     } catch (e) {
       console.warn('StatusBar show failed:', e);
+    }
+    // Also exit web fullscreen
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
     }
   } else if (document.fullscreenElement) {
     document.exitFullscreen?.().catch(() => {});
@@ -95,9 +99,6 @@ export const setupOrientationFullscreen = (
   if (!isMobile && !isCapacitor()) return () => {};
 
   if (isCapacitor()) {
-    // On Capacitor, we don't auto-rotate based on orientation.
-    // Instead, the Shaka/iframe fullscreen button should call enterFullscreen/exitFullscreen.
-    // But we still listen for orientation to auto-exit when going portrait.
     let listenerHandle: any = null;
 
     const setup = async () => {
@@ -109,7 +110,9 @@ export const setupOrientationFullscreen = (
           'screenOrientationChange',
           (result: { type: string }) => {
             const isLandscape = result.type.includes('landscape');
-            if (!isLandscape) {
+            if (isLandscape) {
+              enterFullscreen(element);
+            } else {
               exitFullscreen();
             }
           }
