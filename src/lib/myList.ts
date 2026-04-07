@@ -46,3 +46,7 @@ export const isInMyList = (id: number, type: 'movie' | 'tv'): boolean => {
   const list = getMyList();
   return list.some(item => item.id === id && item.type === type);
 };
+
+export const clearMyList = () => {
+  localStorage.removeItem(STORAGE_KEY);
+};

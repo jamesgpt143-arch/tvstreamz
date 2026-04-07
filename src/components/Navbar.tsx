@@ -18,7 +18,19 @@ export const Navbar = () => {
   const [continueWatchingCount, setContinueWatchingCount] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isHome = location.pathname === '/';
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -71,33 +83,46 @@ export const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Tv className="w-6 h-6 text-primary-foreground" />
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      scrolled || !isHome 
+        ? 'bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl' 
+        : 'bg-transparent py-6'
+    }`}>
+      <div className="container mx-auto px-6 md:px-12">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-transform group-hover:scale-110">
+                <Tv className="w-6 h-6 text-black" fill="black" />
               </div>
-              <span className="text-xl font-bold text-gradient hidden sm:block">MovieStreamz</span>
+              <span className="text-2xl font-black tracking-tighter text-white">
+                TV<span className="text-orange-500">STREAMZ</span>
+              </span>
             </Link>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+            
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-60'}`}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              <Users className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-semibold text-primary tabular-nums">{onlineCount.toLocaleString()}</span>
-              <span className="text-[10px] text-muted-foreground hidden sm:inline">online</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{onlineCount.toLocaleString()} Live</span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1 bg-white/5 p-1 rounded-2xl border border-white/5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
-                <Link key={item.path} to={item.path} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                <Link 
+                  key={item.path} 
+                  to={item.path} 
+                  className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' 
+                      : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
                   <Icon className="w-4 h-4" />
                   {item.label}
                 </Link>
@@ -105,101 +130,109 @@ export const Navbar = () => {
             })}
           </div>
 
-          <div className="flex items-center gap-1">
-            <div className={`flex items-center transition-all duration-300 ease-in-out ${isSearchOpen ? 'w-64 md:w-80' : 'w-10'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchOpen ? 'w-64 md:w-80' : 'w-10'}`}>
               {isSearchOpen ? (
                 <SearchSuggestions isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
               ) : (
-                <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} className="text-muted-foreground hover:text-foreground">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsSearchOpen(true)} 
+                  className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white transition-all hover:scale-105"
+                >
                   <Search className="w-5 h-5" />
                 </Button>
               )}
             </div>
 
             <NotificationBell />
-            <ThemeToggle />
-
+            
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Menu className="w-5 h-5" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white transition-all hover:scale-105"
+                >
+                  <Menu className="w-6 h-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    {!isLoggedIn && (
-                      <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors">
-                        <Shield className="w-4 h-4 text-primary" />
-                      </Link>
-                    )}
-                    Menu
-                  </SheetTitle>
-                </SheetHeader>
-                
-                <div className="mt-6 space-y-2">
-                  <Link to="/my-list" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <ListVideo className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">My List</p>
-                        <p className="text-sm text-muted-foreground">{myListCount} items saved</p>
-                      </div>
-                    </div>
-                  </Link>
+              <SheetContent side="right" className="w-80 bg-zinc-950 border-white/10 p-0 overflow-hidden">
+                <div className="h-full flex flex-col pt-20 px-6">
+                  <div className="mb-8">
+                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4">Your Account</p>
+                     {!isLoggedIn ? (
+                        <Button asChild className="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3">
+                          <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                            <Shield className="w-5 h-5" />
+                            Sign In / Register
+                          </Link>
+                        </Button>
+                     ) : (
+                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-black text-black">A</div>
+                           <div>
+                              <p className="font-black text-sm uppercase tracking-tight">Active User</p>
+                              <p className="text-[10px] text-zinc-500">Premium Member</p>
+                           </div>
+                        </div>
+                     )}
+                  </div>
 
-                  <Link to="/continue-watching" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-accent" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Continue Watching</p>
-                        <p className="text-sm text-muted-foreground">{continueWatchingCount} items</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  {/* BAGONG CUSTOM CHANNELS LINK */}
-                  <Link to="/custom-channels" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors border border-primary/20">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <MonitorUp className="w-5 h-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-blue-500">Custom Channels</p>
-                        <p className="text-sm text-muted-foreground">Watch User-Added Streams</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <Link to="/temp-mail" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Mail className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Temp Mail</p>
-                        <p className="text-sm text-muted-foreground">Disposable email inbox</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  {isAdmin && (
-                    <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 rounded-lg bg-card hover:bg-secondary transition-colors">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4">Library</p>
+                    
+                    <Link to="/my-list" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                          <Shield className="w-5 h-5 text-destructive" />
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <ListVideo className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">Admin Panel</p>
-                          <p className="text-sm text-muted-foreground">Manage your site</p>
+                          <p className="font-black text-xs uppercase tracking-widest">My List</p>
+                          <p className="text-[10px] text-zinc-500">{myListCount} items saved</p>
                         </div>
                       </div>
                     </Link>
-                  )}
+
+                    <Link to="/continue-watching" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Clock className="w-5 h-5 text-accent" />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs uppercase tracking-widest">History</p>
+                          <p className="text-[10px] text-zinc-500">{continueWatchingCount} items</p>
+                        </div>
+                      </div>
+                    </Link>
+
+                    <Link to="/temp-mail" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Mail className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs uppercase tracking-widest">Temp Mail</p>
+                          <p className="text-[10px] text-zinc-500">Disposable inbox</p>
+                        </div>
+                      </div>
+                    </Link>
+
+                    {isAdmin && (
+                      <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Shield className="w-5 h-5 text-destructive" />
+                          </div>
+                          <div>
+                            <p className="font-black text-xs uppercase tracking-widest text-destructive">Admin Console</p>
+                            <p className="text-[10px] text-destructive-foreground opacity-50">Manage Platform</p>
+                          </div>
+                        </div>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>

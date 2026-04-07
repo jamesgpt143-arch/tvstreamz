@@ -32,16 +32,25 @@ export const enterFullscreen = async (element?: HTMLElement | null) => {
   if (isCapacitor()) {
     await loadPlugins();
     try {
+      // Force landscape only on APK
       await ScreenOrientation?.lock({ orientation: 'landscape' });
     } catch (e) {
       console.warn('ScreenOrientation lock failed:', e);
     }
     try {
+      // Completely hide status bar for immersive mode
+      await StatusBar?.setOverlaysWebView({ overlay: true });
       await StatusBar?.hide();
     } catch (e) {
       console.warn('StatusBar hide failed:', e);
     }
+    
+    // Also trigger standard web fullscreen for the element to ensure consistent UI
+    if (element) {
+      element.requestFullscreen?.().catch(() => {});
+    }
   } else if (element) {
+    // Standard browser behavior: just fullscreen, no lock
     element.requestFullscreen?.().catch(() => {});
   }
 };

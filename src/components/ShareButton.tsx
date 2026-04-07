@@ -12,9 +12,10 @@ import { toast } from 'sonner';
 interface ShareButtonProps {
   title?: string;
   url?: string;
+  iconOnly?: boolean;
 }
 
-export const ShareButton = ({ title = 'Check this out!', url }: ShareButtonProps) => {
+export const ShareButton = ({ title = 'Check this out!', url, iconOnly = false }: ShareButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 

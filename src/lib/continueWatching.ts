@@ -3,11 +3,13 @@ export interface ContinueWatchingItem {
   type: 'movie' | 'tv';
   title: string;
   poster_path: string | null;
+  backdrop_path?: string | null;
   progress: number; // 0-100 percentage
   currentTime: number; // in seconds
   duration: number; // in seconds
   season?: number;
   episode?: number;
+  lastServer?: string;
   updatedAt: number;
 }
 
