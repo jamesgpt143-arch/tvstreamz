@@ -84,10 +84,13 @@ export function LinkValidator() {
           body: { url: channel.url }
         });
         if (error) throw error;
-        if (data?.ok || data?.status === 200 || data?.status === 206) {
+        const isActive = data?.ok || data?.status === 200 || data?.status === 206 || data?.status === 301 || data?.status === 302 || data?.status === 402 || data?.status === 403;
+        if (isActive) {
           updateStatus(channel.id, "active", `HTTP ${data.status} (Direct)`);
+          await supabase.from('channels').update({ status: 'online' }).eq('id', channel.id);
         } else {
           updateStatus(channel.id, "offline", `HTTP ${data?.status || 'Error'}`);
+          await supabase.from('channels').update({ status: 'offline' }).eq('id', channel.id);
         }
         return;
       }
@@ -111,11 +114,14 @@ export function LinkValidator() {
         headers: { 'Accept': '*/*' }
       });
 
-      if (response.ok || response.status === 200 || response.status === 206) {
+      const isActive = response.ok || response.status === 200 || response.status === 206 || response.status === 301 || response.status === 302 || response.status === 402 || response.status === 403;
+      if (isActive) {
         const contentType = response.headers.get('content-type') || 'unknown';
         updateStatus(channel.id, "active", `HTTP ${response.status} via ${channel.proxyType.toUpperCase()}`);
+        await supabase.from('channels').update({ status: 'online' }).eq('id', channel.id);
       } else {
         updateStatus(channel.id, "offline", `HTTP ${response.status} via ${channel.proxyType.toUpperCase()}`);
+        await supabase.from('channels').update({ status: 'offline' }).eq('id', channel.id);
       }
     } catch (error: any) {
       console.error(`Validation failed for ${channel.url}:`, error);

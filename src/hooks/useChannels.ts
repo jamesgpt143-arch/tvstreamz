@@ -21,7 +21,8 @@ export interface DbChannel {
   tvapp_slug: string | null;
   proxy_type: string;
   offline_title: string | null;     // <-- BAGONG FIELD
-  offline_message: string | null;   // <-- BAGONG FIELD
+  offline_message: string | null;
+  status: 'online' | 'offline';
   created_at: string;
   updated_at: string;
 }
@@ -45,7 +46,8 @@ export interface ChannelInput {
   tvapp_slug?: string | null;
   proxy_type?: string;
   offline_title?: string | null;    // <-- BAGONG FIELD
-  offline_message?: string | null;  // <-- BAGONG FIELD
+  offline_message?: string | null;
+  status?: 'online' | 'offline';
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -69,7 +71,8 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   tvappSlug: dbChannel.tvapp_slug || undefined,
   proxyType: dbChannel.proxy_type || 'none',
   offlineTitle: dbChannel.offline_title || undefined,      // <-- BAGONG FIELD
-  offlineMessage: dbChannel.offline_message || undefined,  // <-- BAGONG FIELD
+  offlineMessage: dbChannel.offline_message || undefined,
+  status: dbChannel.status || 'online',
 });
 
 export function useChannels(includeInactive = false) {

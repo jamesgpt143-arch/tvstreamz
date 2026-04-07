@@ -27,6 +27,7 @@ export interface Channel {
   proxyOrder?: ProxyKey[];
   tvappSlug?: string;
   proxyType?: string;
-  offlineTitle?: string;  // <-- BAGONG FIELD
-  offlineMessage?: string; // <-- BAGONG FIELD
+  offlineTitle?: string;
+  offlineMessage?: string;
+  status?: 'online' | 'offline';
 }

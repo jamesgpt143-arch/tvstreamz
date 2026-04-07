@@ -32,6 +32,7 @@ export type Database = {
           proxy_type: string
           referrer: string | null
           sort_order: number | null
+          status: string
           stream_type: string
           stream_url: string
           tvapp_slug: string | null
@@ -56,6 +57,7 @@ export type Database = {
           proxy_type?: string
           referrer?: string | null
           sort_order?: number | null
+          status?: string
           stream_type?: string
           stream_url: string
           tvapp_slug?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           proxy_type?: string
           referrer?: string | null
           sort_order?: number | null
+          status?: string
           stream_type?: string
           stream_url?: string
           tvapp_slug?: string | null

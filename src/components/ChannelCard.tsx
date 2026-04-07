@@ -20,10 +20,19 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
           loading="lazy"
         />
         
-        {/* Cinematic Live indicator */}
-        <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/90 text-white text-[10px] uppercase font-black tracking-widest shadow-xl shadow-red-600/20">
-          <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          <span>LIVE</span>
+        {/* Dynamic Status indicator */}
+        <div className={`absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full ${channel.status === 'offline' ? 'bg-zinc-800/90 text-zinc-400 border border-white/5' : 'bg-red-600/90 text-white shadow-xl shadow-red-600/20'} text-[10px] uppercase font-black tracking-widest transition-all duration-300`}>
+          {channel.status !== 'offline' ? (
+            <>
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span>LIVE</span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-zinc-600" />
+              <span>OFFLINE</span>
+            </>
+          )}
         </div>
 
         {/* Premium Play overlay */}

@@ -90,14 +90,23 @@ export function ChannelManager() {
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground truncate">{channel.name}</p>
                       {channel.is_active ? (
-                        <Badge variant="outline" className="text-green-500 border-green-500/50 gap-1">
-                          <Check className="h-3 w-3" />
+                        <Badge variant="outline" className="text-green-500 border-green-500/50 gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black">
+                          <Check className="h-2 w-2" />
                           Active
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1">
-                          <X className="h-3 w-3" />
+                        <Badge variant="outline" className="text-muted-foreground gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black">
+                          <X className="h-2 w-2" />
                           Inactive
+                        </Badge>
+                      )}
+                      {channel.status === 'offline' ? (
+                        <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black bg-amber-500/5 transition-all animate-pulse">
+                          Offline
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-emerald-500 border-emerald-500/50 gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black bg-emerald-500/5">
+                          Online
                         </Badge>
                       )}
                     </div>
