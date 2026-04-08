@@ -27,12 +27,20 @@ const isCapacitor = (): boolean => {
 /**
  * Enter fullscreen: lock landscape + hide status bar on native,
  * or use requestFullscreen on web.
+ * @param element The element to enter fullscreen
+ * @param forceLock Whether to strictly lock the orientation to landscape (default: true). 
+ *                  Set to false if orientation was already changed by the device sensor.
  */
-export const enterFullscreen = async (element?: HTMLElement | null) => {
+export const enterFullscreen = async (element?: HTMLElement | null, forceLock: boolean = true) => {
   if (isCapacitor()) {
     await loadPlugins();
     try {
-      await ScreenOrientation?.lock({ orientation: 'landscape' });
+      if (forceLock) {
+        await ScreenOrientation?.lock({ orientation: 'landscape' });
+        // After forcing the rotation, we unlock it so that the device's sensor 
+        // can still trigger the change back to portrait if rotated.
+        await ScreenOrientation?.unlock();
+      }
     } catch (e) {
       console.warn('ScreenOrientation lock failed:', e);
     }
@@ -111,7 +119,9 @@ export const setupOrientationFullscreen = (
           (result: { type: string }) => {
             const isLandscape = result.type.includes('landscape');
             if (isLandscape) {
-              enterFullscreen(element);
+              // We pass false to forceLock because the orientation change 
+              // was already triggered by the device sensor.
+              enterFullscreen(element, false);
             } else {
               exitFullscreen();
             }
