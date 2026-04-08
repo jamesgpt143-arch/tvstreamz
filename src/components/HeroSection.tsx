@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Info, Star, Calendar } from 'lucide-react';
+import { Play, Info, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Movie, getImageUrl } from '@/lib/tmdb';
 
@@ -28,69 +28,65 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
   const mediaType = currentItem.media_type || 'movie';
 
   return (
-    <section className="relative h-[80vh] md:h-[90vh] w-full overflow-hidden">
-      {/* Background Image with Cinematic Masks */}
-      <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
+    <section className="relative min-h-[60vh] md:min-h-[75vh] w-full overflow-hidden flex flex-col justify-end">
+      {/* Background Image with Watch.tsx style gradients */}
+      <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out z-0">
         <div
-          className="absolute inset-0 bg-cover bg-center scale-105 animate-pulse-slow"
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105 animate-pulse-slow"
           style={{
             backgroundImage: `url(${getImageUrl(currentItem.backdrop_path, 'original')})`,
-            transition: 'background-image 1s ease-in-out',
           }}
         />
-        
-        {/* Layered Gradient Masks for Depth */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-transparent z-10" />
-        <div className="absolute inset-0 bg-black/20 z-0" />
+        {/* Gradients para pumatong nang maayos ang text at mag-blend sa ilalim */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
       </div>
 
-      {/* Floating Info & Content */}
-      <div className="relative h-full container mx-auto px-6 md:px-12 flex items-center pt-44 pb-44 md:pt-40 md:pb-64 z-20">
-        <div className="max-w-3xl pt-4 md:pt-0">
+      {/* Floating Info & Content - Kamukha ng Watch.tsx Layout */}
+      <div className="relative h-full container mx-auto px-4 md:px-12 flex flex-col justify-end pt-32 pb-16 max-w-7xl z-20">
+        <div className="max-w-4xl space-y-4 animate-slide-up">
+          
           {/* Top Label */}
-          <div className="flex items-center gap-3 mb-6 animate-reveal">
-            <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
               Trending Now
             </div>
-            {year && (
-              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                {year}
-              </div>
-            )}
           </div>
 
-          <h1 className="text-3xl md:text-7xl lg:text-8xl font-black mb-6 leading-[0.9] tracking-tighter text-white animate-reveal [animation-delay:200ms]">
+          {/* Title */}
+          <h1 className="text-3xl md:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl leading-tight">
             {title}
           </h1>
 
-          <div className="flex items-center gap-6 mb-8 text-sm font-medium animate-reveal [animation-delay:400ms]">
-            <div className="flex items-center gap-2 text-yellow-500">
-               <Star className="w-5 h-5 fill-yellow-500" />
-               <span className="text-lg font-black italic">{(currentItem.vote_average || 0).toFixed(1)}</span>
-            </div>
-            <div className="h-6 w-[1px] bg-white/10" />
-            <div className="flex items-center gap-2 text-zinc-300 uppercase tracking-widest text-xs font-black">
-               {mediaType === 'movie' ? 'Feature Film' : 'TV Series'}
-            </div>
+          {/* Meta Info (Rating, Year, Type) */}
+          <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/20">
+              <Star className="w-4 h-4 fill-current" />
+              {(currentItem.vote_average || 0).toFixed(1)}
+            </span>
+            {year && <span className="text-zinc-300 drop-shadow-md">{year}</span>}
+            <span className="px-3 py-1 rounded bg-primary/20 text-primary text-[10px] uppercase font-black tracking-widest border border-primary/20">
+              {mediaType === 'movie' ? 'Feature Film' : 'TV Series'}
+            </span>
           </div>
 
-          <p className="text-zinc-400 mb-10 line-clamp-3 md:line-clamp-4 text-base md:text-xl leading-relaxed max-w-xl animate-reveal [animation-delay:600ms]">
+          {/* Overview */}
+          <p className="text-zinc-300 leading-relaxed text-sm md:text-base max-w-3xl drop-shadow-lg line-clamp-3">
             {currentItem.overview}
           </p>
 
-          <div className="flex flex-wrap gap-4 animate-reveal [animation-delay:800ms]">
-            <Button asChild size="lg" className="h-16 px-10 rounded-2xl bg-primary hover:bg-orange-600 text-black font-black uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
+          {/* Buttons */}
+          <div className="flex flex-wrap gap-3 pt-4">
+            <Button asChild size="lg" className="rounded-full px-8 h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-transform hover:scale-105">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
-                <Play className="w-6 h-6 fill-black group-hover:scale-110 transition-transform" />
+                <Play className="w-5 h-5 mr-2 fill-current" />
                 Watch Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-16 px-10 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white font-black uppercase tracking-widest gap-3 transition-all hover:scale-105 active:scale-95">
+            <Button asChild variant="outline" size="lg" className="rounded-full px-8 h-12 bg-zinc-800/40 border-zinc-700/50 backdrop-blur-md hover:bg-zinc-800/60 text-white transition-transform hover:scale-105">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
-                <Info className="w-6 h-6" />
+                <Info className="w-5 h-5 mr-2" />
                 More Details
               </Link>
             </Button>
@@ -98,21 +94,22 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
         </div>
       </div>
 
-      {/* Modern Dots Indicator */}
-      <div className="absolute bottom-12 right-12 flex flex-col gap-4 z-30">
+      {/* Modern Dots Indicator sa kanan */}
+      <div className="absolute bottom-16 right-6 md:right-12 flex flex-col gap-3 z-30">
         {featuredItems.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`transition-all duration-500 group relative flex items-center justify-end gap-3`}
+            className="group relative flex items-center justify-end gap-3"
+            aria-label={`Go to slide ${index + 1}`}
           >
-            <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity duration-300 ${index === currentIndex ? 'opacity-100 text-orange-500' : 'opacity-0 text-zinc-500 hover:opacity-100'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity duration-300 hidden md:block ${index === currentIndex ? 'opacity-100 text-orange-500' : 'opacity-0 text-zinc-500 group-hover:opacity-100'}`}>
                0{index + 1}
             </span>
             <div className={`rounded-full transition-all duration-500 ${
               index === currentIndex
-                ? 'w-12 h-1.5 bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]'
-                : 'w-3 h-1.5 bg-white/20 hover:bg-white/40'
+                ? 'w-8 h-1.5 bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]'
+                : 'w-2 h-1.5 bg-white/20 hover:bg-white/40'
             }`} />
           </button>
         ))}
