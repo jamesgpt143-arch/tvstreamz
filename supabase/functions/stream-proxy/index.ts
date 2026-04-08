@@ -243,7 +243,6 @@ serve(async (req) => {
 
     const contentType =
       response.headers.get("content-type") || "application/octet-stream";
-    const body = await response.arrayBuffer();
 
     const isHLS =
       targetUrl.includes(".m3u8") || contentType.includes("mpegurl");
@@ -251,6 +250,7 @@ serve(async (req) => {
       targetUrl.includes(".mpd") || contentType.includes("dash+xml");
 
     if (isHLS || isDASH) {
+      const body = await response.arrayBuffer();
       const text = new TextDecoder().decode(body);
       const baseUrl =
         targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
@@ -274,24 +274,25 @@ serve(async (req) => {
           "Content-Type": isHLS
             ? "application/vnd.apple.mpegurl"
             : "application/dash+xml",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "public, max-age=5, s-maxage=5", // Short cache for manifests
         },
       });
     }
 
     // ─── Binary passthrough (segments, keys, etc.) ───
-    const respHeaders: Record<string, string> = {
-      ...corsHeaders,
-      "Content-Type": contentType,
-    };
+    const respHeaders = new Headers(corsHeaders);
+    respHeaders.set("Content-Type", contentType);
 
     const cl = response.headers.get("content-length");
-    if (cl) respHeaders["Content-Length"] = cl;
+    if (cl) respHeaders.set("Content-Length", cl);
 
     const cr = response.headers.get("content-range");
-    if (cr) respHeaders["Content-Range"] = cr;
+    if (cr) respHeaders.set("Content-Range", cr);
 
-    return new Response(body, {
+    // Cache segments for longer
+    respHeaders.set("Cache-Control", "public, max-age=3600");
+
+    return new Response(response.body, {
       status: response.status,
       headers: respHeaders,
     });

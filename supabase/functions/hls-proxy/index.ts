@@ -61,13 +61,12 @@ serve(async (req) => {
     }
 
     const contentType = response.headers.get("content-type") || "application/octet-stream";
-    const body = await response.arrayBuffer();
-
     const isHlsManifest = targetUrl.includes(".m3u8") || contentType.includes("mpegurl");
     const isDashManifest = targetUrl.includes(".mpd") || contentType.includes("dash+xml");
 
     // Rewrite HLS manifest URLs
     if (isHlsManifest) {
+      const body = await response.arrayBuffer();
       const text = new TextDecoder().decode(body);
       const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
       
@@ -104,12 +103,14 @@ serve(async (req) => {
         headers: {
           ...corsHeaders,
           "Content-Type": "application/vnd.apple.mpegurl",
+          "Cache-Control": "public, max-age=5, s-maxage=5", // Short cache for manifests
         },
       });
     }
 
     // Rewrite DASH manifest URLs (BaseURL and SegmentTemplate)
     if (isDashManifest) {
+      const body = await response.arrayBuffer();
       const text = new TextDecoder().decode(body);
       const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
       
@@ -131,15 +132,28 @@ serve(async (req) => {
         headers: {
           ...corsHeaders,
           "Content-Type": "application/dash+xml",
+          "Cache-Control": "public, max-age=5, s-maxage=5", // Short cache for DASH manifests
         },
       });
     }
 
-    return new Response(body, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": contentType,
-      },
+    // Streaming passthrough for segments
+    const responseHeaders = new Headers(corsHeaders);
+    responseHeaders.set("Content-Type", contentType);
+    
+    // Forward important headers
+    const contentLength = response.headers.get("content-length");
+    if (contentLength) responseHeaders.set("Content-Length", contentLength);
+    
+    const contentRange = response.headers.get("content-range");
+    if (contentRange) responseHeaders.set("Content-Range", contentRange);
+
+    // Cache segments for longer (segments are immutable)
+    responseHeaders.set("Cache-Control", "public, max-age=3600");
+
+    return new Response(response.body, {
+      status: response.status,
+      headers: responseHeaders,
     });
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : "Unknown error";

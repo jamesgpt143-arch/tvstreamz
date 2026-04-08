@@ -173,7 +173,6 @@ async function proxyStream(reqUrl: URL, streamUrl: string, customHeaders?: Recor
   }
 
   const contentType = response.headers.get("content-type") || "application/octet-stream";
-  const body = await response.arrayBuffer();
 
   // Carry forward custom header params in proxy URLs so sub-requests also use them
   let proxyExtra = "";
@@ -184,6 +183,7 @@ async function proxyStream(reqUrl: URL, streamUrl: string, customHeaders?: Recor
   }
 
   if (streamUrl.includes(".m3u8") || contentType.includes("mpegurl")) {
+    const body = await response.arrayBuffer();
     const text = new TextDecoder().decode(body);
     const baseUrl = streamUrl.substring(0, streamUrl.lastIndexOf("/") + 1);
     const proxyBase = `${reqUrl.origin}${reqUrl.pathname}?action=proxy&url=`;
@@ -203,10 +203,32 @@ async function proxyStream(reqUrl: URL, streamUrl: string, customHeaders?: Recor
       return line;
     }).join("\n");
 
-    return new Response(rewritten, { headers: { ...corsHeaders, "Content-Type": "application/vnd.apple.mpegurl" } });
+    return new Response(rewritten, { 
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "application/vnd.apple.mpegurl",
+        "Cache-Control": "public, max-age=5, s-maxage=5",
+      } 
+    });
   }
 
-  return new Response(body, { headers: { ...corsHeaders, "Content-Type": contentType } });
+  // Streaming passthrough for segments
+  const responseHeaders = new Headers(corsHeaders);
+  responseHeaders.set("Content-Type", contentType);
+  
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) responseHeaders.set("Content-Length", contentLength);
+  
+  const contentRange = response.headers.get("content-range");
+  if (contentRange) responseHeaders.set("Content-Range", contentRange);
+
+  // Cache segments for longer
+  responseHeaders.set("Cache-Control", "public, max-age=3600");
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: responseHeaders,
+  });
 }
 
 // ─── Main Handler ───
