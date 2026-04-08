@@ -37,8 +37,8 @@ export const enterFullscreen = async (element?: HTMLElement | null, forceLock: b
     try {
       if (forceLock) {
         await ScreenOrientation?.lock({ orientation: 'landscape' });
-        // After forcing the rotation, we unlock it so that the device's sensor 
-        // can still trigger the change back to portrait if rotated.
+        // Give the OS a moment to process the rotation before unlocking the sensor
+        await new Promise(resolve => setTimeout(resolve, 800));
         await ScreenOrientation?.unlock();
       }
     } catch (e) {
