@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Star, ListX, Play, Info, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Star, ListX, Play, Info, X, Loader2 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
-import { getMyList, removeFromMyList, clearMyList, MyListItem } from '@/lib/myList';
 import { getImageUrl } from '@/lib/tmdb';
+// BAGO: I-import ang custom hook natin
+import { useUserPreferences } from '@/hooks/useUserPreferences'; 
 import {
   Dialog,
   DialogContent,
@@ -15,26 +15,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useState } from 'react';
 
 const MyList = () => {
   const navigate = useNavigate();
-  const [list, setList] = useState<MyListItem[]>([]);
+  // BAGO: Gamitin ang Hook imbes na local state
+  const { myList: list, removeFromMyList, clearMyList, isLoading } = useUserPreferences();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-
-  useEffect(() => {
-    setList(getMyList());
-  }, []);
 
   const handleRemove = (id: number, type: 'movie' | 'tv') => {
     removeFromMyList(id, type);
-    setList(getMyList());
   };
 
   const handleClearAll = () => {
     clearMyList();
-    setList([]);
     setShowClearConfirm(false);
   };
+
+  // Kung nag-fe-fetch pa mula sa Supabase, magpakita ng loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Navbar />
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,11 +86,9 @@ const MyList = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-8">
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold text-zinc-300 hover:text-white transition-all shadow-xl shadow-black/20">
-                      Cancel
-                    </Button>
-                  </DialogTrigger>
+                  <Button variant="secondary" onClick={() => setShowClearConfirm(false)} className="flex-1 rounded-full h-12 font-bold text-zinc-300 hover:text-white transition-all shadow-xl shadow-black/20">
+                    Cancel
+                  </Button>
                   <Button 
                     variant="destructive" 
                     onClick={handleClearAll} 
@@ -99,7 +104,6 @@ const MyList = () => {
 
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center bg-zinc-900/40 rounded-[40px] border border-white/5 backdrop-blur-sm px-8 relative overflow-hidden group">
-            {/* Background Accent */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary/5 blur-[100px] rounded-full group-hover:bg-primary/10 transition-colors duration-1000" />
             
             <div className="w-28 h-28 rounded-full bg-white/5 flex items-center justify-center mb-10 relative group-hover:scale-110 transition-transform duration-700">
@@ -138,7 +142,6 @@ const MyList = () => {
                     </div>
                   )}
                   
-                  {/* Glass Play Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500">
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-16 h-16 rounded-full bg-primary/95 flex items-center justify-center shadow-3xl scale-75 group-hover:scale-100 transition-all duration-500 backdrop-blur-md">
@@ -156,7 +159,7 @@ const MyList = () => {
                     {item.vote_average && (
                       <span className="flex items-center gap-1.5 text-yellow-500 border-r border-white/10 pr-2.5">
                         <Star className="w-3 h-3 fill-current" />
-                        {item.vote_average.toFixed(1)}
+                        {Number(item.vote_average).toFixed(1)}
                       </span>
                     )}
                     <span className="text-zinc-600 font-bold">
