@@ -87,18 +87,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // OFFLINE TEXT STATE
   const [offlineText, setOfflineText] = useState({
     title: "Channel is currently offline.",
     message: "Please try another channel or use a backup link."
   });
 
-  // LOGIC PARA SA OFFLINE TEXT (Channel-specific muna bago Global)
   useEffect(() => {
     let isMounted = true;
     
     const fetchOfflineText = async () => {
-      // 1. KUNG MAY NILAGAY KA SA CHANNEL FORM, YUN ANG GAGAMITIN
       if (channel.offlineTitle || channel.offlineMessage) {
         if (isMounted) {
           setOfflineText({
@@ -107,7 +104,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           });
         }
       } 
-      // 2. KUNG WALANG SPECIFIC SA CHANNEL, KUKUHA SA GLOBAL ADMIN SETTINGS
       else {
         const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
         if (isMounted && data?.value) {
@@ -123,14 +119,13 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     fetchOfflineText();
 
     return () => { isMounted = false; };
-  }, [channel.offlineTitle, channel.offlineMessage]); // Magre-refresh kapag lumipat ng channel
+  }, [channel.offlineTitle, channel.offlineMessage]);
 
   useEffect(() => {
     setReloadTrigger(0);
     setIsRefreshing(false);
   }, [channel.id]);
 
-  // Auto-fullscreen on landscape for Capacitor/mobile
   useEffect(() => {
     return setupOrientationFullscreen(containerRef.current, !error && !iosWarning);
   }, [error, iosWarning]);
@@ -267,6 +262,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
         const proxyUrl = activeProxyUrl;
 
+        // SHARED SHAKA PROXY CONFIG (Ginagamit ng MPD at HLS-Widevine)
         const configureShakaProxy = (player: shaka.Player, proxyToUse: string) => {
           if (!proxyToUse) return;
           const netEngine = player.getNetworkingEngine();
@@ -278,6 +274,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           const proxyPathname = new URL(proxyToUse).pathname;
           
           netEngine.registerRequestFilter((type: any, request: any) => {
+            // FIX PARA SA INCOGNITO: Iwasan ang pag-block ng third-party cookies
+            request.allowCrossSiteCredentials = false;
+
             const url = request.uris[0];
             if (!url) return;
             if (!url.startsWith('http')) return;
@@ -330,7 +329,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             player.configure({ 
               preferredAudioLanguage: 'en',
               drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, 
-              abr: { enabled: true } 
+              abr: { enabled: true },
+              offline: { usePersistentLicense: false } // FIX PARA SA INCOGNITO (HLS DRM)
             });
             ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
             
@@ -342,7 +342,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             } catch (err) {
               if (isMounted) {
                 if (!triggerAutoRefresh()) {
-                  setError('Failed to load stream.'); // Ito ang trigger na tatawag sa custom offlineText
+                  setError('Failed to load stream.');
                   setIsLoading(false);
                   setIsRefreshing(false);
                 }
@@ -405,7 +405,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                   }
                   
                   if (!triggerAutoRefresh()) {
-                    setError('Channel is currently offline.'); // Trigger
+                    setError('Channel is currently offline.');
                     setIsLoading(false);
                     setIsRefreshing(false);
                   }
@@ -436,7 +436,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           
           player.configure({ 
             preferredAudioLanguage: 'en',
-            drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} } 
+            drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} },
+            offline: { usePersistentLicense: false } // FIX PARA SA INCOGNITO (MPD)
           });
           ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
           
@@ -462,7 +463,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             }
             if (!dashRecovered && isMounted) {
               if (!triggerAutoRefresh()) {
-                setError('Channel is currently offline.'); // Trigger
+                setError('Channel is currently offline.');
                 setIsLoading(false);
                 setIsRefreshing(false);
               }
@@ -518,7 +519,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           <div className="relative z-10 flex flex-col items-center gap-3 p-4 text-center">
             <AlertCircle className="w-12 h-12 text-destructive drop-shadow-md" />
             <p className="text-white font-medium drop-shadow-md bg-black/50 px-4 py-2 rounded-lg border border-white/10">
-              {/* DISPLAY OFFLINE TEXT TITLES HERE */}
               {offlineText.title}
             </p>
             <p className="text-xs text-gray-300 whitespace-pre-wrap">{offlineText.message}</p>
