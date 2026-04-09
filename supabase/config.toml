@@ -1,4 +1,4 @@
-project_id = "wmjebiejrjgfafsniqlx"
+project_id = "bkcetkqsqxxxockgmqcs"
 
 [functions.mangadex-proxy]
 verify_jwt = false
@@ -7,9 +7,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.iptv-proxy]
-verify_jwt = false
-
-[functions.youtube-download-proxy]
 verify_jwt = false
 
 [functions.stream-proxy]
