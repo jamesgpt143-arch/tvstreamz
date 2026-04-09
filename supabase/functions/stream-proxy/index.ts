@@ -78,9 +78,13 @@ async function fetchWithRedirects(
         : new URL(location, current).toString();
       continue;
     }
+    // FIX: I-save ang final URL para alam natin kung saan napunta (para sa baseUrl)
+    Object.defineProperty(resp, "url", { value: current });
     return resp;
   }
-  return await fetch(current, { method, headers });
+  const finalResp = await fetch(current, { method, headers });
+  Object.defineProperty(finalResp, "url", { value: current });
+  return finalResp;
 }
 
 // ─── Manifest Rewriters ───
@@ -264,7 +268,11 @@ serve(async (req) => {
     if (isHLS || isDASH) {
       const body = await response.arrayBuffer();
       const text = new TextDecoder().decode(body);
-      const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
+      
+      // FIX 1: Gamitin ang final redirected URL para laging tama ang Base Path kahit lumipat ng server
+      const finalUrl = response.url || targetUrl;
+      const baseUrl = finalUrl.substring(0, finalUrl.lastIndexOf("/") + 1);
+      
       const proxyBase = `${url.origin}${url.pathname}?url=`;
       const extra = extraParams(params);
 
@@ -288,16 +296,17 @@ serve(async (req) => {
     const respHeaders = new Headers(corsHeaders);
     respHeaders.set("Content-Type", contentType);
 
-    const cl = response.headers.get("content-length");
-    if (cl) respHeaders.set("Content-Length", cl);
-
     const cr = response.headers.get("content-range");
     if (cr) respHeaders.set("Content-Range", cr);
 
     // Cache segments for longer
     respHeaders.set("Cache-Control", "public, max-age=3600");
 
-    return new Response(response.body, {
+    // FIX 2: I-buffer nang buo ang .ts chunk para laging may eksaktong "Content-Length" at hindi mag-hang sa Capacitor Android
+    const segmentData = await response.arrayBuffer();
+    respHeaders.set("Content-Length", segmentData.byteLength.toString());
+
+    return new Response(segmentData, {
       status: response.status,
       headers: respHeaders,
     });
