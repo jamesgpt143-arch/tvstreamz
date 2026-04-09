@@ -7,10 +7,10 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   plugins: {
     CapacitorHttp: {
-      enabled: true,
+      // PATAYIN ITO: Ito ang sumisira sa Direct M3U8 Streams sa Android
+      enabled: false, 
     },
   },
-  // ITO ANG NAKALIMUTAN MO (Pinakamahalaga para sa Android Video):
   server: {
     allowNavigation: [
       "*.supabase.co", 
