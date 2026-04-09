@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Expose-Headers": "Content-Length, Content-Range, Content-Type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range, referer, origin, x-requested-with, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Expose-Headers": "Content-Length, Content-Range, Content-Type, Accept-Ranges",
 };
 
 const DEFAULT_UA =
@@ -82,10 +82,15 @@ async function fetchWithRedirects(
 
 function resolveUrl(base: string, relative: string): string {
   if (relative.startsWith("http")) return relative;
-  // For paths starting with /, strip the leading / to treat as relative to base dir
-  // (many HLS servers use /path segments relative to manifest dir, not server root)
-  const cleaned = relative.startsWith("/") ? relative.substring(1) : relative;
-  return base + cleaned;
+  if (relative.startsWith("/")) {
+    try {
+      const b = new URL(base);
+      return b.origin + relative;
+    } catch {
+      return base + relative.substring(1);
+    }
+  }
+  return base + relative;
 }
 
 function rewriteHLS(
@@ -135,13 +140,15 @@ function rewriteDASH(
     }
   );
 
-  // media="..." and initialization="..." (skip $-templates)
+  // media="..." and initialization="..."
   rewritten = rewritten.replace(
     /(media|initialization)="([^"]+)"/g,
     (match, attr, val) => {
-      if (val.includes("$")) return match; // template
       const full = resolveUrl(baseUrl, val);
-      return `${attr}="${proxyBase}${encodeURIComponent(full)}${extra}"`;
+      // For DASH templates (containing $), we encode the URL but preserve $ signs
+      // so the DASH player (like Shaka) can still perform variable substitution.
+      const encoded = encodeURIComponent(full).replace(/%24/g, "$");
+      return `${attr}="${proxyBase}${encoded}${extra}"`;
     }
   );
 
@@ -252,15 +259,8 @@ serve(async (req) => {
     if (isHLS || isDASH) {
       const body = await response.arrayBuffer();
       const text = new TextDecoder().decode(body);
-      const baseUrl =
-        targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
-      // Build public proxy base URL
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-      const projectRef = supabaseUrl.match(/\/\/([^.]+)\./)?.[1] || "";
-      const publicProxyOrigin = projectRef 
-        ? `https://${projectRef}.supabase.co`
-        : url.origin;
-      const proxyBase = `${publicProxyOrigin}/functions/v1/stream-proxy?url=`;
+      const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
+      const proxyBase = `${url.origin}${url.pathname}?url=`;
       const extra = extraParams(params);
 
       const rewritten = isHLS
