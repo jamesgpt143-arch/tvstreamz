@@ -3,9 +3,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range, referer, origin, x-requested-with, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Expose-Headers": "Content-Length, Content-Range, Content-Type, Accept-Ranges",
-  "Accept-Ranges": "bytes" // <-- ITO ANG NAWALA (Para sa Shaka Player chunks)
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, range, referer, origin, x-requested-with, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, if-range, if-modified-since, if-none-match, x-supabase-auth",
+  "Access-Control-Expose-Headers":
+    "Content-Length, Content-Range, Content-Type, Accept-Ranges",
+  "Access-Control-Max-Age": "86400",
+  "Vary": "Origin",
+  "Accept-Ranges": "bytes",
 };
 
 const DEFAULT_UA =
