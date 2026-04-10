@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
+// BAGO: I-import ang Capacitor Browser Plugin
+import { Browser } from '@capacitor/browser';
 
 interface PagePopupConfig {
   enabled: boolean;
@@ -63,20 +65,31 @@ export function usePagePopup(pageId: string) {
     if (config.enabled && config.url && !hasTriggered) {
       setHasTriggered(true);
       
-      // Try to open popup directly first
-      const popup = window.open(config.url, '_blank');
-      
-      // If blocked by browser, show a toast with clickable link
-      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        toast('🎁 May special offer para sayo!', {
-          description: 'I-click para buksan',
-          action: {
-            label: 'Buksan',
-            onClick: () => window.open(config.url, '_blank'),
-          },
-          duration: 8000,
-        });
-      }
+      // BAGO: Function para i-handle ang pagbukas gamit ang Capacitor kung nasa mobile
+      const openLink = async () => {
+        try {
+          // Subukang buksan gamit ang Capacitor Browser (safe para sa Android/Shopee)
+          await Browser.open({ url: config.url });
+        } catch (error) {
+          console.warn("Capacitor Browser failed, falling back to window.open", error);
+          // Fallback para sa Web / PWA
+          const popup = window.open(config.url, '_blank');
+          
+          if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+            toast('🎁 May special offer para sayo!', {
+              description: 'I-click para buksan',
+              action: {
+                label: 'Buksan',
+                onClick: () => window.open(config.url, '_blank'),
+              },
+              duration: 8000,
+            });
+          }
+        }
+      };
+
+      // I-trigger agad
+      openLink();
     }
   }, [config, hasTriggered, isAdmin]);
 
