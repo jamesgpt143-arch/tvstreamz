@@ -470,6 +470,27 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             }
           }
         }
+        else if (channel.type === 'plain') {
+          if (videoRef.current) {
+            videoRef.current.controls = true;
+            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
+            videoRef.current.src = finalUrl;
+            videoRef.current.addEventListener('loadedmetadata', () => {
+              if (isMounted) {
+                setIsLoading(false);
+                setIsRefreshing(false);
+                videoRef.current?.play().catch(() => {});
+              }
+            });
+            videoRef.current.addEventListener('error', () => {
+              if (isMounted) {
+                setError('Failed to load direct stream.');
+                setIsLoading(false);
+                setIsRefreshing(false);
+              }
+            });
+          }
+        }
       } catch (err) {
         if (isMounted) { setError('Failed to initialize player.'); setIsLoading(false); setIsRefreshing(false); }
       }

@@ -28,38 +28,28 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
   const mediaType = currentItem.media_type || 'movie';
 
   return (
-    <section className="relative min-h-[60vh] md:min-h-[75vh] w-full overflow-hidden flex flex-col justify-end">
-      {/* Background Image with Watch.tsx style gradients */}
-      <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out z-0">
+    <section className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
+      {/* Background Image with Cinematic Masks (Matched to Watch Page) */}
+      <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
         <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105 animate-pulse-slow"
+          className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${getImageUrl(currentItem.backdrop_path, 'original')})`,
+            transition: 'background-image 1s ease-in-out',
           }}
         />
-        {/* Gradients para pumatong nang maayos ang text at mag-blend sa ilalim */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
       </div>
 
-      {/* Floating Info & Content - Kamukha ng Watch.tsx Layout */}
-      <div className="relative h-full container mx-auto px-4 md:px-12 flex flex-col justify-end pt-32 pb-16 max-w-7xl z-20">
-        <div className="max-w-4xl space-y-4 animate-slide-up">
+      {/* Floating Info & Content (Matched to Watch Page Layout) */}
+      <div className="relative h-full container mx-auto px-4 flex flex-col justify-end pt-32 pb-12 md:pb-16 max-w-7xl z-20 animate-reveal">
+        <div className="max-w-4xl space-y-4">
           
-          {/* Top Label */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-              Trending Now
-            </div>
-          </div>
-
-          {/* Title */}
           <h1 className="text-3xl md:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl leading-tight">
             {title}
           </h1>
 
-          {/* Meta Info (Rating, Year, Type) */}
           <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/20">
               <Star className="w-4 h-4 fill-current" />
@@ -71,22 +61,20 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
             </span>
           </div>
 
-          {/* Overview */}
-          <p className="text-zinc-300 leading-relaxed text-sm md:text-base max-w-3xl drop-shadow-lg line-clamp-3">
+          <p className="text-zinc-300 leading-relaxed text-sm md:text-base max-w-2xl drop-shadow-lg line-clamp-3">
             {currentItem.overview}
           </p>
 
-          {/* Buttons */}
-          <div className="flex flex-wrap gap-3 pt-4">
-            <Button asChild size="lg" className="rounded-full px-8 h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-transform hover:scale-105">
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button asChild size="lg" className="rounded-full px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 gap-2">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
-                <Play className="w-5 h-5 mr-2 fill-current" />
+                <Play className="w-4 h-4 fill-current" />
                 Watch Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-full px-8 h-12 bg-zinc-800/40 border-zinc-700/50 backdrop-blur-md hover:bg-zinc-800/60 text-white transition-transform hover:scale-105">
+            <Button asChild variant="outline" size="lg" className="rounded-full px-8 bg-zinc-800/20 border-zinc-700/50 backdrop-blur-md hover:bg-zinc-800/40 text-white gap-2">
               <Link to={`/watch/${mediaType}/${currentItem.id}`}>
-                <Info className="w-5 h-5 mr-2" />
+                <Info className="w-4 h-4" />
                 More Details
               </Link>
             </Button>
@@ -94,22 +82,21 @@ export const HeroSection = ({ items }: HeroSectionProps) => {
         </div>
       </div>
 
-      {/* Modern Dots Indicator sa kanan */}
-      <div className="absolute bottom-16 right-6 md:right-12 flex flex-col gap-3 z-30">
+      {/* Modern Dots Indicator */}
+      <div className="absolute bottom-12 right-12 hidden md:flex flex-col gap-4 z-30">
         {featuredItems.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className="group relative flex items-center justify-end gap-3"
-            aria-label={`Go to slide ${index + 1}`}
+            className={`transition-all duration-500 group relative flex items-center justify-end gap-3`}
           >
-            <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity duration-300 hidden md:block ${index === currentIndex ? 'opacity-100 text-orange-500' : 'opacity-0 text-zinc-500 group-hover:opacity-100'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity duration-300 ${index === currentIndex ? 'opacity-100 text-primary' : 'opacity-0 text-zinc-500 hover:opacity-100'}`}>
                0{index + 1}
             </span>
             <div className={`rounded-full transition-all duration-500 ${
               index === currentIndex
-                ? 'w-8 h-1.5 bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]'
-                : 'w-2 h-1.5 bg-white/20 hover:bg-white/40'
+                ? 'w-12 h-1.5 bg-primary shadow-[0_0_15px_rgba(249,115,22,0.5)]'
+                : 'w-3 h-1.5 bg-white/20 hover:bg-white/40'
             }`} />
           </button>
         ))}

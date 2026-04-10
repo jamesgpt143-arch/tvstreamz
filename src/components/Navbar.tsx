@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Mail, Shield, MonitorUp } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Mail, Shield, MonitorUp, ListMusic } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -200,7 +200,20 @@ export const Navbar = () => {
                       </div>
                     </Link>
 
+                    <Link to="/playlist-player" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <ListMusic className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs uppercase tracking-widest">Playlist Player</p>
+                          <p className="text-[10px] text-zinc-500">M3U & DRM Player</p>
+                        </div>
+                      </div>
+                    </Link>
+
                     <Link to="/continue-watching" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Clock className="w-5 h-5 text-accent" />

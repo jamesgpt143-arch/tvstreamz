@@ -16,7 +16,7 @@ export interface Channel {
   id: string;
   name: string;
   manifestUri: string;
-  type: 'mpd' | 'hls' | 'youtube';
+  type: 'mpd' | 'hls' | 'youtube' | 'plain';
   logo: string;
   clearKey?: Record<string, string>;
   widevineUrl?: string;
