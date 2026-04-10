@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+// BAGO: Idinagdag ang Coffee icon
+import { X, Coffee } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,7 +111,7 @@ export const WelcomePopup = () => {
               {data.message}
             </p>
 
-            {/* Clickable Link (Shown only if both text and url exist) */}
+            {/* Clickable Link */}
             {data.link_text && data.link_url && (
               <a
                 href={data.link_url}
@@ -132,8 +133,21 @@ export const WelcomePopup = () => {
           </div>
         </div>
 
-        {/* Bottom action */}
-        <div className="p-4 bg-muted/30 border-t border-border">
+        {/* Bottom action - BAGO: May Ko-fi button na sa ibabaw ng Start Watching */}
+        <div className="p-4 bg-muted/30 border-t border-border flex flex-col gap-3">
+          
+          {/* Ko-fi Donation Button */}
+          <a
+            href="https://ko-fi.com/james17582"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF5E5B] hover:bg-[#E05350] text-white font-bold transition-all shadow-md hover:shadow-lg"
+          >
+            <Coffee className="w-5 h-5" />
+            Buy Us a Coffee to Keep Servers Free!
+          </a>
+
+          {/* Original Start Watching Button */}
           <Button 
             className="w-full" 
             onClick={handleStartWatching}
