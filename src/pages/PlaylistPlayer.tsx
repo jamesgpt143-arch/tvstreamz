@@ -40,7 +40,7 @@ const PlaylistPlayer = () => {
   const [activeChannel, setActiveChannel] = useState<M3UChannel | null>(null);
   
   // Proxy States
-  const [useProxy, setUseProxy] = useState(false);
+  const [useProxy, setUseProxy] = useState(true);
   const [proxyType, setProxyType] = useState("cloudflare");
   const [playerKey, setPlayerKey] = useState(0);
 
