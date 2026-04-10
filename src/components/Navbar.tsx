@@ -7,15 +7,19 @@ import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
 import { SearchSuggestions } from './SearchSuggestions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { getMyList } from '@/lib/myList';
+// BAGO: Gumamit ng useUserPreferences hook imbes na getMyList
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { getContinueWatching } from '@/lib/continueWatching';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [myListCount, setMyListCount] = useState(0);
+  
+  // BAGO: Kukunin ang bilang direkta sa hook para laging updated
+  const { myList } = useUserPreferences();
   const [continueWatchingCount, setContinueWatchingCount] = useState(0);
+  
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -56,7 +60,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     if (isMenuOpen) {
-      setMyListCount(getMyList().length);
+      // BAGO: Tinanggal ang setMyListCount dito dahil matik na yan sa hook
       setContinueWatchingCount(getContinueWatching().length);
     }
   }, [isMenuOpen]);
@@ -190,7 +194,8 @@ export const Navbar = () => {
                         </div>
                         <div>
                           <p className="font-black text-xs uppercase tracking-widest">My List</p>
-                          <p className="text-[10px] text-zinc-500">{myListCount} items saved</p>
+                          {/* BAGO: Ginamit ang myList.length mula sa hook */}
+                          <p className="text-[10px] text-zinc-500">{myList.length} items saved</p>
                         </div>
                       </div>
                     </Link>
