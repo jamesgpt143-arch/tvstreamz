@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-// Ito ang format ng data na hinihingi ng MyList page mo
 export interface MyListItem {
   id: number;
   type: 'movie' | 'tv';
@@ -9,59 +8,82 @@ export interface MyListItem {
   vote_average?: number | string;
 }
 
+const STORAGE_KEY = 'tvstreamz_my_list';
+
+// Helper function para laging fresh ang pagkuha
+const getStoredList = (): MyListItem[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
 export function useUserPreferences() {
   const [myList, setMyList] = useState<MyListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initial load at event listener setup
   useEffect(() => {
-    // Kinukuha ang data sa local storage (para hindi mawala ang luma mong naka-save)
-    const loadList = () => {
-      try {
-        const saved = localStorage.getItem('tvstreamz_my_list'); // Siguraduhing ito ang ginamit mong key dati
-        if (saved) {
-          setMyList(JSON.parse(saved));
-        }
-      } catch (error) {
-        console.error('Failed to load my list:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    // Mabilis na delay para mag-trigger ang loading animation
-    setTimeout(loadList, 300);
+    setMyList(getStoredList());
+    setIsLoading(false);
 
-    // Makikinig din ito kung may binago sa ibang page
-    const handleUpdate = () => loadList();
-    window.addEventListener('myListUpdated', handleUpdate);
-    return () => window.removeEventListener('myListUpdated', handleUpdate);
+    const handleStorageChange = () => {
+      setMyList(getStoredList());
+    };
+
+    // Makikinig tayo kapag nag-dispatch tayo ng custom event
+    window.addEventListener('myListUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('myListUpdated', handleStorageChange);
+    };
   }, []);
 
-  const removeFromMyList = (id: number, type: 'movie' | 'tv') => {
-    setMyList((prev) => {
-      const newList = prev.filter((item) => !(item.id === id && item.type === type));
-      localStorage.setItem('tvstreamz_my_list', JSON.stringify(newList));
-      window.dispatchEvent(new Event('myListUpdated')); // I-notify ang app na may tinanggal
-      return newList;
-    });
-  };
-
-  const clearMyList = () => {
-    setMyList([]);
-    localStorage.removeItem('tvstreamz_my_list');
+  const triggerUpdate = () => {
     window.dispatchEvent(new Event('myListUpdated'));
   };
 
-  const addToMyList = (item: MyListItem) => {
-    setMyList((prev) => {
-      const exists = prev.some((i) => i.id === item.id && i.type === item.type);
-      if (exists) return prev;
-      const newList = [item, ...prev];
-      localStorage.setItem('tvstreamz_my_list', JSON.stringify(newList));
-      window.dispatchEvent(new Event('myListUpdated'));
-      return newList;
-    });
-  };
+  const addToMyList = useCallback((item: MyListItem) => {
+    const currentList = getStoredList();
+    const exists = currentList.some((i) => i.id === item.id && i.type === item.type);
+    
+    if (!exists) {
+      const newList = [item, ...currentList];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+      setMyList(newList);
+      triggerUpdate();
+      return true; // Return true kung success
+    }
+    return false;
+  }, []);
 
-  return { myList, removeFromMyList, clearMyList, addToMyList, isLoading };
+  const removeFromMyList = useCallback((id: number, type: 'movie' | 'tv') => {
+    const currentList = getStoredList();
+    const newList = currentList.filter((item) => !(item.id === id && item.type === type));
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+    setMyList(newList);
+    triggerUpdate();
+  }, []);
+
+  const clearMyList = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setMyList([]);
+    triggerUpdate();
+  }, []);
+
+  const isInMyList = useCallback((id: number, type: 'movie' | 'tv') => {
+    return myList.some((item) => item.id === id && item.type === item.type);
+  }, [myList]);
+
+  return { 
+    myList, 
+    addToMyList, 
+    removeFromMyList, 
+    clearMyList, 
+    isInMyList, // Idinagdag natin ito para madaling mag-check kung naka-add na
+    isLoading 
+  };
 }
