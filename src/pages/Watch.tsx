@@ -18,12 +18,14 @@ import {
   Movie,
 } from '@/lib/tmdb';
 import { addToWatchHistory } from '@/lib/watchHistory';
-import { addToMyList, removeFromMyList, isInMyList } from '@/lib/myList';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
 import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+
+// BAGO: Import para sa ating custom hook!
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 
 const Watch = () => {
   const navigate = useNavigate();
@@ -41,15 +43,16 @@ const Watch = () => {
   // For persistence and timer
   const [currentServer, setCurrentServer] = useState<string | undefined>(undefined);
   
-  // My List state
-  const [inMyList, setInMyList] = useState(false);
+  // BAGO: Gamitin natin ang Hook para sa pag-manage ng My List!
+  const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
+  
+  // BAGO: Awtomatiko itong mag-a-update at hindi na kailangan ng `useState` at `useEffect`
+  const inMyList = details ? isInMyList(Number(id), type as 'movie' | 'tv') : false;
   
   useEffect(() => {
     if (id && type) {
-      setInMyList(isInMyList(Number(id), type));
-      
       // Load existing progress to restore season/episode/server
-      const progress = getWatchProgress(Number(id), type);
+      const progress = getWatchProgress(Number(id), type as 'movie' | 'tv');
       if (progress) {
         if (type === 'tv') {
           setSelectedSeason(progress.season || 1);
@@ -80,7 +83,7 @@ const Watch = () => {
         trackContentView(id, type, data.title || data.name || '');
         
         // Fetch trailer
-        const videos = await fetchVideos(Number(id), type);
+        const videos = await fetchVideos(Number(id), type as 'movie' | 'tv');
         const trailer = getTrailerUrl(videos);
         setTrailerUrl(trailer);
         
@@ -111,7 +114,7 @@ const Watch = () => {
           });
         }
 
-        const trending = await fetchTrending(type, 'week');
+        const trending = await fetchTrending(type as 'movie' | 'tv', 'week');
         setSimilar(trending.filter((item) => item.id !== Number(id)));
       } catch (error) {
         console.error('Failed to load details:', error);
@@ -160,10 +163,6 @@ const Watch = () => {
     setSelectedSeason(season);
     setSelectedEpisode(episode);
     
-    // Check for existing progress for this specific episode isn't easy since we store by ID.
-    // In our system, TV shows share one progress entry. We should reset progress if it's a new episode
-    // or just leave it. Usually, users want specific episode tracking.
-    // For now, we'll reset to 5% for the new episode specifically.
     if (details) {
       const runtime = details.episode_run_time?.[0] ?? 45;
       updateWatchProgress({
@@ -182,29 +181,26 @@ const Watch = () => {
     }
   };
 
+  // BAGO: Mas malinis na Toggle Function
   const handleToggleMyList = () => {
     if (!details || !type) return;
     
     if (inMyList) {
-      removeFromMyList(details.id, type);
-      setInMyList(false);
+      removeFromMyList(details.id, type as 'movie' | 'tv');
       toast.success('Removed from My List');
     } else {
       const added = addToMyList({
         id: details.id,
-        type: type,
+        type: type as 'movie' | 'tv',
         title: details.title || details.name || '',
         poster_path: details.poster_path,
         vote_average: details.vote_average,
-        release_date: details.release_date || details.first_air_date,
       });
       if (added) {
-        setInMyList(true);
         toast.success('Added to My List');
       }
     }
   };
-
 
   if (isLoading) {
     return (
@@ -254,9 +250,8 @@ const Watch = () => {
         />
       )}
 
-      {/* Hero Section (A bit shorter, backdrop only) */}
+      {/* Hero Section */}
       <section className="relative min-h-[60vh] md:min-h-[70vh] w-full">
-        {/* Backdrop Background */}
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000 overflow-hidden"
           style={{
@@ -342,22 +337,20 @@ const Watch = () => {
         </div>
       </section>
 
-      {/* Player Section (Centered) */}
+      {/* Player Section */}
       <section className="relative z-20 -mt-8 md:-mt-12 pb-20">
         <div className="container mx-auto px-4 max-w-5xl">
-              {/* Video Player Container */}
-              <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 bg-black ring-1 ring-white/10">
-                <VideoPlayer 
-                  servers={servers} 
-                  title={details.title || details.name || ''} 
-                  initialServer={currentServer}
-                  onServerChange={setCurrentServer}
-                />
-              </div>
+          <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 bg-black ring-1 ring-white/10">
+            <VideoPlayer 
+              servers={servers} 
+              title={details.title || details.name || ''} 
+              initialServer={currentServer}
+              onServerChange={setCurrentServer}
+            />
+          </div>
 
-          {/* Episode Picker for TV Shows */}
           {isTV && details.seasons && (
-            <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl">
+            <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl mt-8">
               <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
                 <span className="w-2 h-8 bg-primary rounded-full" />
                 Select Episode
@@ -372,7 +365,6 @@ const Watch = () => {
             </div>
           )}
 
-          {/* Similar Content Section */}
           {similar.length > 0 && (
             <div className="mt-20 pt-10 border-t border-white/5">
               <ContentRow
