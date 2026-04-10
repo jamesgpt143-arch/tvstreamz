@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-// BAGO: Idinagdag ang Coffee icon
 import { X, Coffee } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+// BAGO: I-import ang Capacitor Browser plugin para magbukas sa labas ng app ang mga links
+import { Browser } from '@capacitor/browser';
 
 interface WelcomePopupData {
   enabled: boolean;
@@ -85,6 +86,16 @@ export const WelcomePopup = () => {
     setIsOpen(false);
   };
 
+  // BAGO: Universal link opener para sa Capacitor / Web
+  const handleOpenLink = async (url: string) => {
+    try {
+      await Browser.open({ url });
+    } catch (error) {
+      // Fallback kung naka-web browser lang
+      window.open(url, '_blank');
+    }
+  };
+
   if (isLoading || !isOpen) return null;
 
   return (
@@ -111,16 +122,14 @@ export const WelcomePopup = () => {
               {data.message}
             </p>
 
-            {/* Clickable Link */}
+            {/* BAGO: Clickable Link na pinapagana ng Capacitor Browser */}
             {data.link_text && data.link_url && (
-              <a
-                href={data.link_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors"
+              <button
+                onClick={() => handleOpenLink(data.link_url!)}
+                className="inline-block mt-2 text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors bg-transparent border-none p-0 cursor-pointer"
               >
                 {data.link_text}
-              </a>
+              </button>
             )}
 
             <div className="flex flex-wrap justify-center gap-2 pt-2">
@@ -133,19 +142,17 @@ export const WelcomePopup = () => {
           </div>
         </div>
 
-        {/* Bottom action - BAGO: May Ko-fi button na sa ibabaw ng Start Watching */}
+        {/* Bottom action - May Ko-fi button na sa ibabaw ng Start Watching */}
         <div className="p-4 bg-muted/30 border-t border-border flex flex-col gap-3">
           
-          {/* Ko-fi Donation Button */}
-          <a
-            href="https://ko-fi.com/james17582"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF5E5B] hover:bg-[#E05350] text-white font-bold transition-all shadow-md hover:shadow-lg"
+          {/* BAGO: Ko-fi Donation Button na pinapagana ng Capacitor Browser */}
+          <button
+            onClick={() => handleOpenLink('https://ko-fi.com/james17582')}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF5E5B] hover:bg-[#E05350] text-white font-bold transition-all shadow-md hover:shadow-lg border-none cursor-pointer"
           >
             <Coffee className="w-5 h-5" />
             Buy Us a Coffee to Keep Servers Free!
-          </a>
+          </button>
 
           {/* Original Start Watching Button */}
           <Button 
