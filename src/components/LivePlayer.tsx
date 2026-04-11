@@ -228,13 +228,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                   
                   try {
                     const testUrl = buildProxiedUrl(testProxy, streamUrl, targetUA, channel.referrer);
-                    const res = await fetch(testUrl, { signal: controller.signal, headers: { 'Range': 'bytes=0-10' } });
+                    const res = await fetch(testUrl, { signal: controller.signal });
                     clearTimeout(timeoutId);
                     
                     if (res.ok || res.status === 402) {
                       resolve(testProxy);
                     } else {
-                      if (res.status === 403 || res.status === 429 || res.status >= 500) {
+                      // Only cache as "bad" if it's a proxy limit (429) or proxy server error (500+)
+                      // Skip 403 as it's often the target site blocking that specific proxy IP
+                      if (res.status === 429 || res.status >= 500) {
                          badProxiesCache.set(testProxy, Date.now());
                       }
                       reject(new Error(`Status ${res.status}`));

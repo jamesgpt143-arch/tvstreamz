@@ -228,8 +228,7 @@ const PlaylistPlayer = () => {
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for stability
         
         const res = await fetch(finalUrl, { 
-          method: 'GET', // Use GET instead of HEAD for better compatibility with proxies
-          headers: { 'Range': 'bytes=0-100' }, // Fast check
+          method: 'GET', // Full GET is more reliable for proxied manifests
           signal: controller.signal 
         });
         
