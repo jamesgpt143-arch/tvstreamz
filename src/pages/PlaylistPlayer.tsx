@@ -676,20 +676,7 @@ const PlaylistPlayer = () => {
                            ) : (
                               <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
                            )}
-<<<<<<< HEAD
-=======
-                           
-                           {status && (
-                             <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest flex items-center gap-1 backdrop-blur-md shadow-lg ${
-                               status.status === 'online' ? 'bg-green-500/80 text-white' : 
-                               status.status === 'checking' ? 'bg-primary/80 text-white animate-pulse' : 
-                               'bg-red-500/80 text-white'
-                             }`}>
-                               <div className={`w-1 h-1 rounded-full bg-white ${status.status === 'checking' ? 'animate-ping' : ''}`} />
-                               {status.isFixed ? 'Fixed' : status.status}
-                             </div>
-                           )}
->>>>>>> 6c599f65f9df146460a945bc6faeff0e73ef0700
+
                         </div>
                         
                         <div className="p-2 sm:p-3 bg-inherit w-full">
