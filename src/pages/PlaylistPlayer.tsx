@@ -17,19 +17,16 @@ import {
   Search, 
   Tv, 
   ListMusic, 
-  FileJson, 
-  PlayCircle,
-  XCircle,
   FileCode2,
   RefreshCcw,
   Play,
-  Share2,
+  XCircle,
   ShieldCheck,
+  ShieldAlert,
   Star,
   Trash2,
   History,
-  Save,
-  Plus
+  Save
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/channels";
@@ -66,9 +63,8 @@ const PlaylistPlayer = () => {
   const [customName, setCustomName] = useState("");
   const [saveTargetUrl, setSaveTargetUrl] = useState("");
 
-  // Proxy States
+  // Proxy States (Tinanggal na ang dropdown, On/Off na lang)
   const [useProxy, setUseProxy] = useState(true);
-  const [proxyType, setProxyType] = useState("cloudflare");
   const [playerKey, setPlayerKey] = useState(0);
 
   useEffect(() => {
@@ -162,31 +158,29 @@ const PlaylistPlayer = () => {
   const loadChannelSettings = async (channel: M3UChannel) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('channel_settings')
-        .select('proxy_type, use_proxy')
+        .select('use_proxy')
         .eq('channel_url', channel.manifestUri)
         .maybeSingle();
 
       if (data) {
         setUseProxy(data.use_proxy ?? true);
-        setProxyType(data.proxy_type || "cloudflare");
       } else {
         setUseProxy(true);
-        setProxyType("cloudflare");
       }
     } catch (err) {
       console.warn("Failed to load channel settings", err);
     }
   };
 
-  const saveChannelSettings = async (channel: M3UChannel, pType: string, uProxy: boolean) => {
+  const saveChannelSettings = async (channel: M3UChannel, uProxy: boolean) => {
     if (!user) return;
     try {
       await supabase.from('channel_settings').upsert({
         user_id: user.id,
         channel_url: channel.manifestUri,
-        proxy_type: pType,
+        proxy_type: 'cloudflare', // Default fallback
         use_proxy: uProxy,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id,channel_url' });
@@ -279,13 +273,12 @@ const PlaylistPlayer = () => {
         if (!currentChannel.name) currentChannel.name = "Unknown Channel";
         
         currentChannel.useProxy = useProxy;
-        currentChannel.proxyType = proxyType;
         parsedChannels.push(currentChannel as M3UChannel);
         currentChannel = {};
       }
     }
     return parsedChannels;
-  }, [useProxy, proxyType]);
+  }, [useProxy]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -294,7 +287,7 @@ const PlaylistPlayer = () => {
     reader.onload = (event) => {
       const content = event.target?.result as string;
       setIsParsing(true);
-      setChannels([]); // Clear existing to prevent "append" effect
+      setChannels([]);
       try {
         const parsed = parseM3U(content);
         setChannels(parsed);
@@ -431,14 +424,9 @@ const PlaylistPlayer = () => {
     return sortedGroups;
   }, [channels, favorites]);
 
-  const updateProxyType = (val: string) => {
-    setProxyType(val);
-    if (activeChannel) saveChannelSettings(activeChannel, val, useProxy);
-  };
-
   const updateUseProxy = (val: boolean) => {
     setUseProxy(val);
-    if (activeChannel) saveChannelSettings(activeChannel, proxyType, val);
+    if (activeChannel) saveChannelSettings(activeChannel, val);
   };
 
   return (
@@ -463,7 +451,6 @@ const PlaylistPlayer = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
-               {/* Saved Playlists Selector */}
                {savedPlaylists.length > 0 && (
                  <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
                     <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-48 font-bold uppercase text-[10px] tracking-widest">
@@ -587,36 +574,36 @@ const PlaylistPlayer = () => {
                 </div>
 
                 <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
-                  <LivePlayer key={`${activeChannel.id}-${proxyType}-${useProxy}-${playerKey}`} channel={{...activeChannel, useProxy, proxyType}} />
+                  <LivePlayer key={`${activeChannel.id}-${useProxy}-${playerKey}`} channel={{...activeChannel, useProxy}} />
                 </div>
                 
                 <div className="mt-4 flex flex-col gap-4">
-                   <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                         <ShieldCheck className={`w-4 h-4 ${useProxy ? 'text-primary' : 'text-zinc-600'}`} />
-                         <span>Proxy: <span className={useProxy ? 'text-white' : ''}>{useProxy ? (proxyType === 'cloudflare' ? 'Main' : 'Backup') : 'OFF'}</span></span>
-                      </div>
+                   <div className="flex items-center justify-between w-full">
                       <ShareButton title={`Watch ${activeChannel.name} - Playlist Player`} />
+                      
+                      <div className="flex items-center gap-4 p-2 bg-white/5 rounded-3xl border border-white/5">
+                         <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/40 border border-white/5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Enable Proxy</Label>
+                            <Switch checked={useProxy} onCheckedChange={updateUseProxy} />
+                         </div>
+                         <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-4 hover:bg-white/10">
+                            <RefreshCcw className="w-3 h-3" /> Reload
+                         </Button>
+                      </div>
                    </div>
                    
-                   <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 rounded-3xl border border-white/5">
-                      <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/40 border border-white/5">
-                         <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Enable Proxy</Label>
-                         <Switch checked={useProxy} onCheckedChange={updateUseProxy} />
-                      </div>
-                      <Select value={proxyType} onValueChange={updateProxyType}>
-                         <SelectTrigger className="w-40 h-10 border-white/5 bg-black/40 rounded-2xl text-[10px] uppercase font-black tracking-widest">
-                            <SelectValue />
-                         </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="cloudflare">Main Provider</SelectItem>
-                            <SelectItem value="supabase">Backup Provider</SelectItem>
-                         </SelectContent>
-                      </Select>
-                      <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-4">
-                         <RefreshCcw className="w-3 h-3" /> Reload
-                      </Button>
-                   </div>
+                   {useProxy && (
+                      <p className="text-[10px] text-muted-foreground text-right px-2">
+                         <ShieldCheck className="inline-block w-3 h-3 text-green-500 mr-1" />
+                         Ang app ay kusang pipili ng pinakamabilis na server (Cloudflare o Supabase).
+                      </p>
+                   )}
+                   {!useProxy && (
+                      <p className="text-[10px] text-muted-foreground text-right px-2">
+                         <ShieldAlert className="inline-block w-3 h-3 text-yellow-500 mr-1" />
+                         Direct Play Mode. I-ON ang Proxy kung sakaling magka-error ang channel.
+                      </p>
+                   )}
                 </div>
               </div>
             </div>
@@ -625,7 +612,7 @@ const PlaylistPlayer = () => {
                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                   <Play className="w-10 h-10 text-zinc-800" fill="currentColor" />
                </div>
-               <h2 className="text-2xl font-black uppercase tracking-tighter mb-2 {isLoadingSync ? 'animate-pulse' : ''}">
+               <h2 className={`text-2xl font-black uppercase tracking-tighter mb-2 ${isLoadingSync ? 'animate-pulse' : ''}`}>
                   {isLoadingSync ? 'Syncing your data...' : 'No Active Stream'}
                </h2>
                <p className="text-muted-foreground text-sm max-w-sm uppercase tracking-widest font-bold opacity-40">Load a playlist and pick a channel to start watching</p>
@@ -662,8 +649,6 @@ const PlaylistPlayer = () => {
                 )}
             </div>
 
-            {/* Channel Grid */}
-            {/* Channel Grid - Keyed to force refresh on filter change */}
             <div 
               key={`${selectedGroup}-${searchQuery}-${channels.length}`}
               className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
@@ -691,6 +676,20 @@ const PlaylistPlayer = () => {
                            ) : (
                               <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
                            )}
+<<<<<<< HEAD
+=======
+                           
+                           {status && (
+                             <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest flex items-center gap-1 backdrop-blur-md shadow-lg ${
+                               status.status === 'online' ? 'bg-green-500/80 text-white' : 
+                               status.status === 'checking' ? 'bg-primary/80 text-white animate-pulse' : 
+                               'bg-red-500/80 text-white'
+                             }`}>
+                               <div className={`w-1 h-1 rounded-full bg-white ${status.status === 'checking' ? 'animate-ping' : ''}`} />
+                               {status.isFixed ? 'Fixed' : status.status}
+                             </div>
+                           )}
+>>>>>>> 6c599f65f9df146460a945bc6faeff0e73ef0700
                         </div>
                         
                         <div className="p-2 sm:p-3 bg-inherit w-full">
@@ -702,7 +701,6 @@ const PlaylistPlayer = () => {
                         </div>
                       </button>
                       
-                      {/* Favorite Toggle Overlay */}
                       <button 
                         onClick={(e) => { e.stopPropagation(); toggleFavorite(ch); }}
                         className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 z-10 ${
