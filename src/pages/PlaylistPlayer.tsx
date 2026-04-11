@@ -53,7 +53,6 @@ const PlaylistPlayer = () => {
   const [user, setUser] = useState<any>(null);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [watchHistory, setWatchHistory] = useState<M3UChannel[]>([]);
   const [isLoadingSync, setIsLoadingSync] = useState(false);
 
 
@@ -63,8 +62,7 @@ const PlaylistPlayer = () => {
   const [customName, setCustomName] = useState("");
   const [saveTargetUrl, setSaveTargetUrl] = useState("");
 
-  // Proxy States (Tinanggal na ang dropdown, On/Off na lang)
-  const [useProxy, setUseProxy] = useState(true);
+  // Proxy State (Always true for auto-selection)
   const [playerKey, setPlayerKey] = useState(0);
 
   useEffect(() => {
@@ -73,7 +71,6 @@ const PlaylistPlayer = () => {
       setUser(user);
       if (user) {
         fetchSavedData(user.id);
-        fetchWatchHistory(user.id);
       }
       
       const lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
@@ -108,93 +105,15 @@ const PlaylistPlayer = () => {
     }
   };
 
-  const fetchWatchHistory = async (userId: string) => {
-    try {
-      const { data } = await supabase
-        .from('playlist_watch_history')
-        .select('*')
-        .order('watched_at', { ascending: false })
-        .limit(15);
-      
-      if (data) {
-        const historyChannels: M3UChannel[] = data.map(item => {
-          const name = item.name || "Unknown";
-          const url = item.url;
-          const group = item.group_name || "";
-          return {
-            id: btoa(unescape(encodeURIComponent(name + url + group))).substring(0, 16),
-            name: name,
-            manifestUri: url,
-            logo: item.logo || '',
-            group: group,
-            type: url.includes('.mpd') ? 'mpd' : 'hls'
-          };
-        });
-        setWatchHistory(historyChannels);
-      }
-    } catch (err) {
-      console.error("Error fetching watch history:", err);
-    }
-  };
 
-  const addToWatchHistory = async (ch: M3UChannel) => {
-    if (!user) return;
-    try {
-      await supabase.from('playlist_watch_history').upsert({
-        user_id: user.id,
-        name: ch.name,
-        url: ch.manifestUri,
-        logo: ch.logo,
-        group_name: ch.group,
-        watched_at: new Date().toISOString()
-      }, { onConflict: 'user_id,url' });
-      
-      fetchWatchHistory(user.id);
-    } catch (err) {
-      console.warn("Failed to update watch history", err);
-    }
-  };
-
-  const loadChannelSettings = async (channel: M3UChannel) => {
-    if (!user) return;
-    try {
-      const { data } = await supabase
-        .from('channel_settings')
-        .select('use_proxy')
-        .eq('channel_url', channel.manifestUri)
-        .maybeSingle();
-
-      if (data) {
-        setUseProxy(data.use_proxy ?? true);
-      } else {
-        setUseProxy(true);
-      }
-    } catch (err) {
-      console.warn("Failed to load channel settings", err);
-    }
-  };
-
-  const saveChannelSettings = async (channel: M3UChannel, uProxy: boolean) => {
-    if (!user) return;
-    try {
-      await supabase.from('channel_settings').upsert({
-        user_id: user.id,
-        channel_url: channel.manifestUri,
-        proxy_type: 'cloudflare', // Default fallback
-        use_proxy: uProxy,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id,channel_url' });
-    } catch (err) {
-      console.error("Failed to save channel settings", err);
-    }
-  };
 
   const handleChannelSelect = async (ch: M3UChannel) => {
     setActiveChannel(null);
-    await loadChannelSettings(ch);
-    setActiveChannel(ch);
-    addToWatchHistory(ch);
-    localStorage.setItem("tvstreamz_last_channel_id", ch.id);
+    // Auto-delay to ensure player remounts correctly
+    setTimeout(() => {
+      setActiveChannel(ch);
+      localStorage.setItem("tvstreamz_last_channel_id", ch.id);
+    }, 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -272,13 +191,13 @@ const PlaylistPlayer = () => {
         }
         if (!currentChannel.name) currentChannel.name = "Unknown Channel";
         
-        currentChannel.useProxy = useProxy;
+        currentChannel.useProxy = true; // Always enable smart proxy race
         parsedChannels.push(currentChannel as M3UChannel);
         currentChannel = {};
       }
     }
     return parsedChannels;
-  }, [useProxy]);
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -324,7 +243,6 @@ const PlaylistPlayer = () => {
       if (lastChanId) {
         const chan = parsed.find(c => c.id === lastChanId);
         if (chan) {
-          await loadChannelSettings(chan);
           setActiveChannel(chan);
         }
       }
@@ -424,10 +342,7 @@ const PlaylistPlayer = () => {
     return sortedGroups;
   }, [channels, favorites]);
 
-  const updateUseProxy = (val: boolean) => {
-    setUseProxy(val);
-    if (activeChannel) saveChannelSettings(activeChannel, val);
-  };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col pt-16 lg:pt-20">
@@ -437,66 +352,72 @@ const PlaylistPlayer = () => {
         <div className="container mx-auto px-4">
           
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 pt-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <ListMusic className="w-5 h-5 text-primary" />
+          <div className="flex flex-col gap-4 mb-8 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                  <ListMusic className="w-5 h-5 text-orange-500" />
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase">Playlist Player</h1>
               </div>
-              <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold opacity-60">
+              <p className="hidden md:block text-muted-foreground text-[10px] uppercase tracking-widest font-bold opacity-60">
                 {channels.length} items loaded {isParsing && "..."}
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
-               {savedPlaylists.length > 0 && (
-                 <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
-                    <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-48 font-bold uppercase text-[10px] tracking-widest">
-                      <div className="flex items-center gap-2">
-                        <History className="w-4 h-4 text-primary" />
-                        <SelectValue placeholder="Saved Playlists" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {savedPlaylists.map(p => (
-                        <div key={p.id} className="flex items-center justify-between p-1">
-                          <SelectItem value={p.url} className="flex-1">
-                            {p.name}
-                          </SelectItem>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); deletePlaylist(p.id); }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </SelectContent>
-                 </Select>
-               )}
-
-               <div className="relative group">
-                  <input type="file" accept=".m3u,.m3u8" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                  <Button variant="outline" className="gap-2 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-xs">
-                    <Upload className="w-4 h-4" /> Upload
-                  </Button>
-               </div>
-               <div className="flex items-center gap-2">
-                  <Input 
-                    placeholder="or paste M3U URL..." 
-                    value={playlistUrl} 
-                    onChange={e => setPlaylistUrl(e.target.value)}
-                    className="h-12 bg-white/5 border-white/10 rounded-2xl w-48 lg:w-64"
-                  />
-                  <div className="flex gap-1">
-                    <Button onClick={() => fetchFromUrl()} variant="secondary" className="h-12 w-12 rounded-2xl p-0" disabled={isParsing}>
-                      {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white/5 p-4 rounded-[2rem] border border-white/5">
+               <div className="flex gap-2">
+                 <div className="relative flex-1 group">
+                    <input type="file" accept=".m3u,.m3u8" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <Button variant="outline" className="w-full gap-2 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-[10px]">
+                      <Upload className="w-4 h-4" /> Upload M3U
                     </Button>
-                    <Button onClick={openSaveDialog} variant="ghost" className="h-12 w-12 rounded-2xl p-0 border border-white/5 bg-white/5">
+                 </div>
+                 
+                 {savedPlaylists.length > 0 && (
+                   <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
+                      <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
+                        <div className="flex items-center gap-2">
+                          <History className="w-4 h-4 text-orange-500" />
+                          <SelectValue placeholder="Saved" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedPlaylists.map(p => (
+                          <div key={p.id} className="flex items-center justify-between p-1">
+                            <SelectItem value={p.url} className="flex-1">
+                              {p.name}
+                            </SelectItem>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); deletePlaylist(p.id); }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                 )}
+               </div>
+
+               <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Input 
+                      placeholder="Paste M3U URL..." 
+                      value={playlistUrl} 
+                      onChange={e => setPlaylistUrl(e.target.value)}
+                      className="pl-11 h-12 bg-black/40 border-white/10 rounded-2xl w-full font-bold text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button onClick={() => fetchFromUrl()} variant="secondary" className="h-12 w-12 rounded-2xl p-0 bg-orange-500 hover:bg-orange-600 text-black shadow-lg shadow-orange-500/20" disabled={isParsing}>
+                      {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                    </Button>
+                    <Button onClick={openSaveDialog} variant="ghost" className="h-12 w-12 rounded-2xl p-0 border border-white/10 bg-white/5">
                       <Save className="w-4 h-4" />
                     </Button>
                   </div>
@@ -504,41 +425,7 @@ const PlaylistPlayer = () => {
             </div>
           </div>
 
-          {/* Recently Watched Section */}
-          {watchHistory.length > 0 && (
-            <div className="mb-12 animate-in fade-in slide-in-from-left-4 duration-500">
-              <div className="flex items-center justify-between mb-4 px-1">
-                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                  <History className="w-3 h-3 text-primary" /> Recently Watched
-                </h2>
-              </div>
-              <ScrollArea className="w-full whitespace-nowrap pb-4">
-                <div className="flex gap-3">
-                  {watchHistory.map((ch) => (
-                    <button
-                      key={`recent-${ch.id}`}
-                      onClick={() => handleChannelSelect(ch)}
-                      className="group flex flex-col items-center w-24 shrink-0"
-                    >
-                      <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden transition-all group-hover:scale-105 group-hover:border-primary/50 relative">
-                        {ch.logo ? (
-                          <img src={ch.logo} alt="" className="w-full h-full object-contain p-3 opacity-60 group-hover:opacity-100" />
-                        ) : (
-                          <Tv className="w-6 h-6 text-zinc-800" />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 flex items-end justify-center pb-2">
-                           <Play className="w-4 h-4 text-white" fill="currentColor" />
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold uppercase tracking-tight mt-2 truncate w-full text-center opacity-40 group-hover:opacity-100">
-                        {ch.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
+
 
           {/* Active Player Section */}
           {activeChannel ? (
@@ -574,36 +461,20 @@ const PlaylistPlayer = () => {
                 </div>
 
                 <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
-                  <LivePlayer key={`${activeChannel.id}-${useProxy}-${playerKey}`} channel={{...activeChannel, useProxy}} />
+                  <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={{...activeChannel, useProxy: true}} />
                 </div>
                 
                 <div className="mt-4 flex flex-col gap-4">
                    <div className="flex items-center justify-between w-full">
                       <ShareButton title={`Watch ${activeChannel.name} - Playlist Player`} />
                       
-                      <div className="flex items-center gap-4 p-2 bg-white/5 rounded-3xl border border-white/5">
-                         <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/40 border border-white/5">
-                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Enable Proxy</Label>
-                            <Switch checked={useProxy} onCheckedChange={updateUseProxy} />
-                         </div>
-                         <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-4 hover:bg-white/10">
-                            <RefreshCcw className="w-3 h-3" /> Reload
-                         </Button>
-                      </div>
+                       <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-6 bg-white/5 border border-white/5 hover:bg-white/10">
+                          <RefreshCcw className="w-3 h-3" /> Force Reload
+                       </Button>
+                    </div>
                    </div>
                    
-                   {useProxy && (
-                      <p className="text-[10px] text-muted-foreground text-right px-2">
-                         <ShieldCheck className="inline-block w-3 h-3 text-green-500 mr-1" />
-                         Ang app ay kusang pipili ng pinakamabilis na server (Cloudflare o Supabase).
-                      </p>
-                   )}
-                   {!useProxy && (
-                      <p className="text-[10px] text-muted-foreground text-right px-2">
-                         <ShieldAlert className="inline-block w-3 h-3 text-yellow-500 mr-1" />
-                         Direct Play Mode. I-ON ang Proxy kung sakaling magka-error ang channel.
-                      </p>
-                   )}
+
                 </div>
               </div>
             </div>
@@ -651,7 +522,7 @@ const PlaylistPlayer = () => {
 
             <div 
               key={`${selectedGroup}-${searchQuery}-${channels.length}`}
-              className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
+              className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
             >
                {filteredChannels.length > 0 ? (
                  filteredChannels.map((ch) => {

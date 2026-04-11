@@ -251,13 +251,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           });
         };
 
-        const candidates = ['direct', ...uniqueProxies].filter(p => {
-          if (p !== 'direct' && badProxiesCache.has(p)) {
-            if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
-            badProxiesCache.delete(p);
-          }
-          return true;
-        });
+        const candidates = channel.useProxy 
+          ? ['direct', ...uniqueProxies].filter(p => {
+              if (p !== 'direct' && badProxiesCache.has(p)) {
+                if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
+                badProxiesCache.delete(p);
+              }
+              return true;
+            })
+          : ['direct'];
 
         try {
           // If direct is possible (https -> https), we prioritize it by letting it race
