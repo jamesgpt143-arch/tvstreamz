@@ -199,6 +199,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
         proxyLabelMapRef.current = labelMap;
 
+        const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
+        const targetUA = channel.userAgent || defaultUA;
+
         let activeProxyUrl = '';
 
         if (channel.useProxy && orderedProxies.length > 0) {
@@ -221,17 +224,17 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               const proxyPromises = proxiesToTest.map(testProxy => {
                 return new Promise<string>(async (resolve, reject) => {
                   const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 3500);
+                  const timeoutId = setTimeout(() => controller.abort(), 4500); // Higher timeout for slow proxies
                   
                   try {
-                    const testUrl = buildProxiedUrl(testProxy, streamUrl, channel.userAgent, channel.referrer);
-                    const res = await fetch(testUrl, { signal: controller.signal });
+                    const testUrl = buildProxiedUrl(testProxy, streamUrl, targetUA, channel.referrer);
+                    const res = await fetch(testUrl, { signal: controller.signal, headers: { 'Range': 'bytes=0-10' } });
                     clearTimeout(timeoutId);
                     
-                    if (res.ok) {
+                    if (res.ok || res.status === 402) {
                       resolve(testProxy);
                     } else {
-                      if (res.status === 429 || res.status >= 500) {
+                      if (res.status === 403 || res.status === 429 || res.status >= 500) {
                          badProxiesCache.set(testProxy, Date.now());
                       }
                       reject(new Error(`Status ${res.status}`));
@@ -261,6 +264,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         }
 
         const proxyUrl = activeProxyUrl;
+        const currentUA = targetUA;
 
         // SHARED SHAKA PROXY CONFIG (Ginagamit ng MPD at HLS-Widevine)
         const configureShakaProxy = (player: shaka.Player, proxyToUse: string) => {
@@ -283,7 +287,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (url.includes('?url=') || url.includes('&url=')) return;
             
             if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
               return;
             }
 
@@ -298,7 +302,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
             }
-            request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
           });
         };
 
@@ -370,9 +374,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                        relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
                        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
                        const fullOriginalUrl = manifestBase + relativePath;
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, channel.referrer), true);
                     } else if (url.startsWith('http')) {
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, channel.referrer), true);
                     }
                   }
                 }

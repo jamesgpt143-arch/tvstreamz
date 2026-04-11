@@ -211,28 +211,30 @@ const PlaylistPlayer = () => {
 
   // Smart Doctor Helper
   const checkOneChannel = async (ch: M3UChannel) => {
-    const checkUrl = async (proxyT?: string, useP = true) => {
+    const checkUrl = async (provider?: string, useP = true) => {
       try {
         let finalUrl = ch.manifestUri;
         if (useP) {
-          const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').single();
-          const config = data?.value as any;
-          const prefix = proxyT === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
-          const proxyBase = config?.[prefix];
-          if (!proxyBase) return false;
+          const prefix = provider === 'cloudflare' 
+            ? 'https://calm-rain-e08b.jamesbenavides617.workers.dev/?url=' 
+            : 'https://floral-bird-e8ca.zjhw6oev542aefbid27l4ifo.workers.dev/?url=';
           
-          const urlObj = new URL(proxyBase);
-          urlObj.searchParams.set('url', ch.manifestUri);
-          if (ch.userAgent) urlObj.searchParams.set('ua', ch.userAgent);
-          if (ch.referrer) urlObj.searchParams.set('referer', ch.referrer);
-          finalUrl = urlObj.toString();
+          finalUrl = `${prefix}${encodeURIComponent(ch.manifestUri)}`;
+          if (ch.userAgent) finalUrl += `&ua=${encodeURIComponent(ch.userAgent)}`;
+          if (ch.referrer) finalUrl += `&referer=${encodeURIComponent(ch.referrer)}`;
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-        const res = await fetch(finalUrl, { method: 'HEAD', signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for stability
+        
+        const res = await fetch(finalUrl, { 
+          method: 'GET', // Use GET instead of HEAD for better compatibility with proxies
+          headers: { 'Range': 'bytes=0-100' }, // Fast check
+          signal: controller.signal 
+        });
+        
         clearTimeout(timeoutId);
-        return res.ok;
+        return res.ok || res.status === 402;
       } catch {
         return false;
       }
@@ -916,6 +918,7 @@ const PlaylistPlayer = () => {
                  <Save className="w-6 h-6 text-primary" />
                  Save Playlist
               </DialogTitle>
+              <p className="sr-only">Enter a name for your playlist and save it to your account.</p>
            </DialogHeader>
            
            <div className="space-y-6 py-4">
