@@ -168,11 +168,10 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
       try {
-        const proxyUrls = channel.useProxy ? await getProxyUrls(channel.proxyType || 'cloudflare') : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
-        
+        // Universal Auto-Detect Logic
         let streamUrl = channel.manifestUri;
         
+        // 1. Resolve TVApp Slugs if needed
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -189,80 +188,90 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           }
         }
 
-        const labelMap = new Map<string, string>();
-        if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
-        if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
-        if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
-        if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
-        if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
-        if (proxyUrls.backup5) labelMap.set(proxyUrls.backup5, 'Backup 5');
-        if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
-        proxyLabelMapRef.current = labelMap;
-
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
+        // 2. Gather All Potential Proxies (Cloudflare + Supabase)
+        const [cfProxies, sbProxies] = await Promise.all([
+          getProxyUrls('cloudflare').catch(() => ({})),
+          getProxyUrls('supabase').catch(() => ({}))
+        ]);
+
+        const allProxyCandidates = [
+          ...Object.values(cfProxies),
+          ...Object.values(sbProxies)
+        ].filter(p => p && typeof p === 'string');
+
+        // Deduplicate and label
+        const uniqueProxies = Array.from(new Set(allProxyCandidates));
+        const labelMap = new Map<string, string>();
+        labelMap.set('direct', 'Direct');
+        
+        uniqueProxies.forEach((p, idx) => {
+          if (Object.values(cfProxies).includes(p)) {
+            labelMap.set(p, idx === 0 ? 'Main Proxy' : `Backup ${idx}`);
+          } else {
+            labelMap.set(p, `Worker ${idx}`);
+          }
+        });
+        proxyLabelMapRef.current = labelMap;
+
+        // 3. The Universal Race
+        if (isMounted) onProxyChange?.('Detecting best connection...');
+
         let activeProxyUrl = '';
-
-        if (channel.useProxy && orderedProxies.length > 0) {
-          const proxiesToTest = orderedProxies.filter(testProxy => {
-            if (badProxiesCache.has(testProxy)) {
-              if (Date.now() - badProxiesCache.get(testProxy)! < PROXY_TIMEOUT_MS) {
-                console.log(`[Proxy Fast-Skip] Nilaktawan ang ${labelMap.get(testProxy)} dahil limit/sira ito.`);
-                return false; 
-              } else {
-                badProxiesCache.delete(testProxy);
-              }
-            }
-            return true;
-          });
-
-          if (proxiesToTest.length > 0) {
-            if (isMounted) onProxyChange?.('Finding fastest proxy...');
-
+        
+        const testConnection = (proxy: string | null) => {
+          return new Promise<string>(async (resolve, reject) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
             try {
-              const proxyPromises = proxiesToTest.map(testProxy => {
-                return new Promise<string>(async (resolve, reject) => {
-                  const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 4500); // Higher timeout for slow proxies
-                  
-                  try {
-                    const testUrl = buildProxiedUrl(testProxy, streamUrl, targetUA, channel.referrer);
-                    const res = await fetch(testUrl, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    
-                    if (res.ok || res.status === 402) {
-                      resolve(testProxy);
-                    } else {
-                      // Only cache as "bad" if it's a proxy limit (429) or proxy server error (500+)
-                      // Skip 403 as it's often the target site blocking that specific proxy IP
-                      if (res.status === 429 || res.status >= 500) {
-                         badProxiesCache.set(testProxy, Date.now());
-                      }
-                      reject(new Error(`Status ${res.status}`));
-                    }
-                  } catch (err) {
-                    clearTimeout(timeoutId);
-                    badProxiesCache.set(testProxy, Date.now());
-                    reject(err);
-                  }
-                });
-              });
-
-              activeProxyUrl = await (Promise as any).any(proxyPromises);
-              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
+              const testUrl = proxy === 'direct' 
+                ? streamUrl 
+                : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
               
+              // Direct check might fail due to Mixed Content, but that's fine, race will skip it
+              const res = await fetch(testUrl, { signal: controller.signal });
+              clearTimeout(timeoutId);
+              
+              if (res.ok || res.status === 402) {
+                resolve(proxy!);
+              } else {
+                if (proxy !== 'direct' && (res.status === 429 || res.status >= 500)) {
+                  badProxiesCache.set(proxy!, Date.now());
+                }
+                reject(new Error(`Status ${res.status}`));
+              }
             } catch (err) {
-              console.warn('[Proxy Race] Lahat ng proxy na ni-check ay bagsak.');
+              clearTimeout(timeoutId);
+              if (proxy !== 'direct') badProxiesCache.set(proxy!, Date.now());
+              reject(err);
             }
-          }
+          });
+        };
 
-          if (!activeProxyUrl) {
-             activeProxyUrl = orderedProxies[0];
-             if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Primary (Fallback)');
+        const candidates = ['direct', ...uniqueProxies].filter(p => {
+          if (p !== 'direct' && badProxiesCache.has(p)) {
+            if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
+            badProxiesCache.delete(p);
           }
-        } else {
-          if (isMounted && !channel.useProxy) onProxyChange?.('Direct');
+          return true;
+        });
+
+        try {
+          // If direct is possible (https -> https), we prioritize it by letting it race
+          // If we are on https and stream is http, Direct will likely fail immediately (Mixed Content)
+          activeProxyUrl = await (Promise as any).any(candidates.map(c => testConnection(c)));
+          if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
+          
+          if (activeProxyUrl === 'direct') {
+            activeProxyUrl = ''; // Player expects empty for direct
+          }
+        } catch (err) {
+          console.warn('[Auto-Detect] Universal Race failed. Falling back to default.');
+          activeProxyUrl = ''; // Try direct anyway
+          if (isMounted) onProxyChange?.('Direct (Fallback)');
         }
 
         const proxyUrl = activeProxyUrl;

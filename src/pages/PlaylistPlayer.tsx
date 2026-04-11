@@ -59,12 +59,7 @@ const PlaylistPlayer = () => {
   const [watchHistory, setWatchHistory] = useState<M3UChannel[]>([]);
   const [isLoadingSync, setIsLoadingSync] = useState(false);
 
-  // Smart Doctor State
-  const [channelStatuses, setChannelStatuses] = useState<Record<string, { status: 'online' | 'offline' | 'checking'; provider?: string; isFixed?: boolean }>>({});
-  const [isDoctorRunning, setIsDoctorRunning] = useState(false);
-  const [doctorProgress, setDoctorProgress] = useState(0);
-  const [hideOffline, setHideOffline] = useState(false);
-  const doctorCancelRef = useRef(false);
+
 
   // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -209,110 +204,7 @@ const PlaylistPlayer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Smart Doctor Helper
-  const checkOneChannel = async (ch: M3UChannel) => {
-    const checkUrl = async (provider?: string, useP = true) => {
-      try {
-        let finalUrl = ch.manifestUri;
-        if (useP) {
-          const prefix = provider === 'cloudflare' 
-            ? 'https://calm-rain-e08b.jamesbenavides617.workers.dev/?url=' 
-            : 'https://floral-bird-e8ca.zjhw6oev542aefbid27l4ifo.workers.dev/?url=';
-          
-          finalUrl = `${prefix}${encodeURIComponent(ch.manifestUri)}`;
-          if (ch.userAgent) finalUrl += `&ua=${encodeURIComponent(ch.userAgent)}`;
-          if (ch.referrer) finalUrl += `&referer=${encodeURIComponent(ch.referrer)}`;
-        }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for stability
-        
-        const res = await fetch(finalUrl, { 
-          method: 'GET', // Full GET is more reliable for proxied manifests
-          signal: controller.signal 
-        });
-        
-        clearTimeout(timeoutId);
-        return res.ok || res.status === 402;
-      } catch {
-        return false;
-      }
-    };
-
-    // 1. Try saved setting
-    const isSavedOk = await checkUrl(proxyType, useProxy);
-    if (isSavedOk) return { status: 'online' as const, provider: useProxy ? (proxyType === 'cloudflare' ? 'Main' : 'Backup') : 'Direct' };
-
-    // 2. Try Direct
-    const isDirectOk = await checkUrl(undefined, false);
-    if (isDirectOk) {
-      saveChannelSettings(ch, 'none', false);
-      return { status: 'online' as const, provider: 'Direct', isFixed: true };
-    }
-
-    // 3. Try Main
-    const isMainOk = await checkUrl('cloudflare', true);
-    if (isMainOk) {
-      saveChannelSettings(ch, 'cloudflare', true);
-      return { status: 'online' as const, provider: 'Main', isFixed: true };
-    }
-
-    // 4. Try Backup
-    const isBackupOk = await checkUrl('supabase', true);
-    if (isBackupOk) {
-      saveChannelSettings(ch, 'supabase', true);
-      return { status: 'online' as const, provider: 'Backup', isFixed: true };
-    }
-
-    return { status: 'offline' as const };
-  };
-
-  const runSmartDoctor = async (scanAll = false) => {
-    const listToScan = scanAll ? channels : filteredChannels;
-    if (listToScan.length === 0) return toast.error("No channels to check");
-    
-    setIsDoctorRunning(true);
-    setDoctorProgress(0);
-    doctorCancelRef.current = false;
-    
-    const total = listToScan.length;
-    const batchSize = 5;
-    const newStatuses = { ...channelStatuses };
-
-    try {
-      for (let i = 0; i < total; i += batchSize) {
-        if (doctorCancelRef.current) break; // Use ref for cancellation
-        const batch = listToScan.slice(i, i + batchSize);
-        
-        // Update status to 'checking'
-        batch.forEach(ch => { newStatuses[ch.id] = { status: 'checking' }; });
-        setChannelStatuses({ ...newStatuses });
-
-        const results = await Promise.all(batch.map(ch => checkOneChannel(ch)));
-        
-        results.forEach((res, idx) => {
-          const ch = batch[idx];
-          newStatuses[ch.id] = res;
-        });
-        
-        setChannelStatuses({ ...newStatuses });
-        setDoctorProgress(Math.round(((i + batch.length) / total) * 100));
-      }
-    } finally {
-      setIsDoctorRunning(false);
-      if (!doctorCancelRef.current) {
-        toast.success(`Check complete! Found ${Object.values(newStatuses).filter(s => s.status === 'online').length} live channels.`);
-      } else {
-        toast.info("Channel check stopped");
-      }
-    }
-  };
-
-  const clearDoctorResults = () => {
-    setChannelStatuses({});
-    setHideOffline(false);
-    toast.success("Doctor results cleared");
-  };
 
   const parseM3U = useCallback((content: string) => {
     const lines = content.split('\n');
@@ -527,12 +419,9 @@ const PlaylistPlayer = () => {
         (selectedGroup === "favorites" && favorites.has(ch.manifestUri)) ||
         ch.group === selectedGroup;
       
-      const isOfflineStatus = channelStatuses[ch.id]?.status === 'offline';
-      const matchesVisibility = !hideOffline || !isOfflineStatus;
-      
-      return matchesSearch && matchesGroup && matchesVisibility;
+      return matchesSearch && matchesGroup;
     });
-  }, [channels, searchQuery, selectedGroup, favorites, hideOffline, channelStatuses]);
+  }, [channels, searchQuery, selectedGroup, favorites]);
 
   const groups = useMemo(() => {
     const g = new Set<string>();
@@ -678,17 +567,8 @@ const PlaylistPlayer = () => {
                          )}
                       </div>
                       <div>
-                        <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">{activeChannel.name}</h2>
-                        <div className="flex items-center gap-2">
-                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{activeChannel.group || 'General'}</p>
-                           {channelStatuses[activeChannel.id] && (
-                             <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight ${
-                               channelStatuses[activeChannel.id].status === 'online' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                             }`}>
-                               {channelStatuses[activeChannel.id].status}
-                             </span>
-                           )}
-                        </div>
+                         <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">{activeChannel.name}</h2>
+                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{activeChannel.group || 'General'}</p>
                       </div>
                    </div>
                    <div className="flex items-center gap-2">
@@ -755,79 +635,31 @@ const PlaylistPlayer = () => {
           {/* Channels Section */}
           <div className="space-y-8">
             <div className="flex items-center justify-between ml-1">
-               <h2 className="text-lg font-black uppercase tracking-widest">Playlist Content</h2>
-               {isDoctorRunning && (
-                 <div className="flex items-center gap-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl">
-                    <Loader2 className="w-3 h-3 text-primary animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Checking {doctorProgress}%</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => { doctorCancelRef.current = true; setIsDoctorRunning(false); }} 
-                      className="h-6 px-2 text-[8px] hover:bg-primary/20"
-                    >
-                      STOP
-                    </Button>
-                 </div>
-               )}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl sticky top-2 z-10 shadow-2xl">
-               <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search from playlist..." 
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-11 h-12 bg-black/40 border-white/5 rounded-2xl font-bold"
-                  />
-               </div>
-               <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/5 rounded-2xl">
-                     <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 whitespace-nowrap">Hide Offline</Label>
-                     <Switch checked={hideOffline} onCheckedChange={setHideOffline} />
-                  </div>
-                  
-                  <div className="flex gap-1">
-                    <Button 
-                      onClick={() => runSmartDoctor(false)} 
-                      disabled={isDoctorRunning}
-                      variant="outline" 
-                      className={`h-12 px-5 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/10 transition-colors ${isDoctorRunning ? 'opacity-50' : ''}`}
-                    >
-                      <ShieldCheck className="w-4 h-4 text-primary" /> Smart Fixer
-                    </Button>
-                    <Button 
-                      onClick={() => runSmartDoctor(true)} 
-                      disabled={isDoctorRunning}
-                      variant="ghost" 
-                      className="h-12 px-4 rounded-2xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/5"
-                    >
-                      Scan All
-                    </Button>
-                    {Object.keys(channelStatuses).length > 0 && (
-                      <Button variant="ghost" onClick={clearDoctorResults} className="h-12 w-12 rounded-2xl p-0 border border-white/5 bg-white/5 hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  {groups.length > 0 && (
-                     <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                        <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
-                           <SelectValue placeholder="All Categories" />
-                        </SelectTrigger>
-                        <SelectContent>
-                           <SelectItem value="all">All Categories</SelectItem>
-                           {groups.map(g => (
-                              <SelectItem key={g} value={g} className={g === 'favorites' ? 'text-yellow-500 font-bold' : ''}>
-                                {g === 'favorites' ? '⭐ Favorites' : g}
-                              </SelectItem>
-                           ))}
-                        </SelectContent>
-                     </Select>
-                  )}
-               </div>
+             </div>
+             
+             <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl sticky top-2 z-10 shadow-2xl">
+                <div className="relative flex-1 min-w-[300px]">
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-50" />
+                   <Input 
+                     placeholder="Search channels..." 
+                     value={searchQuery}
+                     onChange={e => setSearchQuery(e.target.value)}
+                     className="pl-11 h-12 bg-black/40 border-white/5 rounded-2xl font-bold uppercase text-xs tracking-widest"
+                   />
+                </div>
+                {groups.length > 0 && (
+                   <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                      <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                         <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-80">
+                         <SelectItem value="all">All Channels</SelectItem>
+                         {groups.map(g => (
+                            <SelectItem key={g} value={g} className="uppercase font-bold text-[10px] tracking-widest">{g}</SelectItem>
+                         ))}
+                      </SelectContent>
+                   </Select>
+                )}
             </div>
 
             {/* Channel Grid */}
@@ -838,7 +670,6 @@ const PlaylistPlayer = () => {
             >
                {filteredChannels.length > 0 ? (
                  filteredChannels.map((ch) => {
-                    const status = channelStatuses[ch.id];
                     return (
                     <div key={ch.id} className="group relative">
                       <button
@@ -859,18 +690,6 @@ const PlaylistPlayer = () => {
                               />
                            ) : (
                               <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
-                           )}
-                           
-                           {/* Status Indicator Overlay */}
-                           {status && (
-                             <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest flex items-center gap-1 backdrop-blur-md shadow-lg ${
-                               status.status === 'online' ? 'bg-green-500/80 text-white' : 
-                               status.status === 'checking' ? 'bg-primary/80 text-white animate-pulse' : 
-                               'bg-red-500/80 text-white'
-                             }`}>
-                               <div className={`w-1 h-1 rounded-full bg-white ${status.status === 'checking' ? 'animate-ping' : ''}`} />
-                               {status.isFixed ? 'Fixed' : status.status}
-                             </div>
                            )}
                         </div>
                         
