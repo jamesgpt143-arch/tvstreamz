@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
 import { LivePlayer } from "@/components/LivePlayer";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,8 @@ const PlaylistPlayer = () => {
   const [channelStatuses, setChannelStatuses] = useState<Record<string, { status: 'online' | 'offline' | 'checking'; provider?: string; isFixed?: boolean }>>({});
   const [isDoctorRunning, setIsDoctorRunning] = useState(false);
   const [doctorProgress, setDoctorProgress] = useState(0);
+  const [hideOffline, setHideOffline] = useState(false);
+  const doctorCancelRef = useRef(false);
 
   // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -124,14 +126,19 @@ const PlaylistPlayer = () => {
         .limit(15);
       
       if (data) {
-        const historyChannels: M3UChannel[] = data.map(item => ({
-          id: btoa(unescape(encodeURIComponent(item.name + item.url))).substring(0, 16),
-          name: item.name,
-          manifestUri: item.url,
-          logo: item.logo || '',
-          group: item.group_name || '',
-          type: item.url.includes('.mpd') ? 'mpd' : 'hls'
-        }));
+        const historyChannels: M3UChannel[] = data.map(item => {
+          const name = item.name || "Unknown";
+          const url = item.url;
+          const group = item.group_name || "";
+          return {
+            id: btoa(unescape(encodeURIComponent(name + url + group))).substring(0, 16),
+            name: name,
+            manifestUri: url,
+            logo: item.logo || '',
+            group: group,
+            type: url.includes('.mpd') ? 'mpd' : 'hls'
+          };
+        });
         setWatchHistory(historyChannels);
       }
     } catch (err) {
@@ -259,36 +266,51 @@ const PlaylistPlayer = () => {
     return { status: 'offline' as const };
   };
 
-  const runSmartDoctor = async () => {
-    if (filteredChannels.length === 0) return toast.error("No channels to check");
+  const runSmartDoctor = async (scanAll = false) => {
+    const listToScan = scanAll ? channels : filteredChannels;
+    if (listToScan.length === 0) return toast.error("No channels to check");
+    
     setIsDoctorRunning(true);
     setDoctorProgress(0);
+    doctorCancelRef.current = false;
     
-    const total = filteredChannels.length;
+    const total = listToScan.length;
     const batchSize = 5;
     const newStatuses = { ...channelStatuses };
 
-    for (let i = 0; i < total; i += batchSize) {
-      if (!isDoctorRunning && i > 0) break; // Allow stopping
-      const batch = filteredChannels.slice(i, i + batchSize);
-      
-      // Update status to 'checking'
-      batch.forEach(ch => { newStatuses[ch.id] = { status: 'checking' }; });
-      setChannelStatuses({ ...newStatuses });
+    try {
+      for (let i = 0; i < total; i += batchSize) {
+        if (doctorCancelRef.current) break; // Use ref for cancellation
+        const batch = listToScan.slice(i, i + batchSize);
+        
+        // Update status to 'checking'
+        batch.forEach(ch => { newStatuses[ch.id] = { status: 'checking' }; });
+        setChannelStatuses({ ...newStatuses });
 
-      const results = await Promise.all(batch.map(ch => checkOneChannel(ch)));
-      
-      results.forEach((res, idx) => {
-        const ch = batch[idx];
-        newStatuses[ch.id] = res;
-      });
-      
-      setChannelStatuses({ ...newStatuses });
-      setDoctorProgress(Math.round(((i + batch.length) / total) * 100));
+        const results = await Promise.all(batch.map(ch => checkOneChannel(ch)));
+        
+        results.forEach((res, idx) => {
+          const ch = batch[idx];
+          newStatuses[ch.id] = res;
+        });
+        
+        setChannelStatuses({ ...newStatuses });
+        setDoctorProgress(Math.round(((i + batch.length) / total) * 100));
+      }
+    } finally {
+      setIsDoctorRunning(false);
+      if (!doctorCancelRef.current) {
+        toast.success(`Check complete! Found ${Object.values(newStatuses).filter(s => s.status === 'online').length} live channels.`);
+      } else {
+        toast.info("Channel check stopped");
+      }
     }
-    
-    setIsDoctorRunning(false);
-    toast.success("Smart Check complete!");
+  };
+
+  const clearDoctorResults = () => {
+    setChannelStatuses({});
+    setHideOffline(false);
+    toast.success("Doctor results cleared");
   };
 
   const parseM3U = useCallback((content: string) => {
@@ -305,7 +327,7 @@ const PlaylistPlayer = () => {
         if (logoMatch) currentChannel.logo = logoMatch[1];
         
         const groupMatch = line.match(/group-title="([^"]+)"/);
-        if (groupMatch) currentChannel.group = groupMatch[1];
+        if (groupMatch) currentChannel.group = groupMatch[1].trim();
 
         const commaIndex = line.lastIndexOf(',');
         if (commaIndex !== -1) {
@@ -346,7 +368,9 @@ const PlaylistPlayer = () => {
         }
       } else if (line.startsWith('http')) {
         currentChannel.manifestUri = line;
-        currentChannel.id = btoa(unescape(encodeURIComponent((currentChannel.name || "") + line))).substring(0, 16);
+        const targetName = currentChannel.name || "";
+        const targetGroup = currentChannel.group || "";
+        currentChannel.id = btoa(unescape(encodeURIComponent(targetName + line + targetGroup))).substring(0, 16);
         if (!currentChannel.type) {
           const lowerUri = line.toLowerCase();
           if (lowerUri.includes('.mpd')) {
@@ -377,9 +401,12 @@ const PlaylistPlayer = () => {
     reader.onload = (event) => {
       const content = event.target?.result as string;
       setIsParsing(true);
+      setChannels([]); // Clear existing to prevent "append" effect
       try {
         const parsed = parseM3U(content);
         setChannels(parsed);
+        setSelectedGroup("all");
+        setSearchQuery("");
         toast.success(`Loaded ${parsed.length} channels`);
       } catch (err) {
         toast.error("Failed to parse M3U file");
@@ -401,6 +428,8 @@ const PlaylistPlayer = () => {
       const content = await response.text();
       const parsed = parseM3U(content);
       setChannels(parsed);
+      setSelectedGroup("all");
+      setSearchQuery("");
       
       if (!url) setPlaylistUrl("");
       localStorage.setItem("tvstreamz_last_m3u_url", targetUrl);
@@ -496,9 +525,13 @@ const PlaylistPlayer = () => {
         selectedGroup === "all" || 
         (selectedGroup === "favorites" && favorites.has(ch.manifestUri)) ||
         ch.group === selectedGroup;
-      return matchesSearch && matchesGroup;
+      
+      const isOfflineStatus = channelStatuses[ch.id]?.status === 'offline';
+      const matchesVisibility = !hideOffline || !isOfflineStatus;
+      
+      return matchesSearch && matchesGroup && matchesVisibility;
     });
-  }, [channels, searchQuery, selectedGroup, favorites]);
+  }, [channels, searchQuery, selectedGroup, favorites, hideOffline, channelStatuses]);
 
   const groups = useMemo(() => {
     const g = new Set<string>();
@@ -726,7 +759,14 @@ const PlaylistPlayer = () => {
                  <div className="flex items-center gap-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl">
                     <Loader2 className="w-3 h-3 text-primary animate-spin" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary">Checking {doctorProgress}%</span>
-                    <Button variant="ghost" size="sm" onClick={() => setIsDoctorRunning(false)} className="h-6 px-2 text-[8px] hover:bg-primary/20">STOP</Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { doctorCancelRef.current = true; setIsDoctorRunning(false); }} 
+                      className="h-6 px-2 text-[8px] hover:bg-primary/20"
+                    >
+                      STOP
+                    </Button>
                  </div>
                )}
             </div>
@@ -742,14 +782,35 @@ const PlaylistPlayer = () => {
                   />
                </div>
                <div className="flex items-center gap-2">
-                  <Button 
-                    onClick={runSmartDoctor} 
-                    disabled={isDoctorRunning}
-                    variant="outline" 
-                    className={`h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-xs gap-2 border-primary/20 hover:bg-primary/10 transition-colors ${isDoctorRunning ? 'opacity-50' : ''}`}
-                  >
-                    <ShieldCheck className="w-4 h-4 text-primary" /> Smart Fixer
-                  </Button>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/5 rounded-2xl">
+                     <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 whitespace-nowrap">Hide Offline</Label>
+                     <Switch checked={hideOffline} onCheckedChange={setHideOffline} />
+                  </div>
+                  
+                  <div className="flex gap-1">
+                    <Button 
+                      onClick={() => runSmartDoctor(false)} 
+                      disabled={isDoctorRunning}
+                      variant="outline" 
+                      className={`h-12 px-5 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/10 transition-colors ${isDoctorRunning ? 'opacity-50' : ''}`}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-primary" /> Smart Fixer
+                    </Button>
+                    <Button 
+                      onClick={() => runSmartDoctor(true)} 
+                      disabled={isDoctorRunning}
+                      variant="ghost" 
+                      className="h-12 px-4 rounded-2xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/5"
+                    >
+                      Scan All
+                    </Button>
+                    {Object.keys(channelStatuses).length > 0 && (
+                      <Button variant="ghost" onClick={clearDoctorResults} className="h-12 w-12 rounded-2xl p-0 border border-white/5 bg-white/5 hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+
                   {groups.length > 0 && (
                      <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                         <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
@@ -769,7 +830,11 @@ const PlaylistPlayer = () => {
             </div>
 
             {/* Channel Grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+            {/* Channel Grid - Keyed to force refresh on filter change */}
+            <div 
+              key={`${selectedGroup}-${searchQuery}-${channels.length}`}
+              className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
+            >
                {filteredChannels.length > 0 ? (
                  filteredChannels.map((ch) => {
                     const status = channelStatuses[ch.id];
