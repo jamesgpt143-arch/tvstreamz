@@ -80,7 +80,21 @@ const PlaylistPlayer = () => {
         fetchSavedData(user.id);
       }
       
-      const lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
+      let lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
+      
+      // Auto-sync: If no local URL but logged in, try to get the most recent from account
+      if (!lastUrl && user) {
+        const { data: playlists } = await supabase
+          .from('user_playlists')
+          .select('url')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (playlists && playlists.length > 0) {
+          lastUrl = playlists[0].url;
+        }
+      }
+
       if (lastUrl) {
         fetchFromUrl(lastUrl, true);
       }
@@ -242,13 +256,7 @@ const PlaylistPlayer = () => {
       if (!url) setPlaylistUrl("");
       localStorage.setItem("tvstreamz_last_m3u_url", targetUrl);
       
-      const lastChanId = localStorage.getItem("tvstreamz_last_channel_id");
-      if (lastChanId) {
-        const chan = parsed.find(c => c.id === lastChanId);
-        if (chan) {
-          setActiveChannel(chan);
-        }
-      }
+      // Removed auto-play of last channel logic per user request
 
       if (!quiet) toast.success(`Loaded ${parsed.length} channels from URL`);
     } catch (err) {
