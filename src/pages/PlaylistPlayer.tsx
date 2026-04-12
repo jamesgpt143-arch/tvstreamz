@@ -1,3 +1,4 @@
+   import { useState, useMemo, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { LivePlayer, getProxiedLogoUrl } from "@/components/LivePlayer";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { ShareButton } from "@/components/ShareButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -20,8 +20,6 @@ import {
   RefreshCcw,
   Play,
   XCircle,
-  ShieldCheck,
-  ShieldAlert,
   Star,
   Trash2,
   History,
@@ -114,8 +112,6 @@ const PlaylistPlayer = () => {
     }
   };
 
-
-
   const handleChannelSelect = async (ch: M3UChannel) => {
     setActiveChannel(null);
     // Auto-delay to ensure player remounts correctly
@@ -125,8 +121,6 @@ const PlaylistPlayer = () => {
     }, 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-
 
   const parseM3U = useCallback((content: string) => {
     const lines = content.split('\n');
@@ -351,8 +345,6 @@ const PlaylistPlayer = () => {
     return sortedGroups;
   }, [channels, favorites]);
 
-
-
   return (
     <div className="min-h-screen bg-background flex flex-col pt-16 lg:pt-20">
       <Navbar />
@@ -433,8 +425,6 @@ const PlaylistPlayer = () => {
                </div>
             </div>
           </div>
-
-
 
           {/* Active Player Section */}
           {activeChannel ? (
