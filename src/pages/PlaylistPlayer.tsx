@@ -55,20 +55,12 @@ const PlaylistPlayer = () => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoadingSync, setIsLoadingSync] = useState(false);
 
-  // Smart Doctor State
-  const [channelStatuses, setChannelStatuses] = useState<Record<string, { status: 'online' | 'offline' | 'checking'; provider?: string; isFixed?: boolean }>>({});
-  const [isDoctorRunning, setIsDoctorRunning] = useState(false);
-  const [doctorProgress, setDoctorProgress] = useState(0);
-  const [hideOffline, setHideOffline] = useState(false);
-  const doctorCancelRef = useRef(false);
-
   // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [customName, setCustomName] = useState("");
   const [saveTargetUrl, setSaveTargetUrl] = useState("");
 
-  // Proxy States
-  const [useProxy, setUseProxy] = useState(true);
+  // Proxy State
   const [playerKey, setPlayerKey] = useState(0);
 
   useEffect(() => {
@@ -123,90 +115,7 @@ const PlaylistPlayer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Smart Doctor Helper
-  const checkOneChannel = async (ch: M3UChannel) => {
-    const checkUrl = async (useP = true) => {
-      try {
-        let finalUrl = ch.manifestUri;
-        if (useP) {
-          const prefix = 'https://calm-rain-e08b.jamesbenavides617.workers.dev/?url=';
-          finalUrl = `${prefix}${encodeURIComponent(ch.manifestUri)}`;
-        }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
-        const res = await fetch(finalUrl, { method: 'GET', signal: controller.signal });
-        clearTimeout(timeoutId);
-        return res.ok || res.status === 402;
-      } catch {
-        return false;
-      }
-    };
-
-    const isSavedOk = await checkUrl(useProxy);
-    if (isSavedOk) return { status: 'online' as const, provider: useProxy ? 'Proxy' : 'Direct' };
-
-    const isDirectOk = await checkUrl(false);
-    if (isDirectOk) {
-      saveChannelSettings(ch, false);
-      return { status: 'online' as const, provider: 'Direct', isFixed: true };
-    }
-
-    const isProxyOk = await checkUrl(true);
-    if (isProxyOk) {
-      saveChannelSettings(ch, true);
-      return { status: 'online' as const, provider: 'Proxy', isFixed: true };
-    }
-
-    return { status: 'offline' as const };
-  };
-
-  const runSmartDoctor = async (scanAll = false) => {
-    const listToScan = scanAll ? channels : filteredChannels;
-    if (listToScan.length === 0) return toast.error("No channels to check");
-    
-    setIsDoctorRunning(true);
-    setDoctorProgress(0);
-    doctorCancelRef.current = false;
-    
-    const total = listToScan.length;
-    const batchSize = 5;
-    const newStatuses = { ...channelStatuses };
-
-    try {
-      for (let i = 0; i < total; i += batchSize) {
-        if (doctorCancelRef.current) break;
-        const batch = listToScan.slice(i, i + batchSize);
-        
-        batch.forEach(ch => { newStatuses[ch.id] = { status: 'checking' }; });
-        setChannelStatuses({ ...newStatuses });
-
-        const results = await Promise.all(batch.map(ch => checkOneChannel(ch)));
-        
-        results.forEach((res, idx) => {
-          const ch = batch[idx];
-          newStatuses[ch.id] = res;
-        });
-        
-        setChannelStatuses({ ...newStatuses });
-        setDoctorProgress(Math.round(((i + batch.length) / total) * 100));
-      }
-    } finally {
-      setIsDoctorRunning(false);
-      if (!doctorCancelRef.current) {
-        toast.success(`Check complete! Found ${Object.values(newStatuses).filter(s => s.status === 'online').length} live channels.`);
-      } else {
-        toast.info("Channel check stopped");
-      }
-    }
-  };
-
-  const clearDoctorResults = () => {
-    setChannelStatuses({});
-    setHideOffline(false);
-    toast.success("Doctor results cleared");
-  };
 
   const parseM3U = useCallback((content: string) => {
     const lines = content.split('\n');
@@ -419,12 +328,9 @@ const PlaylistPlayer = () => {
         (selectedGroup === "favorites" && favorites.has(ch.manifestUri)) ||
         ch.group === selectedGroup;
       
-      const isOfflineStatus = channelStatuses[ch.id]?.status === 'offline';
-      const matchesVisibility = !hideOffline || !isOfflineStatus;
-      
-      return matchesSearch && matchesGroup && matchesVisibility;
+      return matchesSearch && matchesGroup;
     });
-  }, [channels, searchQuery, selectedGroup, favorites, hideOffline, channelStatuses]);
+  }, [channels, searchQuery, selectedGroup, favorites]);
 
   const groups = useMemo(() => {
     const g = new Set<string>();
@@ -536,13 +442,6 @@ const PlaylistPlayer = () => {
                         <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">{activeChannel.name}</h2>
                         <div className="flex items-center gap-2">
                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{activeChannel.group || 'General'}</p>
-                           {channelStatuses[activeChannel.id] && (
-                             <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight ${
-                               channelStatuses[activeChannel.id].status === 'online' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                             }`}>
-                               {channelStatuses[activeChannel.id].status}
-                             </span>
-                           )}
                         </div>
                       </div>
                    </div>
@@ -573,9 +472,6 @@ const PlaylistPlayer = () => {
                           <RefreshCcw className="w-3 h-3" /> Force Reload
                        </Button>
                     </div>
-                   </div>
-                   
-
                 </div>
               </div>
             </div>
@@ -584,8 +480,8 @@ const PlaylistPlayer = () => {
                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                   <Play className="w-10 h-10 text-zinc-800" fill="currentColor" />
                </div>
-               <h2 className={`text-2xl font-black uppercase tracking-tighter mb-2 ${isLoadingSync ? 'animate-pulse' : ''}`}>
-                  {isLoadingSync ? 'Syncing your data...' : 'No Active Stream'}
+               <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">
+                  No Active Stream
                </h2>
                <p className="text-muted-foreground text-sm max-w-sm uppercase tracking-widest font-bold opacity-40">Load a playlist and pick a channel to start watching</p>
             </div>
@@ -595,20 +491,6 @@ const PlaylistPlayer = () => {
           <div className="space-y-8">
             <div className="flex items-center justify-between ml-1">
                <h2 className="text-lg font-black uppercase tracking-widest">Playlist Content</h2>
-               {isDoctorRunning && (
-                 <div className="flex items-center gap-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl">
-                    <Loader2 className="w-3 h-3 text-primary animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Checking {doctorProgress}%</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => { doctorCancelRef.current = true; setIsDoctorRunning(false); }} 
-                      className="h-6 px-2 text-[8px] hover:bg-primary/20"
-                    >
-                      STOP
-                    </Button>
-                 </div>
-               )}
             </div>
             
             <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl sticky top-2 z-10 shadow-2xl">
@@ -622,35 +504,6 @@ const PlaylistPlayer = () => {
                   />
                </div>
                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/5 rounded-2xl">
-                     <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 whitespace-nowrap">Hide Offline</Label>
-                     <Switch checked={hideOffline} onCheckedChange={setHideOffline} />
-                  </div>
-                  
-                  <div className="flex gap-1">
-                    <Button 
-                      onClick={() => runSmartDoctor(false)} 
-                      disabled={isDoctorRunning}
-                      variant="outline" 
-                      className={`h-12 px-5 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/10 transition-colors ${isDoctorRunning ? 'opacity-50' : ''}`}
-                    >
-                      <ShieldCheck className="w-4 h-4 text-primary" /> Smart Fixer
-                    </Button>
-                    <Button 
-                      onClick={() => runSmartDoctor(true)} 
-                      disabled={isDoctorRunning}
-                      variant="ghost" 
-                      className="h-12 px-4 rounded-2xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/5"
-                    >
-                      Scan All
-                    </Button>
-                    {Object.keys(channelStatuses).length > 0 && (
-                      <Button variant="ghost" onClick={clearDoctorResults} className="h-12 w-12 rounded-2xl p-0 border border-white/5 bg-white/5 hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-
                   {groups.length > 0 && (
                      <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                         <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
@@ -675,7 +528,6 @@ const PlaylistPlayer = () => {
             >
                {filteredChannels.length > 0 ? (
                  filteredChannels.map((ch) => {
-                    const status = channelStatuses[ch.id];
                     return (
                     <div key={ch.id} className="group relative">
                       <button
@@ -696,17 +548,6 @@ const PlaylistPlayer = () => {
                               />
                            ) : (
                               <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
-                           )}
-                           
-                           {status && (
-                             <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest flex items-center gap-1 backdrop-blur-md shadow-lg ${
-                               status.status === 'online' ? 'bg-green-500/80 text-white' : 
-                               status.status === 'checking' ? 'bg-primary/80 text-white animate-pulse' : 
-                               'bg-red-500/80 text-white'
-                             }`}>
-                               <div className={`w-1 h-1 rounded-full bg-white ${status.status === 'checking' ? 'animate-ping' : ''}`} />
-                               {status.isFixed ? 'Fixed' : status.status}
-                             </div>
                            )}
                         </div>
                         
