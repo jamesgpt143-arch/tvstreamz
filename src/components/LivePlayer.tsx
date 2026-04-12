@@ -362,11 +362,18 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         // 4. Selection (Strict vs Auto)
         try {
           if (isStrict) {
-            // Strictly and immediately use the first candidate (already prioritized by admin)
-            activeProxyUrl = candidates[0] || '';
-            if (activeProxyUrl === 'direct') activeProxyUrl = '';
+            // Strictly check for cached proxy first to enable "Quick Connect" speed
+            const cachedProxy = getStoredProxy(channel.id);
+            if (cachedProxy && candidates.includes(cachedProxy)) {
+              if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
+              activeProxyUrl = cachedProxy;
+            } else {
+              // Immediately use the first candidate (already prioritized by admin)
+              activeProxyUrl = candidates[0] || '';
+              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
+            }
             
-            if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
+            if (activeProxyUrl === 'direct') activeProxyUrl = '';
           } else if (isAuto) {
             // Auto-detect mode (M3U or Smart Proxy enabled)
             const cachedProxy = getStoredProxy(channel.id);
