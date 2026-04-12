@@ -616,6 +616,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         }
       } catch (err) {
         if (isMounted) { setError('Failed to initialize player.'); setIsLoading(false); setIsRefreshing(false); }
+      }
     };
 
     loadPlayer().finally(() => {
