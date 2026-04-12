@@ -254,48 +254,34 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           });
         };
 
+        const candidates: string[] = [];
         const isPageHttps = window.location.protocol === 'https:';
         const isStreamHttp = streamUrl.startsWith('http:');
         const needsProxyForMixedContent = isPageHttps && isStreamHttp;
-        const candidates: string[] = [];
-
-        const prioritizedProxies = uniqueProxies.filter(p => {
-          if (badProxiesCache.has(p)) {
-            if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
-            badProxiesCache.delete(p);
-          }
-          return true;
-        });
 
         if (!needsProxyForMixedContent) {
-          if (channel.useProxy) {
-            // If proxy is requested, try proxies first, then direct as fallback
-            candidates.push(...prioritizedProxies);
-            candidates.push('direct');
-          } else {
-            // Default: try direct first
-            candidates.push('direct');
-            candidates.push(...prioritizedProxies);
-          }
-        } else {
-          candidates.push(...prioritizedProxies);
+          candidates.push('direct');
         }
+        candidates.push(...uniqueProxies.filter(p => {
+              if (badProxiesCache.has(p)) {
+                if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
+                badProxiesCache.delete(p);
+              }
+              return true;
+            }));
         
-        if (candidates.length === 0) {
-          setError("No connection candidates available.");
+        if (needsProxyForMixedContent && candidates.length === 0) {
+          setError("This channel requires HTTPS but only provides HTTP. No proxy is available.");
           setIsLoading(false);
           return;
         }
 
         try {
+          // Priority-Staggered Race: Give Direct and Cloudflare a head start
           const supabaseProxies = Object.values(sbProxies);
           const racePromises = candidates.map(c => {
-            // Apply a 500ms delay to non-preferred proxies if they are Supabase
-            // This gives preference to Cloudflare/Direct unless Supabase is explicitly requested
-            const isSupabase = supabaseProxies.includes(c);
-            const isPreferred = channel.proxyType === 'supabase' && isSupabase;
-            
-            if (isSupabase && !isPreferred) {
+            // Apply a 500ms delay to Supabase proxies to prioritize Cloudflare/Direct
+            if (supabaseProxies.includes(c)) {
               return new Promise(resolve => setTimeout(resolve, 500)).then(() => testConnection(c));
             }
             return testConnection(c);
