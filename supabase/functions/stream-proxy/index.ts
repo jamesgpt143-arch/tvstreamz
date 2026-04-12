@@ -93,16 +93,16 @@ async function fetchWithRedirects(
 // ─── Manifest Rewriters ───
 
 function resolveUrl(base: string, relative: string): string {
+  if (!relative) return "";
   if (relative.startsWith("http")) return relative;
-  if (relative.startsWith("/")) {
-    try {
-      const b = new URL(base);
-      return b.origin + relative;
-    } catch {
-      return base + relative.substring(1);
-    }
+  try {
+    // Standard URL resolution handles /path, path, and ../path correctly
+    return new URL(relative, base).toString();
+  } catch {
+    // Fallback for edge cases
+    const separator = base.endsWith("/") || relative.startsWith("/") ? "" : "/";
+    return base + separator + relative;
   }
-  return base + relative;
 }
 
 function rewriteHLS(
@@ -115,8 +115,9 @@ function rewriteHLS(
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
+      if (!trimmed) return line;
 
-      // URI= in EXT-X-KEY, EXT-X-MAP etc.
+      // URI= in EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA etc.
       if (trimmed.includes('URI="')) {
         return trimmed.replace(/URI="([^"]+)"/g, (_m, uri) => {
           const full = resolveUrl(baseUrl, uri);
@@ -124,8 +125,8 @@ function rewriteHLS(
         });
       }
 
-      // Non-comment, non-empty = segment/playlist URL
-      if (trimmed && !trimmed.startsWith("#")) {
+      // Non-comment = segment or sub-playlist URL
+      if (!trimmed.startsWith("#")) {
         const full = resolveUrl(baseUrl, trimmed);
         return proxyBase + encodeURIComponent(full) + extra;
       }
@@ -143,7 +144,7 @@ function rewriteDASH(
 ): string {
   let rewritten = text;
 
-  // <BaseURL>...</BaseURL>
+  // 1. Rewrite <BaseURL> tags
   rewritten = rewritten.replace(
     /<BaseURL>([^<]+)<\/BaseURL>/g,
     (_m, innerUrl) => {
@@ -152,13 +153,17 @@ function rewriteDASH(
     }
   );
 
-  // media="..." and initialization="..."
+  // 2. Rewrite common XML attributes containing paths (media, initialization, sourceURL, index, etc.)
+  // We use a broader regex to catch attributes commonly used in DASH manifests
   rewritten = rewritten.replace(
-    /(media|initialization)="([^"]+)"/g,
+    /(media|initialization|sourceURL|index|href)="([^"]+)"/g,
     (match, attr, val) => {
+      // Don't rewrite if it looks like an internal DASH ID or property
+      if (val.startsWith("$") || val.length < 2) return match;
+      
       const full = resolveUrl(baseUrl, val);
       // For DASH templates (containing $), we encode the URL but preserve $ signs
-      // so the DASH player (like Shaka) can still perform variable substitution.
+      // so the DASH player (like Shaka) can still perform variable substitution properly.
       const encoded = encodeURIComponent(full).replace(/%24/g, "$");
       return `${attr}="${proxyBase}${encoded}${extra}"`;
     }
@@ -182,15 +187,7 @@ serve(async (req) => {
 
     if (!targetUrl) {
       return new Response(
-        JSON.stringify({
-          error: "Missing 'url' parameter",
-          usage: {
-            GET_stream:
-              "?url=<encoded_url>&ua=<optional>&referer=<optional>&cookie=<optional>&auth=<optional>",
-            POST_drm:
-              "?url=<license_server_url>&ua=<optional>&referer=<optional>&auth=<optional>  (body = DRM challenge)",
-          },
-        }),
+        JSON.stringify({ error: "Missing 'url' parameter" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -198,9 +195,10 @@ serve(async (req) => {
       );
     }
 
-    // Validate URL
+    // Validate URL and extract original base
+    let validatedUrl: URL;
     try {
-      new URL(targetUrl);
+      validatedUrl = new URL(targetUrl);
     } catch {
       return new Response(JSON.stringify({ error: "Invalid target URL" }), {
         status: 400,
@@ -215,79 +213,41 @@ serve(async (req) => {
       const resp = await fetch(targetUrl, { method: "HEAD", headers: upstreamHeaders });
       const headHeaders = new Headers(corsHeaders);
       resp.headers.forEach((v, k) => {
-        if (!k.toLowerCase().startsWith("access-control-")) {
-          headHeaders.set(k, v);
-        }
+        if (!k.toLowerCase().startsWith("access-control-")) headHeaders.set(k, v);
       });
       return new Response(null, { status: resp.status, headers: headHeaders });
     }
 
     // ─── POST: DRM License Proxy ───
     if (req.method === "POST") {
-      const reqBody = await req.arrayBuffer();
-
-      // Forward content-type from client (usually application/octet-stream for Widevine)
-      const clientCT = req.headers.get("content-type");
-      if (clientCT) upstreamHeaders["Content-Type"] = clientCT;
-
-      console.log(`[DRM] POST ${targetUrl} (${reqBody.byteLength} bytes)`);
-
-      const resp = await fetchWithRedirects(
-        targetUrl,
-        upstreamHeaders,
-        "POST",
-        reqBody
-      );
-
-      const respBody = await resp.arrayBuffer();
-      const respCT =
-        resp.headers.get("content-type") || "application/octet-stream";
-
-      return new Response(respBody, {
+      const resp = await fetchWithRedirects(targetUrl, upstreamHeaders, "POST", await req.arrayBuffer());
+      return new Response(await resp.arrayBuffer(), {
         status: resp.status,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": respCT,
-        },
+        headers: { ...corsHeaders, "Content-Type": resp.headers.get("content-type") || "application/octet-stream" },
       });
     }
 
     // ─── GET: Stream / Manifest Proxy ───
-    console.log(`[GET] ${targetUrl}`);
-
-    const response = await fetchWithRedirects(
-      targetUrl,
-      upstreamHeaders,
-      "GET"
-    );
+    const response = await fetchWithRedirects(targetUrl, upstreamHeaders, "GET");
 
     if (!response.ok && response.status !== 206) {
-      const errText = await response.text().catch(() => "");
-      console.error(`[upstream] ${response.status}: ${errText.substring(0, 300)}`);
-      return new Response(
-        JSON.stringify({ error: `Upstream ${response.status}` }),
-        {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: `Upstream ${response.status}` }), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const contentType =
-      response.headers.get("content-type") || "application/octet-stream";
-
-    const isHLS =
-      targetUrl.includes(".m3u8") || contentType.includes("mpegurl");
-    const isDASH =
-      targetUrl.includes(".mpd") || contentType.includes("dash+xml");
+    const contentType = response.headers.get("content-type") || "";
+    const isHLS = targetUrl.includes(".m3u8") || contentType.includes("mpegurl") || contentType.includes("application/x-mpegURL");
+    const isDASH = targetUrl.includes(".mpd") || contentType.includes("dash+xml");
 
     if (isHLS || isDASH) {
-      const body = await response.arrayBuffer();
-      const text = new TextDecoder().decode(body);
+      const text = new TextDecoder().decode(await response.arrayBuffer());
       
-      // FIX 1: Gamitin ang final redirected URL para laging tama ang Base Path kahit lumipat ng server
-      const finalUrl = response.url || targetUrl;
-      const baseUrl = finalUrl.substring(0, finalUrl.lastIndexOf("/") + 1);
+      // CRITICAL: Ensure baseUrl is derived from the FINAL redirected upstream URL
+      // This prevents relative segments from pointing back to the Supabase domain.
+      const finalUpstreamUrl = response.url || targetUrl;
+      const baseUrl = finalUpstreamUrl.substring(0, finalUpstreamUrl.lastIndexOf("/") + 1);
       
       const proxyBase = `${url.origin}${url.pathname}?url=`;
       const extra = extraParams(params);
@@ -300,36 +260,25 @@ serve(async (req) => {
         status: response.status,
         headers: {
           ...corsHeaders,
-          "Content-Type": isHLS
-            ? "application/vnd.apple.mpegurl"
-            : "application/dash+xml",
-          "Cache-Control": "public, max-age=5, s-maxage=5", // Short cache for manifests
+          "Content-Type": isHLS ? "application/vnd.apple.mpegurl" : "application/dash+xml",
+          "Cache-Control": "public, max-age=5",
         },
       });
     }
 
-    // ─── Binary passthrough (segments, keys, etc.) ───
+    // ─── Binary passthrough (segments, etc.) ───
     const respHeaders = new Headers(corsHeaders);
-    respHeaders.set("Content-Type", contentType);
-
+    respHeaders.set("Content-Type", contentType || "application/octet-stream");
     const cr = response.headers.get("content-range");
     if (cr) respHeaders.set("Content-Range", cr);
-
-    // Cache segments for longer
     respHeaders.set("Cache-Control", "public, max-age=3600");
 
-    // FIX 2: I-buffer nang buo ang .ts chunk para laging may eksaktong "Content-Length" at hindi mag-hang sa Capacitor Android
     const segmentData = await response.arrayBuffer();
     respHeaders.set("Content-Length", segmentData.byteLength.toString());
 
-    return new Response(segmentData, {
-      status: response.status,
-      headers: respHeaders,
-    });
+    return new Response(segmentData, { status: response.status, headers: respHeaders });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[stream-proxy] Error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
