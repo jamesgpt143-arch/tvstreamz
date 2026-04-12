@@ -1,16 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, range, referer, origin, x-requested-with, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, if-range, if-modified-since, if-none-match, x-supabase-auth",
-  "Access-Control-Expose-Headers":
-    "Content-Length, Content-Range, Content-Type, Accept-Ranges",
-  "Access-Control-Max-Age": "86400",
-  "Vary": "Origin",
-  "Accept-Ranges": "bytes",
-};
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, range, referer, origin, x-requested-with, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, if-range, if-modified-since, if-none-match, x-supabase-auth, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
+    "Access-Control-Expose-Headers":
+      "Content-Length, Content-Range, Content-Type, Accept-Ranges",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+    "Accept-Ranges": "bytes",
+  };
+}
 
 const DEFAULT_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -167,6 +170,7 @@ function rewriteDASH(
 // ─── Main Handler ───
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -205,6 +209,18 @@ serve(async (req) => {
     }
 
     const upstreamHeaders = buildUpstreamHeaders(req, params);
+
+    // ─── HEAD: Metadata check ───
+    if (req.method === "HEAD") {
+      const resp = await fetch(targetUrl, { method: "HEAD", headers: upstreamHeaders });
+      const headHeaders = new Headers(corsHeaders);
+      resp.headers.forEach((v, k) => {
+        if (!k.toLowerCase().startsWith("access-control-")) {
+          headHeaders.set(k, v);
+        }
+      });
+      return new Response(null, { status: resp.status, headers: headHeaders });
+    }
 
     // ─── POST: DRM License Proxy ───
     if (req.method === "POST") {
