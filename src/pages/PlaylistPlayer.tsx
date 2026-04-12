@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/channels";
+import { getIptvConfig } from "@/lib/siteSettings";
 
 interface M3UChannel extends Channel {
   group?: string;
@@ -63,10 +64,9 @@ const PlaylistPlayer = () => {
 
   useEffect(() => {
     const fetchLogoProxy = async () => {
-      const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
-      if (data?.value) {
-        const conf = data.value as any;
-        setLogoProxyUrl(conf.cloudflare_proxy_url || conf.supabase_proxy_url || "");
+      const config = await getIptvConfig();
+      if (config) {
+        setLogoProxyUrl(config.cloudflare_proxy_url || config.supabase_proxy_url || "");
       }
     };
     fetchLogoProxy();

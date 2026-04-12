@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getIptvConfig } from '@/lib/siteSettings';
 import { getProxiedLogoUrl } from '@/components/LivePlayer';
 
 export const useProxyLogo = () => {
@@ -7,15 +7,9 @@ export const useProxyLogo = () => {
 
   useEffect(() => {
     const fetchProxy = async () => {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'iptv_config')
-        .maybeSingle();
-      
-      if (data?.value) {
-        const conf = data.value as any;
-        setProxyUrl(conf.cloudflare_proxy_url || conf.supabase_proxy_url || '');
+      const config = await getIptvConfig();
+      if (config) {
+        setProxyUrl(config.cloudflare_proxy_url || config.supabase_proxy_url || '');
       }
     };
     fetchProxy();

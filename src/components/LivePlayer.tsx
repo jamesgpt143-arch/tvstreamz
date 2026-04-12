@@ -6,18 +6,34 @@ import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
+import { getIptvConfig } from '@/lib/siteSettings';
 
 const badProxiesCache = new Map<string, number>(); // format: "channelId:proxyUrl" -> timestamp
-const PROXY_TIMEOUT_MS = 5 * 60 * 1000; // Reduced to 5 minutes for IPTV sensitivity
+const PROXY_TIMEOUT_MS = 5 * 60 * 1000; 
+
+const getStoredProxy = (channelId: string): string | null => {
+  try {
+    return localStorage.getItem(`tvstreamz_best_proxy_${channelId}`);
+  } catch {
+    return null;
+  }
+};
+
+const setStoredProxy = (channelId: string, proxyUrl: string) => {
+  try {
+    if (proxyUrl) {
+      localStorage.setItem(`tvstreamz_best_proxy_${channelId}`, proxyUrl);
+    } else {
+      localStorage.removeItem(`tvstreamz_best_proxy_${channelId}`);
+    }
+  } catch (e) {
+    console.warn('Failed to save proxy to localStorage', e);
+  }
+};
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
-    const { data } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'iptv_config')
-      .single();
-    const config = data?.value as Record<string, string> | null;
+    const config = await getIptvConfig();
     const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
     return {
       primary: config?.[prefix] || '',
@@ -288,7 +304,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         const testConnection = (proxy: string | null) => {
           return new Promise<string>(async (resolve, reject) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
             
             try {
               const testUrl = proxy === 'direct' 
@@ -353,16 +369,38 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
           } else if (isAuto) {
             // Auto-detect mode (M3U or Smart Proxy enabled)
-            const supabaseProxies = Object.values(sbProxies);
-            const racePromises = candidates.map(c => {
-              // Apply a 2000ms (2s) delay to Supabase proxies to strongly prioritize Cloudflare/Direct in auto mode
-              if (supabaseProxies.includes(c)) {
-                return new Promise(resolve => setTimeout(resolve, 2000)).then(() => testConnection(c));
-              }
-              return testConnection(c);
-            });
+            const cachedProxy = getStoredProxy(channel.id);
+            let selectionSuccessful = false;
 
-            activeProxyUrl = await (Promise as any).any(racePromises);
+            // Step A: Try Cached Proxy Immediately (if valid and not in bad cache)
+            if (cachedProxy && candidates.includes(cachedProxy)) {
+              if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
+              try {
+                activeProxyUrl = await testConnection(cachedProxy);
+                selectionSuccessful = true;
+              } catch (e) {
+                console.warn('[Cache] Cached proxy failed, falling back to race', e);
+                setStoredProxy(channel.id, ''); // Clear bad cache
+              }
+            }
+
+            // Step B: Full Race Fallback
+            if (!selectionSuccessful) {
+              if (isMounted) onProxyChange?.('Finding best connection...');
+              const supabaseProxies = Object.values(sbProxies);
+              const racePromises = candidates.map(c => {
+                // In fallback mode, we remove the 2s delay for Supabase to find a replacement faster
+                return testConnection(c);
+              });
+
+              activeProxyUrl = await (Promise as any).any(racePromises);
+              
+              // Only save if it's not 'direct' (to avoid caching local failures as direct)
+              if (activeProxyUrl && activeProxyUrl !== 'direct') {
+                setStoredProxy(channel.id, activeProxyUrl);
+              }
+            }
+
             if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
             
             if (activeProxyUrl === 'direct') {
