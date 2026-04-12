@@ -14,7 +14,6 @@ import WatchEvent from "./pages/WatchEvent";
 import Watch from "./pages/Watch";
 import Search from "./pages/Search";
 import MyList from "./pages/MyList";
-import ContinueWatching from "./pages/ContinueWatching";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import Manga from "./pages/Manga";
@@ -168,7 +167,6 @@ const App = () => {
                   <Route path="/watch/:type/:id" element={<Watch />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/my-list" element={<MyList />} />
-                  <Route path="/continue-watching" element={<ContinueWatching />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/iptv" element={<IPTV />} />

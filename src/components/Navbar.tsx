@@ -7,9 +7,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
 import { SearchSuggestions } from './SearchSuggestions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-// BAGO: Gumamit ng useUserPreferences hook imbes na getMyList
 import { useUserPreferences } from '@/hooks/useUserPreferences';
-import { getContinueWatching } from '@/lib/continueWatching';
 
 export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -18,7 +16,6 @@ export const Navbar = () => {
   
   // BAGO: Kukunin ang bilang direkta sa hook para laging updated
   const { myList } = useUserPreferences();
-  const [continueWatchingCount, setContinueWatchingCount] = useState(0);
   
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -61,7 +58,6 @@ export const Navbar = () => {
   useEffect(() => {
     if (isMenuOpen) {
       // BAGO: Tinanggal ang setMyListCount dito dahil matik na yan sa hook
-      setContinueWatchingCount(getContinueWatching().length);
     }
   }, [isMenuOpen]);
 
@@ -208,19 +204,6 @@ export const Navbar = () => {
                         <div>
                           <p className="font-black text-xs uppercase tracking-widest">Playlist Player</p>
                           <p className="text-[10px] text-zinc-500">M3U & DRM Player</p>
-                        </div>
-                      </div>
-                    </Link>
-
-                    <Link to="/continue-watching" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
-
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Clock className="w-5 h-5 text-accent" />
-                        </div>
-                        <div>
-                          <p className="font-black text-xs uppercase tracking-widest">History</p>
-                          <p className="text-[10px] text-zinc-500">{continueWatchingCount} items</p>
                         </div>
                       </div>
                     </Link>

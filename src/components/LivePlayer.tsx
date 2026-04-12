@@ -7,8 +7,8 @@ import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 
-const badProxiesCache = new Map<string, number>();
-const PROXY_TIMEOUT_MS = 10 * 60 * 1000;
+const badProxiesCache = new Map<string, number>(); // format: "channelId:proxyUrl" -> timestamp
+const PROXY_TIMEOUT_MS = 5 * 60 * 1000; // Reduced to 5 minutes for IPTV sensitivity
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
@@ -63,6 +63,20 @@ const isIOS = (): boolean => {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+export const getProxiedLogoUrl = (logo?: string, proxyBase?: string) => {
+  if (!logo) return '';
+  if (logo.startsWith('https://')) return logo;
+  if (!proxyBase) return logo; // Fallback to original if no proxy available
+  
+  try {
+    const url = new URL(proxyBase);
+    url.searchParams.set('url', logo);
+    return url.toString();
+  } catch {
+    return logo;
+  }
+};
+
 interface LivePlayerProps {
   channel: Channel;
   onStatusChange?: (isOnline: boolean) => void;
@@ -83,6 +97,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   const [currentLevel, setCurrentLevel] = useState(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const proxyLabelMapRef = useRef<Map<string, string>>(new Map());
+  const shakaLoadingRef = useRef<boolean>(false);
+  const currentBestProxyRef = useRef<string>('');
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -159,20 +175,38 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
       
+      if (shakaLoadingRef.current) return;
+      shakaLoadingRef.current = true;
+      
       setIsLoading(true);
       setError(null);
       if (reloadTrigger > 0) setIsRefreshing(true);
 
-      if (uiRef.current) { await uiRef.current.destroy(); uiRef.current = null; }
-      if (shakaRef.current) { await shakaRef.current.destroy(); shakaRef.current = null; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      try {
+        if (uiRef.current) { 
+          const oldUi = uiRef.current;
+          uiRef.current = null;
+          await oldUi.destroy(); 
+        }
+        if (shakaRef.current) { 
+          const oldPlayer = shakaRef.current;
+          shakaRef.current = null;
+          await oldPlayer.destroy(); 
+        }
+        if (hlsRef.current) { 
+          const oldHls = hlsRef.current;
+          hlsRef.current = null;
+          oldHls.destroy(); 
+        }
+      } catch (e) {
+        console.warn('Error destroying old player instances', e);
+      }
 
       try {
-        const proxyUrls = channel.useProxy ? await getProxyUrls(channel.proxyType || 'cloudflare') : { primary: '', backup: '', backup2: '', backup3: '', backup4: '', backup5: '', backup6: '' };
-        const orderedProxies = channel.useProxy ? pickBestProxy(proxyUrls, channel.proxyOrder) : [];
-        
+        // Universal Auto-Detect Logic
         let streamUrl = channel.manifestUri;
         
+        // 1. Resolve TVApp Slugs if needed
         if (channel.tvappSlug) {
           try {
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -189,78 +223,166 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           }
         }
 
-        const labelMap = new Map<string, string>();
-        if (proxyUrls.primary) labelMap.set(proxyUrls.primary, 'Primary');
-        if (proxyUrls.backup) labelMap.set(proxyUrls.backup, 'Backup 1');
-        if (proxyUrls.backup2) labelMap.set(proxyUrls.backup2, 'Backup 2');
-        if (proxyUrls.backup3) labelMap.set(proxyUrls.backup3, 'Backup 3');
-        if (proxyUrls.backup4) labelMap.set(proxyUrls.backup4, 'Backup 4');
-        if (proxyUrls.backup5) labelMap.set(proxyUrls.backup5, 'Backup 5');
-        if (proxyUrls.backup6) labelMap.set(proxyUrls.backup6, 'Backup 6');
-        proxyLabelMapRef.current = labelMap;
+        const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
+        const targetUA = channel.userAgent || defaultUA;
 
-        let activeProxyUrl = '';
+        // 2. Gather All Potential Proxies (Respect Admin Settings)
+        const isStrict = channel.proxyType && channel.proxyType !== 'none';
+        const isAuto = !isStrict && channel.useProxy;
+        
+        let cfProxies = {};
+        let sbProxies = {};
 
-        if (channel.useProxy && orderedProxies.length > 0) {
-          const proxiesToTest = orderedProxies.filter(testProxy => {
-            if (badProxiesCache.has(testProxy)) {
-              if (Date.now() - badProxiesCache.get(testProxy)! < PROXY_TIMEOUT_MS) {
-                console.log(`[Proxy Fast-Skip] Nilaktawan ang ${labelMap.get(testProxy)} dahil limit/sira ito.`);
-                return false; 
-              } else {
-                badProxiesCache.delete(testProxy);
-              }
-            }
-            return true;
-          });
-
-          if (proxiesToTest.length > 0) {
-            if (isMounted) onProxyChange?.('Finding fastest proxy...');
-
-            try {
-              const proxyPromises = proxiesToTest.map(testProxy => {
-                return new Promise<string>(async (resolve, reject) => {
-                  const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 3500);
-                  
-                  try {
-                    const testUrl = buildProxiedUrl(testProxy, streamUrl, channel.userAgent, channel.referrer);
-                    const res = await fetch(testUrl, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    
-                    if (res.ok) {
-                      resolve(testProxy);
-                    } else {
-                      if (res.status === 429 || res.status >= 500) {
-                         badProxiesCache.set(testProxy, Date.now());
-                      }
-                      reject(new Error(`Status ${res.status}`));
-                    }
-                  } catch (err) {
-                    clearTimeout(timeoutId);
-                    badProxiesCache.set(testProxy, Date.now());
-                    reject(err);
-                  }
-                });
-              });
-
-              activeProxyUrl = await (Promise as any).any(proxyPromises);
-              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Working Proxy');
-              
-            } catch (err) {
-              console.warn('[Proxy Race] Lahat ng proxy na ni-check ay bagsak.');
-            }
+        if (isStrict) {
+          if (channel.proxyType === 'cloudflare') {
+            cfProxies = await getProxyUrls('cloudflare').catch(() => ({}));
+          } else if (channel.proxyType === 'supabase') {
+            sbProxies = await getProxyUrls('supabase').catch(() => ({}));
           }
-
-          if (!activeProxyUrl) {
-             activeProxyUrl = orderedProxies[0];
-             if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Primary (Fallback)');
-          }
-        } else {
-          if (isMounted && !channel.useProxy) onProxyChange?.('Direct');
+        } else if (isAuto) {
+          // Universal Auto-Detect (M3U or No Strict Provider)
+          const [cf, sb] = await Promise.all([
+            getProxyUrls('cloudflare').catch(() => ({})),
+            getProxyUrls('supabase').catch(() => ({}))
+          ]);
+          cfProxies = cf;
+          sbProxies = sb;
         }
 
+        // Deduplicate and Order Candidates
+        let providerProxies: string[] = [];
+        const combinedMap = { ...cfProxies, ...sbProxies } as Record<string, string>;
+        
+        if (isStrict && channel.proxyOrder && channel.proxyOrder.length > 0) {
+          // Strictly follow admin's priority order
+          providerProxies = channel.proxyOrder
+            .map(key => combinedMap[key])
+            .filter(p => p && typeof p === 'string');
+        } else {
+          providerProxies = Array.from(new Set([
+            ...Object.values(cfProxies),
+            ...Object.values(sbProxies)
+          ].filter(p => p && typeof p === 'string'))) as string[];
+        }
+
+        const labelMap = new Map<string, string>();
+        labelMap.set('direct', 'Direct');
+        
+        providerProxies.forEach((p, idx) => {
+          if (Object.values(cfProxies).includes(p)) {
+            // Find key in cfProxies if possible for better label, else generic
+            const key = Object.keys(cfProxies).find(k => (cfProxies as any)[k] === p);
+            labelMap.set(p, key === 'main' ? 'Main Proxy' : (key ? `CF-${key}` : `Backup ${idx}`));
+          } else {
+            const key = Object.keys(sbProxies).find(k => (sbProxies as any)[k] === p);
+            labelMap.set(p, key === 'main' ? 'Supabase' : (key ? `SB-${key}` : `Worker ${idx}`));
+          }
+        });
+        proxyLabelMapRef.current = labelMap;
+
+        // 3. The Universal Race
+        if (isMounted) onProxyChange?.(isStrict ? `Using ${channel.proxyType}...` : 'Detecting best connection...');
+
+        let activeProxyUrl = '';
+        
+        const testConnection = (proxy: string | null) => {
+          return new Promise<string>(async (resolve, reject) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            try {
+              const testUrl = proxy === 'direct' 
+                ? streamUrl 
+                : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+              
+              const res = await fetch(testUrl, { 
+                signal: controller.signal,
+                mode: 'cors',
+                credentials: 'omit'
+              });
+              clearTimeout(timeoutId);
+              
+              if (res.ok || res.status === 402) {
+                resolve(proxy!);
+              } else {
+                if (proxy !== 'direct' && (res.status === 429 || res.status === 403 || res.status >= 500)) {
+                  badProxiesCache.set(`${channel.id}:${proxy!}`, Date.now());
+                }
+                reject(new Error(`Status ${res.status}`));
+              }
+            } catch (err) {
+              clearTimeout(timeoutId);
+              if (proxy !== 'direct' && proxy) badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
+              reject(err);
+            }
+          });
+        };
+
+        const candidates: string[] = [];
+        const isPageHttps = window.location.protocol === 'https:';
+        const isStreamHttp = streamUrl.startsWith('http:');
+        const needsProxyForMixedContent = isPageHttps && isStreamHttp;
+
+        // Direct only allowed if NOT strictly using a provider, UNLESS it's the ONLY option
+        if (!needsProxyForMixedContent && !isStrict) {
+          candidates.push('direct');
+        }
+
+        candidates.push(...providerProxies.filter(p => {
+          const cacheKey = `${channel.id}:${p}`;
+          if (badProxiesCache.has(cacheKey)) {
+            if (Date.now() - badProxiesCache.get(cacheKey)! < PROXY_TIMEOUT_MS) return false;
+            badProxiesCache.delete(cacheKey);
+          }
+          return true;
+        }));
+        
+        if (candidates.length === 0 && needsProxyForMixedContent) {
+          setError("This channel requires HTTPS but only provides HTTP. No proxy is available.");
+          setIsLoading(false);
+          return;
+        }
+
+        // 4. Selection (Strict vs Auto)
+        try {
+          if (isStrict) {
+            // Strictly and immediately use the first candidate (already prioritized by admin)
+            activeProxyUrl = candidates[0] || '';
+            if (activeProxyUrl === 'direct') activeProxyUrl = '';
+            
+            if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
+          } else if (isAuto) {
+            // Auto-detect mode (M3U or Smart Proxy enabled)
+            const supabaseProxies = Object.values(sbProxies);
+            const racePromises = candidates.map(c => {
+              // Apply a 2000ms (2s) delay to Supabase proxies to strongly prioritize Cloudflare/Direct in auto mode
+              if (supabaseProxies.includes(c)) {
+                return new Promise(resolve => setTimeout(resolve, 2000)).then(() => testConnection(c));
+              }
+              return testConnection(c);
+            });
+
+            activeProxyUrl = await (Promise as any).any(racePromises);
+            if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
+            
+            if (activeProxyUrl === 'direct') {
+              activeProxyUrl = ''; // Player expects empty for direct
+            }
+          } else {
+            // Direct mode
+            activeProxyUrl = '';
+            if (isMounted) onProxyChange?.('Direct');
+          }
+        } catch (err) {
+          console.warn('[Connection] Failed to select proxy. Using fallback.');
+          activeProxyUrl = ''; 
+          if (isMounted) onProxyChange?.('Fallback');
+        }
+
+        currentBestProxyRef.current = activeProxyUrl || combinedMap.primary || '';
+
         const proxyUrl = activeProxyUrl;
+        const currentUA = targetUA;
 
         // SHARED SHAKA PROXY CONFIG (Ginagamit ng MPD at HLS-Widevine)
         const configureShakaProxy = (player: shaka.Player, proxyToUse: string) => {
@@ -283,7 +405,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (url.includes('?url=') || url.includes('&url=')) return;
             
             if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
               return;
             }
 
@@ -298,7 +420,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, channel.userAgent, channel.referrer);
               return;
             }
-            request.uris[0] = buildProxiedUrl(proxyToUse, url, channel.userAgent, channel.referrer);
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
           });
         };
 
@@ -370,9 +492,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                        relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
                        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
                        const fullOriginalUrl = manifestBase + relativePath;
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, channel.userAgent, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, channel.referrer), true);
                     } else if (url.startsWith('http')) {
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, channel.userAgent, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, channel.referrer), true);
                     }
                   }
                 }
@@ -391,16 +513,16 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 }
               });
               
-              let currentProxyIndex = orderedProxies.indexOf(proxyUrl);
+              let currentProxyIndex = candidates.indexOf(proxyUrl || 'direct');
               if (currentProxyIndex === -1) currentProxyIndex = 0;
 
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
                   currentProxyIndex++;
-                  if (currentProxyIndex < orderedProxies.length) {
-                    const nextProxy = orderedProxies[currentProxyIndex];
+                  if (currentProxyIndex < candidates.length) {
+                    const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
                   
@@ -448,14 +570,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             let dashRecovered = false;
-            let startIndex = orderedProxies.indexOf(proxyUrl);
+            let startIndex = candidates.indexOf(proxyUrl || 'direct');
             if (startIndex === -1) startIndex = 0;
 
-            for (let i = startIndex + 1; i < orderedProxies.length; i++) {
-              const fallbackProxy = orderedProxies[i];
-              configureShakaProxy(player, fallbackProxy);
+            for (let i = startIndex + 1; i < candidates.length; i++) {
+              const fallbackProxy = candidates[i];
+              const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
+              configureShakaProxy(player, finalFallback);
               try {
-                await player.load(buildProxiedUrl(fallbackProxy, streamUrl, channel.userAgent, channel.referrer));
+                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
@@ -496,13 +619,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
       }
     };
 
-    loadPlayer();
+    loadPlayer().finally(() => {
+      shakaLoadingRef.current = false;
+    });
 
     return () => {
       isMounted = false;
-      if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
-      if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   }, [channel, reloadTrigger]);
 

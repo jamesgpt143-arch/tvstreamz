@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Channel } from '@/lib/channels';
+import { useProxyLogo } from '@/hooks/useProxyLogo';
 
 interface ChannelCardProps {
   channel: Channel;
 }
 
 export const ChannelCard = ({ channel }: ChannelCardProps) => {
+  const { proxyLogo } = useProxyLogo();
   return (
     <Link
       to={`/live/${channel.id}`}
@@ -13,7 +15,7 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
     >
       <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 transition-all duration-300 group-hover:scale-105 group-hover:border-primary/50 group-hover:shadow-lg group-hover:shadow-primary/10">
         <img
-          src={channel.logo}
+          src={proxyLogo(channel.logo)}
           alt={channel.name}
           className="w-full h-full object-contain p-5 transition-transform duration-500 group-hover:scale-110"
           loading="lazy"

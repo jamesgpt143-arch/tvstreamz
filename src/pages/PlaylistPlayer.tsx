@@ -1,13 +1,14 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+   import { useState, useMemo, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
-import { LivePlayer } from "@/components/LivePlayer";
+import { LivePlayer, getProxiedLogoUrl } from "@/components/LivePlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { ShareButton } from "@/components/ShareButton";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   Loader2, 
   Upload, 
@@ -15,20 +16,26 @@ import {
   Search, 
   Tv, 
   ListMusic, 
-  FileJson, 
-  PlayCircle,
-  XCircle,
   FileCode2,
   RefreshCcw,
   Play,
-  Share2,
-  ShieldCheck
+  XCircle,
+  Star,
+  Trash2,
+  History,
+  Save
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/channels";
 
 interface M3UChannel extends Channel {
   group?: string;
+}
+
+interface SavedPlaylist {
+  id: string;
+  name: string;
+  url: string;
 }
 
 const PlaylistPlayer = () => {
@@ -39,12 +46,82 @@ const PlaylistPlayer = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [activeChannel, setActiveChannel] = useState<M3UChannel | null>(null);
   
-  // Proxy States
-  const [useProxy, setUseProxy] = useState(true);
-  const [proxyType, setProxyType] = useState("cloudflare");
-  const [playerKey, setPlayerKey] = useState(0);
+  // Sync States
+  const [user, setUser] = useState<any>(null);
+  const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [isLoadingSync, setIsLoadingSync] = useState(false);
 
-  // M3U Parsing Logic
+  // Save Modal State
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [saveTargetUrl, setSaveTargetUrl] = useState("");
+
+  // Proxy State
+  const [playerKey, setPlayerKey] = useState(0);
+  const [logoProxyUrl, setLogoProxyUrl] = useState("");
+
+  useEffect(() => {
+    const fetchLogoProxy = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
+      if (data?.value) {
+        const conf = data.value as any;
+        setLogoProxyUrl(conf.cloudflare_proxy_url || conf.supabase_proxy_url || "");
+      }
+    };
+    fetchLogoProxy();
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        fetchSavedData(user.id);
+      }
+      
+      const lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
+      if (lastUrl) {
+        fetchFromUrl(lastUrl, true);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const fetchSavedData = async (userId: string) => {
+    setIsLoadingSync(true);
+    try {
+      const { data: playlists } = await supabase
+        .from('user_playlists')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (playlists) setSavedPlaylists(playlists);
+
+      const { data: favs } = await supabase
+        .from('playlist_favorites')
+        .select('url');
+      
+      if (favs) {
+        setFavorites(new Set(favs.map(f => f.url)));
+      }
+    } catch (err) {
+      console.error("Error fetching sync data:", err);
+    } finally {
+      setIsLoadingSync(false);
+    }
+  };
+
+  const handleChannelSelect = async (ch: M3UChannel) => {
+    setActiveChannel(null);
+    // Auto-delay to ensure player remounts correctly
+    setTimeout(() => {
+      setActiveChannel(ch);
+      localStorage.setItem("tvstreamz_last_channel_id", ch.id);
+    }, 50);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const parseM3U = useCallback((content: string) => {
     const lines = content.split('\n');
     const parsedChannels: M3UChannel[] = [];
@@ -55,19 +132,16 @@ const PlaylistPlayer = () => {
       if (!line) continue;
 
       if (line.startsWith('#EXTINF:')) {
-        // Extract attributes from the line
         const logoMatch = line.match(/tvg-logo="([^"]+)"/);
         if (logoMatch) currentChannel.logo = logoMatch[1];
         
         const groupMatch = line.match(/group-title="([^"]+)"/);
-        if (groupMatch) currentChannel.group = groupMatch[1];
+        if (groupMatch) currentChannel.group = groupMatch[1].trim();
 
-        // Extract the display name (everything after the last comma)
         const commaIndex = line.lastIndexOf(',');
         if (commaIndex !== -1) {
           currentChannel.name = line.substring(commaIndex + 1).trim();
         } else {
-          // Fallback if no comma: try to strip known tags
           const infoMatch = line.match(/#EXTINF:[-0-9]*,?(.*)/);
           if (infoMatch) {
             currentChannel.name = infoMatch[1].replace(/tvg-logo="[^"]*"/g, '')
@@ -103,7 +177,9 @@ const PlaylistPlayer = () => {
         }
       } else if (line.startsWith('http')) {
         currentChannel.manifestUri = line;
-        currentChannel.id = `m3u-${Math.random().toString(36).substring(2, 11)}`;
+        const targetName = currentChannel.name || "";
+        const targetGroup = currentChannel.group || "";
+        currentChannel.id = btoa(unescape(encodeURIComponent(targetName + line + targetGroup))).substring(0, 16);
         if (!currentChannel.type) {
           const lowerUri = line.toLowerCase();
           if (lowerUri.includes('.mpd')) {
@@ -118,14 +194,13 @@ const PlaylistPlayer = () => {
         }
         if (!currentChannel.name) currentChannel.name = "Unknown Channel";
         
-        currentChannel.useProxy = useProxy;
-        currentChannel.proxyType = proxyType;
+        currentChannel.useProxy = true; // Always enable smart proxy race
         parsedChannels.push(currentChannel as M3UChannel);
         currentChannel = {};
       }
     }
     return parsedChannels;
-  }, [useProxy, proxyType]);
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,9 +209,12 @@ const PlaylistPlayer = () => {
     reader.onload = (event) => {
       const content = event.target?.result as string;
       setIsParsing(true);
+      setChannels([]);
       try {
         const parsed = parseM3U(content);
         setChannels(parsed);
+        setSelectedGroup("all");
+        setSearchQuery("");
         toast.success(`Loaded ${parsed.length} channels`);
       } catch (err) {
         toast.error("Failed to parse M3U file");
@@ -147,37 +225,125 @@ const PlaylistPlayer = () => {
     reader.readAsText(file);
   };
 
-  const fetchFromUrl = async () => {
-    if (!playlistUrl) return toast.error("Please enter a URL");
+  const fetchFromUrl = async (url?: string, quiet = false) => {
+    const targetUrl = url || playlistUrl;
+    if (!targetUrl) return quiet ? null : toast.error("Please enter a URL");
     setIsParsing(true);
-    setChannels([]);
+    if (!quiet) setChannels([]);
     try {
-      const response = await fetch(playlistUrl);
+      const response = await fetch(targetUrl);
       if (!response.ok) throw new Error("Fetch failed");
       const content = await response.text();
       const parsed = parseM3U(content);
       setChannels(parsed);
-      toast.success(`Loaded ${parsed.length} channels from URL`);
+      setSelectedGroup("all");
+      setSearchQuery("");
+      
+      if (!url) setPlaylistUrl("");
+      localStorage.setItem("tvstreamz_last_m3u_url", targetUrl);
+      
+      const lastChanId = localStorage.getItem("tvstreamz_last_channel_id");
+      if (lastChanId) {
+        const chan = parsed.find(c => c.id === lastChanId);
+        if (chan) {
+          setActiveChannel(chan);
+        }
+      }
+
+      if (!quiet) toast.success(`Loaded ${parsed.length} channels from URL`);
     } catch (err) {
-      toast.error("Fetch failed. Please try uploading the M3U file directly.");
+      if (!quiet) toast.error("Fetch failed. Please try uploading the M3U file directly.");
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const openSaveDialog = () => {
+    if (!user) return toast.error("Please login to save playlists");
+    if (!playlistUrl) return toast.error("Enter a URL to save first");
+    setSaveTargetUrl(playlistUrl);
+    setCustomName(playlistUrl.split('/').pop()?.split('?')[0] || "My Playlist");
+    setIsSaveModalOpen(true);
+  };
+
+  const savePlaylist = async () => {
+    if (!customName || !saveTargetUrl) return toast.error("Please fill in all fields");
+    
+    try {
+      const { error } = await supabase.from('user_playlists').insert({
+        user_id: user.id,
+        name: customName,
+        url: saveTargetUrl
+      });
+      
+      if (error) throw error;
+      toast.success("Playlist saved!");
+      fetchSavedData(user.id);
+      setIsSaveModalOpen(false);
+    } catch (err) {
+      toast.error("Failed to save playlist");
+    }
+  };
+
+  const deletePlaylist = async (id: string) => {
+    try {
+      const { error } = await supabase.from('user_playlists').delete().eq('id', id);
+      if (error) throw error;
+      setSavedPlaylists(prev => prev.filter(p => p.id !== id));
+      toast.success("Playlist removed");
+    } catch (err) {
+      toast.error("Failed to delete playlist");
+    }
+  };
+
+  const toggleFavorite = async (ch: M3UChannel) => {
+    if (!user) return toast.error("Please login to use favorites");
+    
+    const isFav = favorites.has(ch.manifestUri);
+    try {
+      if (isFav) {
+        await supabase.from('playlist_favorites').delete().eq('url', ch.manifestUri);
+        const newFavs = new Set(favorites);
+        newFavs.delete(ch.manifestUri);
+        setFavorites(newFavs);
+        toast.success("Removed from favorites");
+      } else {
+        await supabase.from('playlist_favorites').insert({
+          user_id: user.id,
+          name: ch.name || "Unknown",
+          url: ch.manifestUri,
+          logo: ch.logo,
+          group_name: ch.group
+        });
+        const newFavs = new Set(favorites);
+        newFavs.add(ch.manifestUri);
+        setFavorites(newFavs);
+        toast.success("Added to favorites");
+      }
+    } catch (err) {
+      toast.error("Action failed");
     }
   };
 
   const filteredChannels = useMemo(() => {
     return channels.filter(ch => {
       const matchesSearch = !searchQuery || ch.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesGroup = selectedGroup === "all" || ch.group === selectedGroup;
+      const matchesGroup = 
+        selectedGroup === "all" || 
+        (selectedGroup === "favorites" && favorites.has(ch.manifestUri)) ||
+        ch.group === selectedGroup;
+      
       return matchesSearch && matchesGroup;
     });
-  }, [channels, searchQuery, selectedGroup]);
+  }, [channels, searchQuery, selectedGroup, favorites]);
 
   const groups = useMemo(() => {
     const g = new Set<string>();
     channels.forEach(ch => { if (ch.group) g.add(ch.group); });
-    return Array.from(g).sort();
-  }, [channels]);
+    const sortedGroups = Array.from(g).sort();
+    if (favorites.size > 0) return ["favorites", ...sortedGroups];
+    return sortedGroups;
+  }, [channels, favorites]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col pt-16 lg:pt-20">
@@ -187,36 +353,75 @@ const PlaylistPlayer = () => {
         <div className="container mx-auto px-4">
           
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 pt-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <ListMusic className="w-5 h-5 text-primary" />
+          <div className="flex flex-col gap-4 mb-8 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                  <ListMusic className="w-5 h-5 text-orange-500" />
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase">Playlist Player</h1>
               </div>
-              <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold opacity-60">
-                {channels.length} items loaded from M3U
+              <p className="hidden md:block text-muted-foreground text-[10px] uppercase tracking-widest font-bold opacity-60">
+                {channels.length} items loaded {isParsing && "..."}
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
-               <div className="relative group">
-                  <input type="file" accept=".m3u,.m3u8" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                  <Button variant="outline" className="gap-2 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-xs">
-                    <Upload className="w-4 h-4" /> Upload M3U
-                  </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white/5 p-4 rounded-[2rem] border border-white/5">
+               <div className="flex gap-2">
+                 <div className="relative flex-1 group">
+                    <input type="file" accept=".m3u,.m3u8" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <Button variant="outline" className="w-full gap-2 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-[10px]">
+                      <Upload className="w-4 h-4" /> Upload M3U
+                    </Button>
+                 </div>
+                 
+                 {savedPlaylists.length > 0 && (
+                   <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
+                      <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
+                        <div className="flex items-center gap-2">
+                          <History className="w-4 h-4 text-orange-500" />
+                          <SelectValue placeholder="Saved" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedPlaylists.map(p => (
+                          <div key={p.id} className="flex items-center justify-between p-1">
+                            <SelectItem value={p.url} className="flex-1">
+                              {p.name}
+                            </SelectItem>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); deletePlaylist(p.id); }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                 )}
                </div>
+
                <div className="flex items-center gap-2">
-                  <Input 
-                    placeholder="or paste M3U URL..." 
-                    value={playlistUrl} 
-                    onChange={e => setPlaylistUrl(e.target.value)}
-                    className="h-12 bg-white/5 border-white/10 rounded-2xl w-48 lg:w-64"
-                  />
-                  <Button onClick={fetchFromUrl} variant="secondary" className="h-12 w-12 rounded-2xl p-0">
-                    <LinkIcon className="w-4 h-4" />
-                  </Button>
+                  <div className="relative flex-1">
+                    <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Input 
+                      placeholder="Paste M3U URL..." 
+                      value={playlistUrl} 
+                      onChange={e => setPlaylistUrl(e.target.value)}
+                      className="pl-11 h-12 bg-black/40 border-white/10 rounded-2xl w-full font-bold text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button onClick={() => fetchFromUrl()} variant="secondary" className="h-12 w-12 rounded-2xl p-0 bg-orange-500 hover:bg-orange-600 text-black shadow-lg shadow-orange-500/20" disabled={isParsing}>
+                      {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                    </Button>
+                    <Button onClick={openSaveDialog} variant="ghost" className="h-12 w-12 rounded-2xl p-0 border border-white/10 bg-white/5">
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </div>
                </div>
             </div>
           </div>
@@ -229,49 +434,45 @@ const PlaylistPlayer = () => {
                    <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
                          {activeChannel.logo ? (
-                            <img src={activeChannel.logo} alt="" className="w-full h-full object-contain p-1.5" />
+                            <img src={getProxiedLogoUrl(activeChannel.logo, logoProxyUrl)} alt="" className="w-full h-full object-contain p-1.5" />
                          ) : (
                             <Tv className="w-5 h-5 text-zinc-600" />
                          )}
                       </div>
-                      <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">{activeChannel.name}</h2>
+                      <div>
+                        <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">{activeChannel.name}</h2>
+                        <div className="flex items-center gap-2">
+                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{activeChannel.group || 'General'}</p>
+                        </div>
+                      </div>
                    </div>
-                   <Button variant="ghost" size="icon" onClick={() => setActiveChannel(null)} className="rounded-2xl hover:bg-white/5">
-                      <XCircle className="w-5 h-5" />
-                   </Button>
+                   <div className="flex items-center gap-2">
+                     <Button 
+                       variant="ghost" 
+                       size="icon" 
+                       onClick={() => toggleFavorite(activeChannel)} 
+                       className={`rounded-2xl transition-colors ${favorites.has(activeChannel.manifestUri) ? 'text-yellow-500 bg-yellow-500/10' : 'hover:bg-white/5'}`}
+                     >
+                       <Star className="w-5 h-5" fill={favorites.has(activeChannel.manifestUri) ? "currentColor" : "none"} />
+                     </Button>
+                     <Button variant="ghost" size="icon" onClick={() => { setActiveChannel(null); localStorage.removeItem("tvstreamz_last_channel_id"); }} className="rounded-2xl hover:bg-white/5">
+                        <XCircle className="w-5 h-5" />
+                     </Button>
+                   </div>
                 </div>
 
                 <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
-                  <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={{...activeChannel, useProxy, proxyType}} />
+                  <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={activeChannel} />
                 </div>
                 
                 <div className="mt-4 flex flex-col gap-4">
-                   <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                         <ShieldCheck className={`w-4 h-4 ${useProxy ? 'text-primary' : 'text-zinc-600'}`} />
-                         <span>Proxy: <span className={useProxy ? 'text-white' : ''}>{useProxy ? (proxyType === 'cloudflare' ? 'Main' : 'Backup') : 'OFF'}</span></span>
-                      </div>
+                   <div className="flex items-center justify-between w-full">
                       <ShareButton title={`Watch ${activeChannel.name} - Playlist Player`} />
-                   </div>
-                   
-                   <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 rounded-3xl border border-white/5">
-                      <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/40 border border-white/5">
-                         <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Enable Proxy</Label>
-                         <Switch checked={useProxy} onCheckedChange={setUseProxy} />
-                      </div>
-                      <Select value={proxyType} onValueChange={setProxyType}>
-                         <SelectTrigger className="w-40 h-10 border-white/5 bg-black/40 rounded-2xl text-[10px] uppercase font-black tracking-widest">
-                            <SelectValue />
-                         </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="cloudflare">Main Provider</SelectItem>
-                            <SelectItem value="supabase">Backup Provider</SelectItem>
-                         </SelectContent>
-                      </Select>
-                      <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-4">
-                         <RefreshCcw className="w-3 h-3" /> Reload
-                      </Button>
-                   </div>
+                      
+                       <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-6 bg-white/5 border border-white/5 hover:bg-white/10">
+                          <RefreshCcw className="w-3 h-3" /> Force Reload
+                       </Button>
+                    </div>
                 </div>
               </div>
             </div>
@@ -280,14 +481,18 @@ const PlaylistPlayer = () => {
                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                   <Play className="w-10 h-10 text-zinc-800" fill="currentColor" />
                </div>
-               <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">No Active Stream</h2>
+               <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">
+                  No Active Stream
+               </h2>
                <p className="text-muted-foreground text-sm max-w-sm uppercase tracking-widest font-bold opacity-40">Load a playlist and pick a channel to start watching</p>
             </div>
           )}
 
           {/* Channels Section */}
           <div className="space-y-8">
-            <h2 className="text-lg font-black uppercase tracking-widest ml-1">Playlist Content</h2>
+            <div className="flex items-center justify-between ml-1">
+               <h2 className="text-lg font-black uppercase tracking-widest">Playlist Content</h2>
+            </div>
             
             <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl sticky top-2 z-10 shadow-2xl">
                <div className="relative flex-1 min-w-[200px]">
@@ -299,56 +504,76 @@ const PlaylistPlayer = () => {
                     className="pl-11 h-12 bg-black/40 border-white/5 rounded-2xl font-bold"
                   />
                </div>
-               {groups.length > 0 && (
-                  <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                     <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
-                        <SelectValue placeholder="All Categories" />
-                     </SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {groups.map(g => (
-                           <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                     </SelectContent>
-                  </Select>
-               )}
+               <div className="flex items-center gap-2">
+                  {groups.length > 0 && (
+                     <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                        <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                           <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="all">All Categories</SelectItem>
+                           {groups.map(g => (
+                              <SelectItem key={g} value={g} className={g === 'favorites' ? 'text-yellow-500 font-bold' : ''}>
+                                {g === 'favorites' ? '⭐ Favorites' : g}
+                              </SelectItem>
+                           ))}
+                        </SelectContent>
+                     </Select>
+                  )}
+               </div>
             </div>
 
-            {/* Channel Grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+            <div 
+              key={`${selectedGroup}-${searchQuery}-${channels.length}`}
+              className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
+            >
                {filteredChannels.length > 0 ? (
-                 filteredChannels.map((ch) => (
-                    <button
-                      key={ch.id}
-                      onClick={() => { setActiveChannel(ch); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className={`group relative flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 border ${
-                        activeChannel?.id === ch.id 
-                        ? 'bg-primary border-primary' 
-                        : 'bg-zinc-900 border-white/5'
-                      }`}
-                    >
-                      <div className="aspect-square relative flex items-center justify-center p-4 sm:p-6 bg-black/20">
-                         {ch.logo ? (
-                            <img 
-                              src={ch.logo} 
-                              alt={ch.name} 
-                              className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
-                              loading="lazy"
-                            />
-                         ) : (
-                            <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
-                         )}
-                      </div>
+                 filteredChannels.map((ch) => {
+                    return (
+                    <div key={ch.id} className="group relative">
+                      <button
+                        onClick={() => handleChannelSelect(ch)}
+                        className={`w-full flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 border ${
+                          activeChannel?.id === ch.id 
+                          ? 'bg-primary border-primary shadow-lg shadow-primary/20' 
+                          : 'bg-zinc-900 border-white/5'
+                        }`}
+                      >
+                        <div className="aspect-square w-full relative flex items-center justify-center p-4 sm:p-6 bg-black/20">
+                           {ch.logo ? (
+                              <img 
+                                src={getProxiedLogoUrl(ch.logo, logoProxyUrl)} 
+                                alt={ch.name} 
+                                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
+                                loading="lazy"
+                              />
+                           ) : (
+                              <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
+                           )}
+                        </div>
+                        
+                        <div className="p-2 sm:p-3 bg-inherit w-full">
+                           <h3 className={`font-black text-[9px] sm:text-[10px] uppercase tracking-tight line-clamp-1 truncate text-center ${
+                             activeChannel?.id === ch.id ? 'text-black' : 'text-white'
+                           }`}>
+                             {ch.name}
+                           </h3>
+                        </div>
+                      </button>
                       
-                      <div className="p-2 sm:p-3 bg-inherit">
-                         <h3 className={`font-black text-[9px] sm:text-[10px] uppercase tracking-tight line-clamp-1 truncate text-center ${
-                           activeChannel?.id === ch.id ? 'text-black' : 'text-white'
-                         }`}>
-                           {ch.name}
-                         </h3>
-                      </div>
-                    </button>
-                 ))
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(ch); }}
+                        className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 z-10 ${
+                          favorites.has(ch.manifestUri) 
+                          ? 'bg-yellow-500 text-black scale-100 opacity-100 shadow-lg shadow-yellow-500/20' 
+                          : 'bg-black/40 text-white scale-75 opacity-0 group-hover:scale-100 group-hover:opacity-100'
+                        }`}
+                      >
+                        <Star className="w-3.5 h-3.5" fill={favorites.has(ch.manifestUri) ? "currentColor" : "none"} />
+                      </button>
+                    </div>
+                    );
+                 })
                ) : (
                   <div className="col-span-full py-20 bg-white/5 border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center text-center">
                      <FileCode2 className="w-16 h-16 text-white/5 mb-4" />
@@ -360,6 +585,48 @@ const PlaylistPlayer = () => {
           </div>
         </div>
       </main>
+
+      {/* Save Playlist Dialog */}
+      <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white rounded-[2rem] max-w-md">
+           <DialogHeader>
+              <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                 <Save className="w-6 h-6 text-primary" />
+                 Save Playlist
+              </DialogTitle>
+              <p className="sr-only">Enter a name for your playlist and save it to your account.</p>
+           </DialogHeader>
+           
+           <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">Playlist Name</Label>
+                 <Input 
+                   placeholder="e.g. My Favorite Sports" 
+                   value={customName}
+                   onChange={e => setCustomName(e.target.value)}
+                   className="h-12 bg-white/5 border-white/10 rounded-2xl font-bold"
+                 />
+              </div>
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">Playlist URL</Label>
+                 <Input 
+                   value={saveTargetUrl}
+                   readOnly
+                   className="h-12 bg-white/5 border-white/10 rounded-2xl font-bold opacity-60 text-xs"
+                 />
+              </div>
+           </div>
+
+           <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => setIsSaveModalOpen(false)} className="rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1">
+                 Cancel
+              </Button>
+              <Button onClick={savePlaylist} className="rounded-2xl font-black uppercase tracking-widest text-xs h-12 flex-1 shadow-lg shadow-primary/20">
+                 Save to Account
+              </Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

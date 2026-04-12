@@ -3,7 +3,6 @@ import gcashQr from '@/assets/gcash-qr.jpg';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Navbar } from '@/components/Navbar';
 import { HeroSection } from '@/components/HeroSection';
-import { ContinueWatchingRow } from '@/components/ContinueWatchingRow';
 import { ContentRow } from '@/components/ContentRow';
 import { ChannelCard } from '@/components/ChannelCard';
 import { RecommendationsRow } from '@/components/RecommendationsRow';
@@ -80,7 +79,6 @@ const Index = () => {
         <div className="relative -mt-12 z-20 pb-20">
           <div className="container mx-auto px-4 md:px-6">
             <div className="bg-zinc-950/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-4 md:p-8 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-              <ContinueWatchingRow />
               <RecommendationsRow />
               
               <ContentRow 
