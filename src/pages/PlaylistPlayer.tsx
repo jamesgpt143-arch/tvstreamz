@@ -461,7 +461,7 @@ const PlaylistPlayer = () => {
                 </div>
 
                 <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
-                  <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={{...activeChannel, useProxy: true}} />
+                  <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={activeChannel} />
                 </div>
                 
                 <div className="mt-4 flex flex-col gap-4">
