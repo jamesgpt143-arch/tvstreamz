@@ -319,9 +319,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             // Auto-detect mode (M3U or Smart Proxy enabled)
             const supabaseProxies = Object.values(sbProxies);
             const racePromises = candidates.map(c => {
-              // Apply delay to Supabase proxies to prioritize Cloudflare/Direct in auto mode
+              // Apply a 2000ms (2s) delay to Supabase proxies to strongly prioritize Cloudflare/Direct in auto mode
               if (supabaseProxies.includes(c)) {
-                return new Promise(resolve => setTimeout(resolve, 500)).then(() => testConnection(c));
+                return new Promise(resolve => setTimeout(resolve, 2000)).then(() => testConnection(c));
               }
               return testConnection(c);
             });
