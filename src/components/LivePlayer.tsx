@@ -262,9 +262,17 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           : ['direct'];
 
         try {
-          // If direct is possible (https -> https), we prioritize it by letting it race
-          // If we are on https and stream is http, Direct will likely fail immediately (Mixed Content)
-          activeProxyUrl = await (Promise as any).any(candidates.map(c => testConnection(c)));
+          // Priority-Staggered Race: Give Direct and Cloudflare a head start
+          const supabaseProxies = Object.values(sbProxies);
+          const racePromises = candidates.map(c => {
+            // Apply a 500ms delay to Supabase proxies to prioritize Cloudflare/Direct
+            if (supabaseProxies.includes(c)) {
+              return new Promise(resolve => setTimeout(resolve, 500)).then(() => testConnection(c));
+            }
+            return testConnection(c);
+          });
+
+          activeProxyUrl = await (Promise as any).any(racePromises);
           if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
           
           if (activeProxyUrl === 'direct') {
