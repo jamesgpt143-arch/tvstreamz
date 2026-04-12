@@ -408,16 +408,16 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 }
               });
               
-              let currentProxyIndex = orderedProxies.indexOf(proxyUrl);
+              let currentProxyIndex = candidates.indexOf(proxyUrl || 'direct');
               if (currentProxyIndex === -1) currentProxyIndex = 0;
 
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
                   currentProxyIndex++;
-                  if (currentProxyIndex < orderedProxies.length) {
-                    const nextProxy = orderedProxies[currentProxyIndex];
+                  if (currentProxyIndex < candidates.length) {
+                    const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, channel.userAgent, channel.referrer));
                     return;
                   }
                   
@@ -465,14 +465,15 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             let dashRecovered = false;
-            let startIndex = orderedProxies.indexOf(proxyUrl);
+            let startIndex = candidates.indexOf(proxyUrl || 'direct');
             if (startIndex === -1) startIndex = 0;
 
-            for (let i = startIndex + 1; i < orderedProxies.length; i++) {
-              const fallbackProxy = orderedProxies[i];
-              configureShakaProxy(player, fallbackProxy);
+            for (let i = startIndex + 1; i < candidates.length; i++) {
+              const fallbackProxy = candidates[i];
+              const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
+              configureShakaProxy(player, finalFallback);
               try {
-                await player.load(buildProxiedUrl(fallbackProxy, streamUrl, channel.userAgent, channel.referrer));
+                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
