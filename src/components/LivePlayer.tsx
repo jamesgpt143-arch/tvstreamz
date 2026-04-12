@@ -372,16 +372,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const cachedProxy = getStoredProxy(channel.id);
             let selectionSuccessful = false;
 
-            // Step A: Try Cached Proxy Immediately (if valid and not in bad cache)
+            // Step A: Try Cached Proxy Immediately (No testConnection delay)
             if (cachedProxy && candidates.includes(cachedProxy)) {
               if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
-              try {
-                activeProxyUrl = await testConnection(cachedProxy);
-                selectionSuccessful = true;
-              } catch (e) {
-                console.warn('[Cache] Cached proxy failed, falling back to race', e);
-                setStoredProxy(channel.id, ''); // Clear bad cache
-              }
+              activeProxyUrl = cachedProxy;
+              selectionSuccessful = true;
             }
 
             // Step B: Full Race Fallback
@@ -556,6 +551,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
+                  // If cached proxy failed, clear it and trigger a fresh race by forcing a refresh or trying next
+                  if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) {
+                    setStoredProxy(channel.id, '');
+                  }
+
                   currentProxyIndex++;
                   if (currentProxyIndex < candidates.length) {
                     const nextProxy = candidates[currentProxyIndex];
@@ -607,6 +607,11 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
+            // If cached proxy failed, clear it
+            if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) {
+              setStoredProxy(channel.id, '');
+            }
+
             let dashRecovered = false;
             let startIndex = candidates.indexOf(proxyUrl || 'direct');
             if (startIndex === -1) startIndex = 0;
