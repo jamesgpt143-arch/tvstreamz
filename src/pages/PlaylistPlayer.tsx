@@ -67,12 +67,8 @@ const PlaylistPlayer = () => {
   const [customName, setCustomName] = useState("");
   const [saveTargetUrl, setSaveTargetUrl] = useState("");
 
-<<<<<<< HEAD
-  // Proxy State (Always true for auto-selection)
-=======
   // Proxy States
   const [useProxy, setUseProxy] = useState(true);
->>>>>>> f5e3e5d08d8d9fbcacd20c6f44dd7884ca1e9394
   const [playerKey, setPlayerKey] = useState(0);
 
   useEffect(() => {
@@ -117,7 +113,6 @@ const PlaylistPlayer = () => {
 
 
 
-<<<<<<< HEAD
   const handleChannelSelect = async (ch: M3UChannel) => {
     setActiveChannel(null);
     // Auto-delay to ensure player remounts correctly
@@ -125,14 +120,6 @@ const PlaylistPlayer = () => {
       setActiveChannel(ch);
       localStorage.setItem("tvstreamz_last_channel_id", ch.id);
     }, 50);
-=======
-  // BAGONG HANDLE CHANNEL SELECT (Bypass para sa Brave Autoplay Block)
-  const handleChannelSelect = (ch: M3UChannel) => {
-    setActiveChannel(ch); // Play agad! WAG NANG I-NULL!
-    loadChannelSettings(ch); // Load settings in background, wag nang hintayin
-    addToWatchHistory(ch);
-    localStorage.setItem("tvstreamz_last_channel_id", ch.id);
->>>>>>> f5e3e5d08d8d9fbcacd20c6f44dd7884ca1e9394
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
