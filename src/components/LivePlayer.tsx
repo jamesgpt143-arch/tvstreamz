@@ -191,33 +191,62 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
-        // 2. Gather All Potential Proxies (Cloudflare + Supabase)
-        const [cfProxies, sbProxies] = await Promise.all([
-          getProxyUrls('cloudflare').catch(() => ({})),
-          getProxyUrls('supabase').catch(() => ({}))
-        ]);
+        // 2. Gather All Potential Proxies (Respect Admin Settings)
+        const isStrict = channel.proxyType && channel.proxyType !== 'none';
+        const isAuto = !isStrict && channel.useProxy;
+        
+        let cfProxies = {};
+        let sbProxies = {};
 
-        const allProxyCandidates = [
-          ...Object.values(cfProxies),
-          ...Object.values(sbProxies)
-        ].filter(p => p && typeof p === 'string');
+        if (isStrict) {
+          if (channel.proxyType === 'cloudflare') {
+            cfProxies = await getProxyUrls('cloudflare').catch(() => ({}));
+          } else if (channel.proxyType === 'supabase') {
+            sbProxies = await getProxyUrls('supabase').catch(() => ({}));
+          }
+        } else if (isAuto) {
+          // Universal Auto-Detect (M3U or No Strict Provider)
+          const [cf, sb] = await Promise.all([
+            getProxyUrls('cloudflare').catch(() => ({})),
+            getProxyUrls('supabase').catch(() => ({}))
+          ]);
+          cfProxies = cf;
+          sbProxies = sb;
+        }
 
-        // Deduplicate and label
-        const uniqueProxies = Array.from(new Set(allProxyCandidates));
+        // Deduplicate and Order Candidates
+        let providerProxies: string[] = [];
+        const combinedMap = { ...cfProxies, ...sbProxies } as Record<string, string>;
+        
+        if (isStrict && channel.proxyOrder && channel.proxyOrder.length > 0) {
+          // Strictly follow admin's priority order
+          providerProxies = channel.proxyOrder
+            .map(key => combinedMap[key])
+            .filter(p => p && typeof p === 'string');
+        } else {
+          providerProxies = Array.from(new Set([
+            ...Object.values(cfProxies),
+            ...Object.values(sbProxies)
+          ].filter(p => p && typeof p === 'string'))) as string[];
+        }
+
         const labelMap = new Map<string, string>();
         labelMap.set('direct', 'Direct');
         
-        uniqueProxies.forEach((p, idx) => {
+        providerProxies.forEach((p, idx) => {
           if (Object.values(cfProxies).includes(p)) {
-            labelMap.set(p, idx === 0 ? 'Main Proxy' : `Backup ${idx}`);
+            // Find key in cfProxies if possible for better label, else generic
+            const key = Object.keys(cfProxies).find(k => (cfProxies as any)[k] === p);
+            labelMap.set(p, key === 'main' ? 'Main Proxy' : (key ? `CF-${key}` : `Backup ${idx}`));
           } else {
-            labelMap.set(p, `Worker ${idx}`);
+            const key = Object.keys(sbProxies).find(k => (sbProxies as any)[k] === p);
+            labelMap.set(p, key === 'main' ? 'Supabase' : (key ? `SB-${key}` : `Worker ${idx}`));
           }
         });
         proxyLabelMapRef.current = labelMap;
 
         // 3. The Universal Race
-        if (isMounted) onProxyChange?.('Detecting best connection...');
+        if (isMounted) onProxyChange?.(isStrict ? `Using ${channel.proxyType}...` : 'Detecting best connection...');
 
         let activeProxyUrl = '';
         
@@ -259,44 +288,59 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         const isStreamHttp = streamUrl.startsWith('http:');
         const needsProxyForMixedContent = isPageHttps && isStreamHttp;
 
-        if (!needsProxyForMixedContent) {
+        // Direct only allowed if NOT strictly using a provider, UNLESS it's the ONLY option
+        if (!needsProxyForMixedContent && !isStrict) {
           candidates.push('direct');
         }
-        candidates.push(...uniqueProxies.filter(p => {
-              if (badProxiesCache.has(p)) {
-                if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
-                badProxiesCache.delete(p);
-              }
-              return true;
-            }));
+
+        candidates.push(...providerProxies.filter(p => {
+          if (badProxiesCache.has(p)) {
+            if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
+            badProxiesCache.delete(p);
+          }
+          return true;
+        }));
         
-        if (needsProxyForMixedContent && candidates.length === 0) {
+        if (candidates.length === 0 && needsProxyForMixedContent) {
           setError("This channel requires HTTPS but only provides HTTP. No proxy is available.");
           setIsLoading(false);
           return;
         }
 
+        // 4. Selection (Strict vs Auto)
         try {
-          // Priority-Staggered Race: Give Direct and Cloudflare a head start
-          const supabaseProxies = Object.values(sbProxies);
-          const racePromises = candidates.map(c => {
-            // Apply a 500ms delay to Supabase proxies to prioritize Cloudflare/Direct
-            if (supabaseProxies.includes(c)) {
-              return new Promise(resolve => setTimeout(resolve, 500)).then(() => testConnection(c));
-            }
-            return testConnection(c);
-          });
+          if (isStrict) {
+            // Strictly and immediately use the first candidate (already prioritized by admin)
+            activeProxyUrl = candidates[0] || '';
+            if (activeProxyUrl === 'direct') activeProxyUrl = '';
+            
+            if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
+          } else if (isAuto) {
+            // Auto-detect mode (M3U or Smart Proxy enabled)
+            const supabaseProxies = Object.values(sbProxies);
+            const racePromises = candidates.map(c => {
+              // Apply delay to Supabase proxies to prioritize Cloudflare/Direct in auto mode
+              if (supabaseProxies.includes(c)) {
+                return new Promise(resolve => setTimeout(resolve, 500)).then(() => testConnection(c));
+              }
+              return testConnection(c);
+            });
 
-          activeProxyUrl = await (Promise as any).any(racePromises);
-          if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
-          
-          if (activeProxyUrl === 'direct') {
-            activeProxyUrl = ''; // Player expects empty for direct
+            activeProxyUrl = await (Promise as any).any(racePromises);
+            if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl) || 'Connected');
+            
+            if (activeProxyUrl === 'direct') {
+              activeProxyUrl = ''; // Player expects empty for direct
+            }
+          } else {
+            // Direct mode
+            activeProxyUrl = '';
+            if (isMounted) onProxyChange?.('Direct');
           }
         } catch (err) {
-          console.warn('[Auto-Detect] Universal Race failed. Falling back to default.');
-          activeProxyUrl = ''; // Try direct anyway
-          if (isMounted) onProxyChange?.('Direct (Fallback)');
+          console.warn('[Connection] Failed to select proxy. Using fallback.');
+          activeProxyUrl = ''; 
+          if (isMounted) onProxyChange?.('Fallback');
         }
 
         const proxyUrl = activeProxyUrl;
