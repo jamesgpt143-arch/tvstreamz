@@ -7,8 +7,8 @@ import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 
-const badProxiesCache = new Map<string, number>();
-const PROXY_TIMEOUT_MS = 10 * 60 * 1000;
+const badProxiesCache = new Map<string, number>(); // format: "channelId:proxyUrl" -> timestamp
+const PROXY_TIMEOUT_MS = 5 * 60 * 1000; // Reduced to 5 minutes for IPTV sensitivity
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
@@ -63,6 +63,20 @@ const isIOS = (): boolean => {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+export const getProxiedLogoUrl = (logo?: string, proxyBase?: string) => {
+  if (!logo) return '';
+  if (logo.startsWith('https://')) return logo;
+  if (!proxyBase) return logo; // Fallback to original if no proxy available
+  
+  try {
+    const url = new URL(proxyBase);
+    url.searchParams.set('url', logo);
+    return url.toString();
+  } catch {
+    return logo;
+  }
+};
+
 interface LivePlayerProps {
   channel: Channel;
   onStatusChange?: (isOnline: boolean) => void;
@@ -83,6 +97,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   const [currentLevel, setCurrentLevel] = useState(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const proxyLabelMapRef = useRef<Map<string, string>>(new Map());
+  const shakaLoadingRef = useRef<boolean>(false);
+  const currentBestProxyRef = useRef<string>('');
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -159,13 +175,32 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     const loadPlayer = async () => {
       if (!videoRef.current || !containerRef.current) return;
       
+      if (shakaLoadingRef.current) return;
+      shakaLoadingRef.current = true;
+      
       setIsLoading(true);
       setError(null);
       if (reloadTrigger > 0) setIsRefreshing(true);
 
-      if (uiRef.current) { await uiRef.current.destroy(); uiRef.current = null; }
-      if (shakaRef.current) { await shakaRef.current.destroy(); shakaRef.current = null; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      try {
+        if (uiRef.current) { 
+          const oldUi = uiRef.current;
+          uiRef.current = null;
+          await oldUi.destroy(); 
+        }
+        if (shakaRef.current) { 
+          const oldPlayer = shakaRef.current;
+          shakaRef.current = null;
+          await oldPlayer.destroy(); 
+        }
+        if (hlsRef.current) { 
+          const oldHls = hlsRef.current;
+          hlsRef.current = null;
+          oldHls.destroy(); 
+        }
+      } catch (e) {
+        console.warn('Error destroying old player instances', e);
+      }
 
       try {
         // Universal Auto-Detect Logic
@@ -271,13 +306,13 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                 resolve(proxy!);
               } else {
                 if (proxy !== 'direct' && (res.status === 429 || res.status === 403 || res.status >= 500)) {
-                  badProxiesCache.set(proxy!, Date.now());
+                  badProxiesCache.set(`${channel.id}:${proxy!}`, Date.now());
                 }
                 reject(new Error(`Status ${res.status}`));
               }
             } catch (err) {
               clearTimeout(timeoutId);
-              if (proxy !== 'direct') badProxiesCache.set(proxy!, Date.now());
+              if (proxy !== 'direct' && proxy) badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
               reject(err);
             }
           });
@@ -294,9 +329,10 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         }
 
         candidates.push(...providerProxies.filter(p => {
-          if (badProxiesCache.has(p)) {
-            if (Date.now() - badProxiesCache.get(p)! < PROXY_TIMEOUT_MS) return false;
-            badProxiesCache.delete(p);
+          const cacheKey = `${channel.id}:${p}`;
+          if (badProxiesCache.has(cacheKey)) {
+            if (Date.now() - badProxiesCache.get(cacheKey)! < PROXY_TIMEOUT_MS) return false;
+            badProxiesCache.delete(cacheKey);
           }
           return true;
         }));
@@ -342,6 +378,8 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           activeProxyUrl = ''; 
           if (isMounted) onProxyChange?.('Fallback');
         }
+
+        currentBestProxyRef.current = activeProxyUrl || combinedMap.primary || '';
 
         const proxyUrl = activeProxyUrl;
         const currentUA = targetUA;
@@ -578,16 +616,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         }
       } catch (err) {
         if (isMounted) { setError('Failed to initialize player.'); setIsLoading(false); setIsRefreshing(false); }
-      }
     };
 
-    loadPlayer();
+    loadPlayer().finally(() => {
+      shakaLoadingRef.current = false;
+    });
 
     return () => {
       isMounted = false;
-      if (uiRef.current) { uiRef.current.destroy(); uiRef.current = null; }
-      if (shakaRef.current) { shakaRef.current.destroy().catch(() => {}); shakaRef.current = null; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   }, [channel, reloadTrigger]);
 

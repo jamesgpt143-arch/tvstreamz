@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
-import { LivePlayer } from "@/components/LivePlayer";
+import { LivePlayer, getProxiedLogoUrl } from "@/components/LivePlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,6 +61,18 @@ const PlaylistPlayer = () => {
 
   // Proxy State
   const [playerKey, setPlayerKey] = useState(0);
+  const [logoProxyUrl, setLogoProxyUrl] = useState("");
+
+  useEffect(() => {
+    const fetchLogoProxy = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
+      if (data?.value) {
+        const conf = data.value as any;
+        setLogoProxyUrl(conf.cloudflare_proxy_url || conf.supabase_proxy_url || "");
+      }
+    };
+    fetchLogoProxy();
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -433,7 +444,7 @@ const PlaylistPlayer = () => {
                    <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
                          {activeChannel.logo ? (
-                            <img src={activeChannel.logo} alt="" className="w-full h-full object-contain p-1.5" />
+                            <img src={getProxiedLogoUrl(activeChannel.logo, logoProxyUrl)} alt="" className="w-full h-full object-contain p-1.5" />
                          ) : (
                             <Tv className="w-5 h-5 text-zinc-600" />
                          )}
@@ -541,7 +552,7 @@ const PlaylistPlayer = () => {
                         <div className="aspect-square w-full relative flex items-center justify-center p-4 sm:p-6 bg-black/20">
                            {ch.logo ? (
                               <img 
-                                src={ch.logo} 
+                                src={getProxiedLogoUrl(ch.logo, logoProxyUrl)} 
                                 alt={ch.name} 
                                 className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
                                 loading="lazy"
