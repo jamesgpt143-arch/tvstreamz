@@ -390,18 +390,18 @@ const PlaylistPlayer = () => {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white/5 p-4 rounded-[2rem] border border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-muted p-4 rounded-[2rem] border border-border">
                <div className="flex gap-2">
                  <div className="relative flex-1 group">
                     <input type="file" accept=".m3u,.m3u8" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                    <Button variant="outline" className="w-full gap-2 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-[10px]">
+                    <Button variant="outline" className="w-full gap-2 border-border bg-muted hover:bg-accent hover:text-accent-foreground rounded-2xl h-12 px-6 font-black uppercase tracking-widest text-[10px]">
                       <Upload className="w-4 h-4" /> Upload M3U
                     </Button>
                  </div>
                  
                  {savedPlaylists.length > 0 && (
-                   <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
-                      <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
+                    <Select onValueChange={(url) => { if(url === "none") return; fetchFromUrl(url); }}>
+                      <SelectTrigger className="h-12 border-border bg-muted rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
                         <div className="flex items-center gap-2">
                           <History className="w-4 h-4 text-orange-500" />
                           <SelectValue placeholder="Saved" />
@@ -435,14 +435,14 @@ const PlaylistPlayer = () => {
                       placeholder="Paste M3U URL..." 
                       value={playlistUrl} 
                       onChange={e => setPlaylistUrl(e.target.value)}
-                      className="pl-11 h-12 bg-black/40 border-white/10 rounded-2xl w-full font-bold text-xs"
+                      className="pl-11 h-12 bg-background/50 border-border rounded-2xl w-full font-bold text-xs text-foreground"
                     />
                   </div>
                   <div className="flex gap-1">
                     <Button onClick={() => fetchFromUrl()} variant="secondary" className="h-12 w-12 rounded-2xl p-0 bg-orange-500 hover:bg-orange-600 text-black shadow-lg shadow-orange-500/20" disabled={isParsing}>
                       {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
                     </Button>
-                    <Button onClick={openSaveDialog} variant="ghost" className="h-12 w-12 rounded-2xl p-0 border border-white/10 bg-white/5">
+                    <Button onClick={openSaveDialog} variant="ghost" className="h-12 w-12 rounded-2xl p-0 border border-border bg-muted hover:bg-accent hover:text-accent-foreground">
                       <Save className="w-4 h-4" />
                     </Button>
                   </div>
@@ -458,7 +458,7 @@ const PlaylistPlayer = () => {
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-4">
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
+                      <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center overflow-hidden">
                          {activeChannel.logo ? (
                             <img src={getProxiedLogoUrl(activeChannel.logo, logoProxyUrl)} alt="" className="w-full h-full object-contain p-1.5" />
                          ) : (
@@ -477,17 +477,17 @@ const PlaylistPlayer = () => {
                        variant="ghost" 
                        size="icon" 
                        onClick={() => toggleFavorite(activeChannel)} 
-                       className={`rounded-2xl transition-colors ${favorites.has(activeChannel.manifestUri) ? 'text-yellow-500 bg-yellow-500/10' : 'hover:bg-white/5'}`}
+                       className={`rounded-2xl transition-colors ${favorites.has(activeChannel.manifestUri) ? 'text-yellow-500 bg-yellow-500/10' : 'hover:bg-accent hover:text-accent-foreground'}`}
                      >
                        <Star className="w-5 h-5" fill={favorites.has(activeChannel.manifestUri) ? "currentColor" : "none"} />
                      </Button>
-                     <Button variant="ghost" size="icon" onClick={() => { setActiveChannel(null); localStorage.removeItem("tvstreamz_last_channel_id"); }} className="rounded-2xl hover:bg-white/5">
+                     <Button variant="ghost" size="icon" onClick={() => { setActiveChannel(null); localStorage.removeItem("tvstreamz_last_channel_id"); }} className="rounded-2xl hover:bg-accent hover:text-accent-foreground">
                         <XCircle className="w-5 h-5" />
                      </Button>
                    </div>
                 </div>
 
-                <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
+                <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border border-border shadow-2xl relative">
                   <LivePlayer key={`${activeChannel.id}-${playerKey}`} channel={activeChannel} />
                 </div>
                 
@@ -501,8 +501,8 @@ const PlaylistPlayer = () => {
               </div>
             </div>
           ) : (
-            <div className="mb-12 h-64 md:h-80 rounded-[3rem] bg-gradient-to-br from-zinc-900 to-black border border-white/5 flex flex-col items-center justify-center text-center p-8">
-               <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+            <div className="mb-12 h-64 md:h-80 rounded-[3rem] bg-gradient-to-br from-muted/50 to-background border border-border flex flex-col items-center justify-center text-center p-8">
+               <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
                   <Play className="w-10 h-10 text-zinc-800" fill="currentColor" />
                </div>
                <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">
@@ -518,20 +518,20 @@ const PlaylistPlayer = () => {
                <h2 className="text-lg font-black uppercase tracking-widest">Playlist Content</h2>
             </div>
             
-            <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl sticky top-2 z-10 shadow-2xl">
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-background/80 backdrop-blur-md border border-border rounded-3xl sticky top-2 z-10 shadow-2xl">
                <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
                     placeholder="Search from playlist..." 
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-11 h-12 bg-black/40 border-white/5 rounded-2xl font-bold"
+                    className="pl-11 h-12 bg-background/50 border-border rounded-2xl font-bold text-foreground"
                   />
                </div>
                <div className="flex items-center gap-2">
                   {groups.length > 0 && (
                      <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                        <SelectTrigger className="w-full md:w-64 h-12 bg-black/40 border-white/5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                        <SelectTrigger className="w-full md:w-64 h-12 bg-background/50 border-border rounded-2xl font-black uppercase tracking-widest text-xs">
                            <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
@@ -560,10 +560,10 @@ const PlaylistPlayer = () => {
                         className={`w-full flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 border ${
                           activeChannel?.id === ch.id 
                           ? 'bg-primary border-primary shadow-lg shadow-primary/20' 
-                          : 'bg-zinc-900 border-white/5'
+                          : 'bg-card border-border'
                         }`}
                       >
-                        <div className="aspect-square w-full relative flex items-center justify-center p-4 sm:p-6 bg-black/20">
+                        <div className="aspect-square w-full relative flex items-center justify-center p-4 sm:p-6 bg-muted/20">
                            {ch.logo ? (
                               <img 
                                 src={getProxiedLogoUrl(ch.logo, logoProxyUrl)} 
@@ -578,7 +578,7 @@ const PlaylistPlayer = () => {
                         
                         <div className="p-2 sm:p-3 bg-inherit w-full">
                            <h3 className={`font-black text-[9px] sm:text-[10px] uppercase tracking-tight line-clamp-1 truncate text-center ${
-                             activeChannel?.id === ch.id ? 'text-black' : 'text-white'
+                             activeChannel?.id === ch.id ? 'text-black' : 'text-foreground'
                            }`}>
                              {ch.name}
                            </h3>
@@ -599,8 +599,8 @@ const PlaylistPlayer = () => {
                     );
                  })
                ) : (
-                  <div className="col-span-full py-20 bg-white/5 border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center text-center">
-                     <FileCode2 className="w-16 h-16 text-white/5 mb-4" />
+                  <div className="col-span-full py-20 bg-muted border-2 border-dashed border-border rounded-[3rem] flex flex-col items-center justify-center text-center">
+                     <FileCode2 className="w-16 h-16 text-muted-foreground/20 mb-4" />
                      <h3 className="text-xl font-bold uppercase tracking-tight mb-2">No channels found</h3>
                      <p className="text-muted-foreground text-xs uppercase tracking-widest font-bold opacity-40">Try another search or category filter</p>
                   </div>
@@ -628,7 +628,7 @@ const PlaylistPlayer = () => {
 
       {/* Save Playlist Dialog */}
       <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
-        <DialogContent className="bg-zinc-900 border-white/10 text-white rounded-[2rem] max-w-md">
+        <DialogContent className="bg-background border-border text-foreground rounded-[2rem] max-w-md">
            <DialogHeader>
               <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
                  <Save className="w-6 h-6 text-primary" />

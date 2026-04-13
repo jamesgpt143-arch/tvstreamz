@@ -85,7 +85,7 @@ export const Navbar = () => {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
       scrolled || !isHome 
-        ? 'bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl' 
+        ? 'bg-background/80 backdrop-blur-2xl border-b border-border py-4 shadow-2xl' 
         : 'bg-transparent py-6'
     }`}>
       <div className="container mx-auto px-4 md:px-12">
@@ -95,12 +95,12 @@ export const Navbar = () => {
               <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-transform group-hover:scale-110">
                 <Tv className="w-6 h-6 text-black" fill="black" />
               </div>
-              <span className="text-2xl font-black tracking-tighter text-white hidden sm:block">
+              <span className="text-2xl font-black tracking-tighter text-foreground hidden sm:block">
                 TV<span className="text-orange-500">STREAMZ</span>
               </span>
             </Link>
             
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-60'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-60'}`}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -109,7 +109,7 @@ export const Navbar = () => {
             </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-1 bg-white/5 p-1 rounded-2xl border border-white/5">
+          <div className="hidden lg:flex items-center gap-1 bg-muted p-1 rounded-2xl border border-border">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -120,7 +120,7 @@ export const Navbar = () => {
                   className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
                     isActive 
                       ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' 
-                      : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -139,13 +139,14 @@ export const Navbar = () => {
                   variant="ghost" 
                   size="icon" 
                   onClick={() => setIsSearchOpen(true)} 
-                  className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white transition-all hover:scale-105"
+                  className="w-12 h-12 rounded-xl bg-muted border border-border hover:bg-accent hover:text-accent-foreground text-foreground transition-all hover:scale-105"
                 >
                   <Search className="w-5 h-5" />
                 </Button>
               )}
             </div>
 
+            <ThemeToggle />
             <NotificationBell />
             
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -153,12 +154,12 @@ export const Navbar = () => {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white transition-all hover:scale-105"
+                  className="w-12 h-12 rounded-xl bg-muted border border-border hover:bg-accent hover:text-accent-foreground text-foreground transition-all hover:scale-105"
                 >
                   <Menu className="w-6 h-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 bg-zinc-950 border-white/10 p-0 overflow-hidden">
+              <SheetContent side="right" className="w-80 bg-background border-border p-0 overflow-hidden">
                 <div className="h-full flex flex-col pt-20 px-6">
                   <div className="mb-8">
                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4">Your Account</p>
@@ -170,7 +171,7 @@ export const Navbar = () => {
                           </Link>
                         </Button>
                      ) : (
-                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-3">
+                        <div className="p-4 rounded-2xl bg-muted border border-border flex items-center gap-3">
                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-black text-black">A</div>
                            <div>
                               <p className="font-black text-sm uppercase tracking-tight">Active User</p>
@@ -183,7 +184,7 @@ export const Navbar = () => {
                   <div className="space-y-4">
                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4">Library</p>
                     
-                    <Link to="/my-list" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+                    <Link to="/my-list" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-muted hover:bg-accent border border-border transition-all">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <ListVideo className="w-5 h-5 text-primary" />
