@@ -458,7 +458,7 @@ const PlaylistPlayer = () => {
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">Auto (Race)</SelectItem>
+
                       <SelectItem value="cloudflare">Cloudflare Only</SelectItem>
                       <SelectItem value="supabase">Supabase Only</SelectItem>
                       <SelectItem value="vercel">Vercel (Specialized)</SelectItem>
