@@ -359,45 +359,27 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
           return;
         }
 
-        // 4. Selection (Strict vs Auto)
+        // 4. Selection (Smart Parallel Race)
         try {
-          if (isStrict) {
-            // Strictly check for cached proxy first to enable "Quick Connect" speed
-            const cachedProxy = getStoredProxy(channel.id);
-            if (cachedProxy && candidates.includes(cachedProxy)) {
-              if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
-              activeProxyUrl = cachedProxy;
-            } else {
-              // Immediately use the first candidate (already prioritized by admin)
-              activeProxyUrl = candidates[0] || '';
-              if (isMounted) onProxyChange?.(labelMap.get(activeProxyUrl || 'direct') || 'Connected');
-            }
-            
-            if (activeProxyUrl === 'direct') activeProxyUrl = '';
-          } else if (isAuto) {
-            // Auto-detect mode (M3U or Smart Proxy enabled)
+          if (isStrict || isAuto) {
             const cachedProxy = getStoredProxy(channel.id);
             let selectionSuccessful = false;
 
-            // Step A: Try Cached Proxy Immediately (No testConnection delay)
+            // Step A: Quick Connect (Cache Check)
             if (cachedProxy && candidates.includes(cachedProxy)) {
               if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
               activeProxyUrl = cachedProxy;
               selectionSuccessful = true;
             }
 
-            // Step B: Full Race Fallback
+            // Step B: Parallel Race Fallback
             if (!selectionSuccessful) {
               if (isMounted) onProxyChange?.('Finding best connection...');
-              const supabaseProxies = Object.values(sbProxies);
-              const racePromises = candidates.map(c => {
-                // In fallback mode, we remove the 2s delay for Supabase to find a replacement faster
-                return testConnection(c);
-              });
+              const racePromises = candidates.map(c => testConnection(c));
 
               activeProxyUrl = await (Promise as any).any(racePromises);
               
-              // Only save if it's not 'direct' (to avoid caching local failures as direct)
+              // Only save if it's not 'direct'
               if (activeProxyUrl && activeProxyUrl !== 'direct') {
                 setStoredProxy(channel.id, activeProxyUrl);
               }
