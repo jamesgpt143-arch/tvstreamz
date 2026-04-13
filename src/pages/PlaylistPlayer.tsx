@@ -23,7 +23,8 @@ import {
   Trash2,
   History,
   Save,
-  Server
+  Server,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/channels";
@@ -47,6 +48,11 @@ const PlaylistPlayer = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [activeChannel, setActiveChannel] = useState<M3UChannel | null>(null);
   
+  // ==========================================
+  // LAZY LOADING STATE (Set to 200 items)
+  // ==========================================
+  const [visibleCount, setVisibleCount] = useState(200);
+
   // Sync States
   const [user, setUser] = useState<any>(null);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
@@ -62,6 +68,11 @@ const PlaylistPlayer = () => {
   // Proxy State
   const [playerKey, setPlayerKey] = useState(0);
   const [logoProxyUrl, setLogoProxyUrl] = useState("");
+
+  // I-reset ang bilang ng visible channels kapag nag-search o nagpalit ng category
+  useEffect(() => {
+    setVisibleCount(200);
+  }, [searchQuery, selectedGroup, channels]);
 
   useEffect(() => {
     const fetchLogoProxy = async () => {
@@ -257,7 +268,7 @@ const PlaylistPlayer = () => {
       
       if (!url) setPlaylistUrl("");
       localStorage.setItem("tvstreamz_last_m3u_url", targetUrl);
-
+      
       if (!quiet) toast.success(`Loaded ${parsed.length} channels from URL`);
     } catch (err) {
       if (!quiet) toast.error("Fetch failed. Please try uploading the M3U file directly.");
@@ -344,6 +355,11 @@ const PlaylistPlayer = () => {
       return matchesSearch && matchesGroup;
     });
   }, [channels, searchQuery, selectedGroup, favorites]);
+
+  // ==========================================
+  // SLICE ANG CHANNELS NA I-RE-RENDER SA DOM (200 Channels)
+  // ==========================================
+  const displayedChannels = filteredChannels.slice(0, visibleCount);
 
   const groups = useMemo(() => {
     const g = new Set<string>();
@@ -550,11 +566,11 @@ const PlaylistPlayer = () => {
             </div>
 
             <div 
-              key={`${selectedGroup}-${searchQuery}-${channels.length}`}
+              key={`${selectedGroup}-${searchQuery}`}
               className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 animate-in fade-in duration-500"
             >
-               {filteredChannels.length > 0 ? (
-                 filteredChannels.map((ch) => {
+               {displayedChannels.length > 0 ? (
+                 displayedChannels.map((ch) => {
                     return (
                     <div key={ch.id} className="group relative">
                       <button
@@ -607,6 +623,22 @@ const PlaylistPlayer = () => {
                      <p className="text-muted-foreground text-xs uppercase tracking-widest font-bold opacity-40">Try another search or category filter</p>
                   </div>
                )}
+
+               {/* ========================================== */}
+               {/* LOAD MORE BUTTON SA ILALIM NG GRID */}
+               {/* ========================================== */}
+               {filteredChannels.length > visibleCount && (
+                 <div className="col-span-full flex justify-center py-10 mt-4 border-t border-white/5">
+                   <Button 
+                     onClick={() => setVisibleCount(prev => prev + 200)}
+                     variant="outline"
+                     className="rounded-2xl border-white/10 bg-white/5 font-black uppercase tracking-widest text-xs h-12 px-8 hover:bg-white/10 gap-2"
+                   >
+                     Load More Channels <ChevronDown className="w-4 h-4" />
+                   </Button>
+                 </div>
+               )}
+
             </div>
           </div>
         </div>
