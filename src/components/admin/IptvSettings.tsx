@@ -15,6 +15,19 @@ interface IptvConfig {
   server_url: string;
   username: string;
   password: string;
+  cloudflare_proxy_url: string;
+  cloudflare_proxy_url_backup: string;
+  cloudflare_proxy_url_backup2: string;
+  cloudflare_proxy_url_backup3: string;
+  cloudflare_proxy_url_backup4: string;
+  cloudflare_proxy_url_backup5: string;
+  cloudflare_proxy_url_backup6: string;
+  supabase_proxy_url: string;
+  supabase_proxy_url_backup: string;
+  supabase_proxy_url_backup2: string;
+  supabase_proxy_url_backup3: string;
+  supabase_proxy_url_backup4: string;
+  supabase_proxy_url_backup5: string;
   supabase_proxy_url_backup6: string;
   vercel_proxy_url: string;
   vercel_proxy_url_backup: string;
@@ -35,6 +48,18 @@ const defaultConfig: IptvConfig = {
   server_url: "",
   username: "",
   password: "",
+  cloudflare_proxy_url: "",
+  cloudflare_proxy_url_backup: "",
+  cloudflare_proxy_url_backup2: "",
+  cloudflare_proxy_url_backup3: "",
+  cloudflare_proxy_url_backup4: "",
+  cloudflare_proxy_url_backup5: "",
+  cloudflare_proxy_url_backup6: "",
+  supabase_proxy_url: "",
+  supabase_proxy_url_backup: "",
+  supabase_proxy_url_backup2: "",
+  supabase_proxy_url_backup3: "",
+  supabase_proxy_url_backup4: "",
   supabase_proxy_url_backup5: "",
   supabase_proxy_url_backup6: "",
   vercel_proxy_url: "",
