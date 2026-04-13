@@ -15,20 +15,14 @@ interface IptvConfig {
   server_url: string;
   username: string;
   password: string;
-  cloudflare_proxy_url: string;
-  cloudflare_proxy_url_backup: string;
-  cloudflare_proxy_url_backup2: string;
-  cloudflare_proxy_url_backup3: string;
-  cloudflare_proxy_url_backup4: string;
-  cloudflare_proxy_url_backup5: string;
-  cloudflare_proxy_url_backup6: string;
-  supabase_proxy_url: string;
-  supabase_proxy_url_backup: string;
-  supabase_proxy_url_backup2: string;
-  supabase_proxy_url_backup3: string;
-  supabase_proxy_url_backup4: string;
-  supabase_proxy_url_backup5: string;
   supabase_proxy_url_backup6: string;
+  vercel_proxy_url: string;
+  vercel_proxy_url_backup: string;
+  vercel_proxy_url_backup2: string;
+  vercel_proxy_url_backup3: string;
+  vercel_proxy_url_backup4: string;
+  vercel_proxy_url_backup5: string;
+  vercel_proxy_url_backup6: string;
   // BAGONG FIELDS PARA SA OFFLINE MESSAGE
   offline_title: string;
   offline_message: string;
@@ -41,20 +35,15 @@ const defaultConfig: IptvConfig = {
   server_url: "",
   username: "",
   password: "",
-  cloudflare_proxy_url: "",
-  cloudflare_proxy_url_backup: "",
-  cloudflare_proxy_url_backup2: "",
-  cloudflare_proxy_url_backup3: "",
-  cloudflare_proxy_url_backup4: "",
-  cloudflare_proxy_url_backup5: "",
-  cloudflare_proxy_url_backup6: "",
-  supabase_proxy_url: "",
-  supabase_proxy_url_backup: "",
-  supabase_proxy_url_backup2: "",
-  supabase_proxy_url_backup3: "",
-  supabase_proxy_url_backup4: "",
   supabase_proxy_url_backup5: "",
   supabase_proxy_url_backup6: "",
+  vercel_proxy_url: "",
+  vercel_proxy_url_backup: "",
+  vercel_proxy_url_backup2: "",
+  vercel_proxy_url_backup3: "",
+  vercel_proxy_url_backup4: "",
+  vercel_proxy_url_backup5: "",
+  vercel_proxy_url_backup6: "",
   // DEFAULT TEXTS
   offline_title: "Channel is currently offline.",
   offline_message: "Please try another channel or use a backup link.",
@@ -73,7 +62,7 @@ const PROXY_FIELDS = [
 interface ProxySectionProps {
   title: string;
   icon: React.ReactNode;
-  prefix: "cloudflare_proxy_url" | "supabase_proxy_url";
+  prefix: "cloudflare_proxy_url" | "supabase_proxy_url" | "vercel_proxy_url";
   config: IptvConfig;
   onChange: (config: IptvConfig) => void;
   placeholder: string;
@@ -298,6 +287,18 @@ export const IptvSettings = () => {
               onChange={setConfig}
               placeholder="https://your-project.supabase.co/functions/v1/stream-proxy"
               description="Supabase Edge Function proxy URLs. I-set ang Primary at hanggang 6 na backup URLs."
+            />
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <ProxySection
+              title="Vercel Specialized HLS Proxy"
+              icon={<Server className="h-4 w-4 text-purple-500" />}
+              prefix="vercel_proxy_url"
+              config={config}
+              onChange={setConfig}
+              placeholder="https://your-app.vercel.app/api/hls"
+              description="Vercel Specialized HLS proxy URLs. Ito ay magaling sa pag-rewrite ng manifests. I-set ang Primary at backups."
             />
           </div>
         </div>

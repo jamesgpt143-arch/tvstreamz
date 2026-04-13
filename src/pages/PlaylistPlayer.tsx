@@ -57,6 +57,7 @@ const PlaylistPlayer = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [customName, setCustomName] = useState("");
   const [saveTargetUrl, setSaveTargetUrl] = useState("");
+  const [proxyMode, setProxyMode] = useState<string>("auto");
 
   // Proxy State
   const [playerKey, setPlayerKey] = useState(0);
@@ -128,10 +129,11 @@ const PlaylistPlayer = () => {
 
   const handleChannelSelect = async (ch: M3UChannel) => {
     setActiveChannel(null);
-    // Auto-delay to ensure player remounts correctly
+    const updatedCh = { ...ch, proxyType: proxyMode === 'auto' ? undefined : proxyMode };
+    
     setTimeout(() => {
-      setActiveChannel(ch);
-      localStorage.setItem("tvstreamz_last_channel_id", ch.id);
+      setActiveChannel(updatedCh);
+      localStorage.setItem("tvstreamz_last_channel_id", updatedCh.id);
     }, 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -430,6 +432,24 @@ const PlaylistPlayer = () => {
                       <Save className="w-4 h-4" />
                     </Button>
                   </div>
+               </div>
+
+               {/* Proxy Selector */}
+               <div className="flex items-center gap-2">
+                  <Select value={proxyMode} onValueChange={setProxyMode}>
+                    <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
+                      <div className="flex items-center gap-2">
+                        <Server className="w-4 h-4 text-purple-500" />
+                        <SelectValue placeholder="Proxy" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto (Race)</SelectItem>
+                      <SelectItem value="cloudflare">Cloudflare Only</SelectItem>
+                      <SelectItem value="supabase">Supabase Only</SelectItem>
+                      <SelectItem value="vercel">Vercel (Specialized)</SelectItem>
+                    </SelectContent>
+                  </Select>
                </div>
             </div>
           </div>

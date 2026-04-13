@@ -32,9 +32,10 @@ const setStoredProxy = (channelId: string, proxyUrl: string) => {
 };
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
-  try {
-    const config = await getIptvConfig();
-    const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 'cloudflare_proxy_url';
+    const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').single();
+    const config = data?.value as any;
+    const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 
+                   proxyType === 'vercel' ? 'vercel_proxy_url' : 'cloudflare_proxy_url';
     return {
       primary: config?.[prefix] || '',
       backup: config?.[`${prefix}_backup`] || '',
@@ -248,36 +249,37 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         let cfProxies = {};
         let sbProxies = {};
+        let vercelProxies = {};
 
         if (isStrict) {
-          if (channel.proxyType === 'cloudflare') {
-            cfProxies = await getProxyUrls('cloudflare').catch(() => ({}));
-          } else if (channel.proxyType === 'supabase') {
-            sbProxies = await getProxyUrls('supabase').catch(() => ({}));
-          }
-        } else if (isAuto) {
-          // Universal Auto-Detect (M3U or No Strict Provider)
-          const [cf, sb] = await Promise.all([
+          if (channel.proxyType === 'supabase') sbProxies = await getProxyUrls('supabase');
+          else if (channel.proxyType === 'vercel') vercelProxies = await getProxyUrls('vercel');
+          else cfProxies = await getProxyUrls('cloudflare');
+        } else {
+          const [cf, sb, vc] = await Promise.all([
             getProxyUrls('cloudflare').catch(() => ({})),
-            getProxyUrls('supabase').catch(() => ({}))
+            getProxyUrls('supabase').catch(() => ({})),
+            getProxyUrls('vercel').catch(() => ({}))
           ]);
           cfProxies = cf;
           sbProxies = sb;
+          vercelProxies = vc;
         }
 
         // Deduplicate and Order Candidates
         let providerProxies: string[] = [];
-        const combinedMap = { ...cfProxies, ...sbProxies } as Record<string, string>;
+        const combinedMap = { ...cfProxies, ...sbProxies, ...vercelProxies } as Record<string, string>;
         
         if (isStrict && channel.proxyOrder && channel.proxyOrder.length > 0) {
           // Strictly follow admin's priority order
           providerProxies = channel.proxyOrder
-            .map(key => combinedMap[key])
+            .map(key => ({...cfProxies, ...sbProxies, ...vercelProxies}[key]))
             .filter(p => p && typeof p === 'string');
         } else {
           providerProxies = Array.from(new Set([
             ...Object.values(cfProxies),
-            ...Object.values(sbProxies)
+            ...Object.values(sbProxies),
+            ...Object.values(vercelProxies)
           ].filter(p => p && typeof p === 'string'))) as string[];
         }
 
@@ -286,12 +288,14 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         providerProxies.forEach((p, idx) => {
           if (Object.values(cfProxies).includes(p)) {
-            // Find key in cfProxies if possible for better label, else generic
             const key = Object.keys(cfProxies).find(k => (cfProxies as any)[k] === p);
-            labelMap.set(p, key === 'main' ? 'Main Proxy' : (key ? `CF-${key}` : `Backup ${idx}`));
-          } else {
+            labelMap.set(p, key === 'primary' ? 'Cloudflare' : (key ? `CF-${key}` : `Backup ${idx}`));
+          } else if (Object.values(sbProxies).includes(p)) {
             const key = Object.keys(sbProxies).find(k => (sbProxies as any)[k] === p);
-            labelMap.set(p, key === 'main' ? 'Supabase' : (key ? `SB-${key}` : `Worker ${idx}`));
+            labelMap.set(p, key === 'primary' ? 'Supabase' : (key ? `SB-${key}` : `Worker ${idx}`));
+          } else {
+            const key = Object.keys(vercelProxies).find(k => (vercelProxies as any)[k] === p);
+            labelMap.set(p, key === 'primary' ? 'Vercel HLS' : (key ? `VC-${key}` : `Proxy ${idx}`));
           }
         });
         proxyLabelMapRef.current = labelMap;

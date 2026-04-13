@@ -305,6 +305,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 <SelectItem value="none">Direct (No Proxy)</SelectItem>
                 <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
                 <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
+                <SelectItem value="vercel">Vercel HLS Proxy (Specialized)</SelectItem>
               </SelectContent>
             </Select>
           </div>
