@@ -32,6 +32,7 @@ const setStoredProxy = (channelId: string, proxyUrl: string) => {
 };
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
+  try {
     const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').single();
     const config = data?.value as any;
     const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 
