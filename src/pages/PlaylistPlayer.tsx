@@ -448,23 +448,7 @@ const PlaylistPlayer = () => {
                   </div>
                </div>
 
-               {/* Proxy Selector */}
-               <div className="flex items-center gap-2">
-                  <Select value={proxyMode} onValueChange={setProxyMode}>
-                    <SelectTrigger className="h-12 border-white/10 bg-white/5 rounded-2xl w-full lg:w-48 font-bold uppercase text-[10px] tracking-widest">
-                      <div className="flex items-center gap-2">
-                        <Server className="w-4 h-4 text-purple-500" />
-                        <SelectValue placeholder="Proxy" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
 
-                      <SelectItem value="cloudflare">Cloudflare Only</SelectItem>
-                      <SelectItem value="supabase">Supabase Only</SelectItem>
-                      <SelectItem value="vercel">Vercel (Specialized)</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
             </div>
           </div>
 
