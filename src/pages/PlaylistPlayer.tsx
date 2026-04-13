@@ -3,7 +3,6 @@ import { Navbar } from "@/components/Navbar";
 import { LivePlayer, getProxiedLogoUrl } from "@/components/LivePlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ShareButton } from "@/components/ShareButton";
@@ -23,7 +22,8 @@ import {
   Star,
   Trash2,
   History,
-  Save
+  Save,
+  Server
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/channels";
@@ -257,8 +257,6 @@ const PlaylistPlayer = () => {
       
       if (!url) setPlaylistUrl("");
       localStorage.setItem("tvstreamz_last_m3u_url", targetUrl);
-      
-      // Removed auto-play of last channel logic per user request
 
       if (!quiet) toast.success(`Loaded ${parsed.length} channels from URL`);
     } catch (err) {
