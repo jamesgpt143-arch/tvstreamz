@@ -495,9 +495,7 @@ const PlaylistPlayer = () => {
                    <div className="flex items-center justify-between w-full">
                       <ShareButton title={`Watch ${activeChannel.name} - Playlist Player`} />
                       
-                       <Button variant="ghost" onClick={() => setPlayerKey(k => k + 1)} className="gap-2 text-[10px] font-black uppercase tracking-widest rounded-2xl h-10 px-6 bg-white/5 border border-white/5 hover:bg-white/10">
-                          <RefreshCcw className="w-3 h-3" /> Force Reload
-                       </Button>
+
                     </div>
                 </div>
               </div>
