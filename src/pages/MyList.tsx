@@ -23,7 +23,7 @@ const MyList = () => {
   const { myList: list, removeFromMyList, clearMyList, isLoading } = useUserPreferences();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const handleRemove = (id: number, type: 'movie' | 'tv') => {
+  const handleRemove = (id: number | string, type: 'movie' | 'tv' | 'channel') => {
     removeFromMyList(id, type);
   };
 
@@ -112,7 +112,7 @@ const MyList = () => {
             </div>
             <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Your list is looking empty</h2>
             <p className="text-zinc-400 mb-12 max-w-sm mx-auto leading-relaxed text-lg font-medium">
-              Start adding movies and TV shows you love. We'll keep them here for you to watch anytime.
+              Start adding movies, TV shows, and channels you love. We'll keep them here for you to watch anytime.
             </p>
             <Link to="/">
               <Button size="lg" className="rounded-full px-12 h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-2xl shadow-primary/20 uppercase tracking-widest text-sm transition-all hover:scale-105 active:scale-95 group">
@@ -122,16 +122,20 @@ const MyList = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-10">
-            {list.map((item, index) => (
+            {list.map((item, index) => {
+              const watchUrl = item.type === 'channel' ? `/live/${item.id}` : `/watch/${item.type}/${item.id}`;
+              const posterUrl = item.type === 'channel' ? item.poster_path : getImageUrl(item.poster_path!, 'w500');
+              
+              return (
               <div 
                 key={`${item.type}-${item.id}`} 
                 className="group relative animate-slide-up opacity-0 fill-mode-forwards" 
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <Link to={`/watch/${item.type}/${item.id}`} className="block relative aspect-[2/3] rounded-[32px] overflow-hidden bg-zinc-900 shadow-2xl shadow-black ring-1 ring-white/5 transition-all duration-700 group-hover:ring-primary group-hover:-translate-y-3 group-hover:shadow-primary/20">
-                  {item.poster_path ? (
+                <Link to={watchUrl} className="block relative aspect-[2/3] rounded-[32px] overflow-hidden bg-zinc-900 shadow-2xl shadow-black ring-1 ring-white/5 transition-all duration-700 group-hover:ring-primary group-hover:-translate-y-3 group-hover:shadow-primary/20">
+                  {posterUrl ? (
                     <img
-                      src={getImageUrl(item.poster_path, 'w500')}
+                      src={posterUrl}
                       alt={item.title}
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-90 group-hover:opacity-100"
                     />
@@ -163,7 +167,7 @@ const MyList = () => {
                       </span>
                     )}
                     <span className="text-zinc-600 font-bold">
-                      {item.type === 'tv' ? 'TV Series' : 'Movie'}
+                      {item.type === 'tv' ? 'TV Series' : item.type === 'channel' ? 'Live Channel' : 'Movie'}
                     </span>
                   </div>
                 </div>
@@ -180,7 +184,8 @@ const MyList = () => {
                   <X className="w-4.5 h-4.5" />
                 </Button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
