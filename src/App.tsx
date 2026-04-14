@@ -57,87 +57,12 @@ const MaintenanceWrapper = ({ maintenance, isAdmin, children }: {
   return <>{children}</>;
 };
 
+import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
+
+// ... other imports
+
 const App = () => {
-  const [maintenance, setMaintenance] = useState({ enabled: false, message: "" });
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Safety timeout to prevent infinite loading screen
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
-
-    const checkMaintenanceAndRole = async () => {
-      try {
-        // 1. Check Maintenance Setting
-        const { data: setting } = await supabase
-          .from("site_settings")
-          .select("value")
-          .eq("key", "maintenance_mode")
-          .maybeSingle();
-
-        const maintenanceVal = setting?.value as any;
-        if (maintenanceVal?.enabled) {
-          setMaintenance(maintenanceVal);
-        }
-
-        // 2. Check User Role (for bypass)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: roles } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin");
-
-          if (roles && roles.length > 0) {
-            setIsAdmin(true);
-          }
-        }
-      } catch (error) {
-        console.error("Maintenance check failed:", error);
-      } finally {
-        setLoading(false);
-        clearTimeout(timeout);
-      }
-    };
-
-    checkMaintenanceAndRole();
-    
-    return () => clearTimeout(timeout);
-  }, []);
-
-  if (loading) {
-// ... loading div content
-    return (
-      <div style={{ 
-        position: 'fixed', 
-        inset: 0, 
-        backgroundColor: '#0b0b0b', 
-        color: 'white', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        zIndex: 99999,
-        fontFamily: 'sans-serif'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            width: '40px', 
-            height: '40px', 
-            border: '3px solid rgba(255,255,255,0.1)', 
-            borderTopColor: '#f97316', 
-            borderRadius: '50%', 
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px auto'
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '0.1em', opacity: 0.6 }}>INITIALIZING...</p>
-        </div>
-      </div>
-    );
-  }
+  // ... state and effects
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -145,40 +70,42 @@ const App = () => {
         <BrowserRouter>
           <MaintenanceWrapper maintenance={maintenance} isAdmin={isAdmin}>
             <TooltipProvider>
-              <SEOManager />
-              <Toaster />
-              <Sonner />
-              <UpdatePrompt />
-              <AnnouncementBar />
-              
-              <div className="pb-16 md:pb-0">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/movies" element={<Movies />} />
-                  <Route path="/tv-shows" element={<TVShows />} />
-                  <Route path="/manga" element={<Manga />} />
-                  <Route path="/manga/:mangaId" element={<MangaDetails />} />
-                  <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
-                  <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
-                  <Route path="/live-tv" element={<LiveTV />} />
-                  <Route path="/live-events" element={<LiveEvents />} />
-                  <Route path="/live-event/*" element={<WatchEvent />} />
-                  <Route path="/live/:channelId" element={<WatchLive />} />
-                  <Route path="/watch/:type/:id" element={<Watch />} />
-                  <Route path="/search" element={<Search />} />
-                  <Route path="/my-list" element={<MyList />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/iptv" element={<IPTV />} />
-                  <Route path="/temp-mail" element={<TempMail />} />
-                  <Route path="/text-to-speech" element={<TextToSpeech />} />
-                  <Route path="/custom-channels" element={<CustomChannels />} />
-                  <Route path="/playlist-player" element={<PlaylistPlayer />} />
+              <UserPreferencesProvider>
+                <SEOManager />
+                <Toaster />
+                <Sonner />
+                <UpdatePrompt />
+                <AnnouncementBar />
+                
+                <div className="pb-16 md:pb-0">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/movies" element={<Movies />} />
+                    <Route path="/tv-shows" element={<TVShows />} />
+                    <Route path="/manga" element={<Manga />} />
+                    <Route path="/manga/:mangaId" element={<MangaDetails />} />
+                    <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
+                    <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
+                    <Route path="/live-tv" element={<LiveTV />} />
+                    <Route path="/live-events" element={<LiveEvents />} />
+                    <Route path="/live-event/*" element={<WatchEvent />} />
+                    <Route path="/live/:channelId" element={<WatchLive />} />
+                    <Route path="/watch/:type/:id" element={<Watch />} />
+                    <Route path="/search" element={<Search />} />
+                    <Route path="/my-list" element={<MyList />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/iptv" element={<IPTV />} />
+                    <Route path="/temp-mail" element={<TempMail />} />
+                    <Route path="/text-to-speech" element={<TextToSpeech />} />
+                    <Route path="/custom-channels" element={<CustomChannels />} />
+                    <Route path="/playlist-player" element={<PlaylistPlayer />} />
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <BottomNav />
-              </div>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <BottomNav />
+                </div>
+              </UserPreferencesProvider>
             </TooltipProvider>
           </MaintenanceWrapper>
         </BrowserRouter>
