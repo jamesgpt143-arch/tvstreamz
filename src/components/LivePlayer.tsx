@@ -315,30 +315,40 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         const testConnection = (proxy: string | null) => {
           return new Promise<string>(async (resolve, reject) => {
-            const isSupabase = proxy && Object.values(sbProxies).includes(proxy);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased timeout to 5s for Brave/Shields
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
             
+            const tryFetch = async (url: string) => {
+              return fetch(url, { 
+                signal: controller.signal,
+                mode: 'cors',
+                credentials: 'omit' // Fixed: wildcard * origin doesn't allow 'include'
+              });
+            };
+
             try {
               const testUrl = proxy === 'direct' 
                 ? streamUrl 
                 : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
               
-              // First Attempt: Full Metadata
-              let res = await fetch(testUrl, { 
-                signal: controller.signal,
-                mode: 'cors',
-                credentials: isSupabase ? 'include' : 'omit' // Supabase sometimes prefers 'include' in Brave
-              });
-
-              // Brave Fallback: If metadata parameters trigger Shields, try a clean hit
-              if (!res.ok && proxy !== 'direct') {
-                const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
-                const retryRes = await fetch(cleanUrl, { 
-                  signal: controller.signal,
-                  mode: 'cors'
-                });
-                if (retryRes.ok) res = retryRes;
+              let res: Response;
+              try {
+                res = await tryFetch(testUrl);
+                
+                // If metadata parameters trigger a block (e.g., Brave Shields returning 403/400)
+                if (!res.ok && proxy !== 'direct') {
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
+                  const retryRes = await tryFetch(cleanUrl);
+                  if (retryRes.ok) res = retryRes;
+                }
+              } catch (fetchErr) {
+                // If the first fetch failed due to CORS or metadata blocking, try a clean hit
+                if (proxy !== 'direct') {
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
+                  res = await tryFetch(cleanUrl);
+                } else {
+                  throw fetchErr;
+                }
               }
 
               clearTimeout(timeoutId);
