@@ -244,39 +244,46 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
-        // 2. Gather All Potential Proxies (Respect Admin Settings)
+        // 2. Gather All Potential Proxies (Fetch All for Fallback Resilience)
         const isStrict = channel.proxyType && channel.proxyType !== 'none';
         const isAuto = !isStrict && channel.useProxy;
         
-        let cfProxies = {};
-        let sbProxies = {};
-        let vercelProxies = {};
-
-        if (isStrict) {
-          if (channel.proxyType === 'supabase') sbProxies = await getProxyUrls('supabase');
-          else if (channel.proxyType === 'vercel') vercelProxies = await getProxyUrls('vercel');
-          else cfProxies = await getProxyUrls('cloudflare');
-        } else {
-          const [cf, sb, vc] = await Promise.all([
-            getProxyUrls('cloudflare').catch(() => ({})),
-            getProxyUrls('supabase').catch(() => ({})),
-            getProxyUrls('vercel').catch(() => ({}))
-          ]);
-          cfProxies = cf;
-          sbProxies = sb;
-          vercelProxies = vc;
-        }
+        // Fetch all providers regardless of strict mode to allow fallback if the strict one fails
+        const [cfProxies, sbProxies, vercelProxies] = await Promise.all([
+          getProxyUrls('cloudflare').catch(() => ({})),
+          getProxyUrls('supabase').catch(() => ({})),
+          getProxyUrls('vercel').catch(() => ({}))
+        ]);
 
         // Deduplicate and Order Candidates
         let providerProxies: string[] = [];
         const combinedMap = { ...cfProxies, ...sbProxies, ...vercelProxies } as Record<string, string>;
         
-        if (isStrict && channel.proxyOrder && channel.proxyOrder.length > 0) {
-          // Strictly follow admin's priority order
-          providerProxies = channel.proxyOrder
-            .map(key => ({...cfProxies, ...sbProxies, ...vercelProxies}[key]))
-            .filter(p => p && typeof p === 'string');
+        // Strict Priority Logic
+        if (isStrict) {
+          // 1. First, add the strictly selected provider's proxies
+          const preferredProxies = channel.proxyType === 'supabase' ? sbProxies : 
+                                   channel.proxyType === 'vercel' ? vercelProxies : cfProxies;
+          
+          let preferredUrls: string[] = [];
+          if (channel.proxyOrder && channel.proxyOrder.length > 0) {
+            preferredUrls = channel.proxyOrder
+              .map(key => (preferredProxies as any)[key])
+              .filter(p => p && typeof p === 'string');
+          } else {
+            preferredUrls = Object.values(preferredProxies).filter(p => p && typeof p === 'string');
+          }
+          
+          // 2. Add all other proxies as fallbacks
+          const otherProxies = Array.from(new Set([
+            ...Object.values(cfProxies),
+            ...Object.values(sbProxies),
+            ...Object.values(vercelProxies)
+          ].filter(p => p && typeof p === 'string' && !preferredUrls.includes(p)))) as string[];
+
+          providerProxies = [...preferredUrls, ...otherProxies];
         } else {
+          // Auto Mode: Mix all unique proxies
           providerProxies = Array.from(new Set([
             ...Object.values(cfProxies),
             ...Object.values(sbProxies),
@@ -308,19 +315,32 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         const testConnection = (proxy: string | null) => {
           return new Promise<string>(async (resolve, reject) => {
+            const isSupabase = proxy && Object.values(sbProxies).includes(proxy);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased timeout to 5s for Brave/Shields
             
             try {
               const testUrl = proxy === 'direct' 
                 ? streamUrl 
                 : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
               
-              const res = await fetch(testUrl, { 
+              // First Attempt: Full Metadata
+              let res = await fetch(testUrl, { 
                 signal: controller.signal,
                 mode: 'cors',
-                credentials: 'omit'
+                credentials: isSupabase ? 'include' : 'omit' // Supabase sometimes prefers 'include' in Brave
               });
+
+              // Brave Fallback: If metadata parameters trigger Shields, try a clean hit
+              if (!res.ok && proxy !== 'direct') {
+                const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
+                const retryRes = await fetch(cleanUrl, { 
+                  signal: controller.signal,
+                  mode: 'cors'
+                });
+                if (retryRes.ok) res = retryRes;
+              }
+
               clearTimeout(timeoutId);
               
               if (res.ok || res.status === 402) {

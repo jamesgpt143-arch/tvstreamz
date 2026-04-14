@@ -48,8 +48,7 @@ const categoryMap: Record<string, string> = {
 };
 
 export const CATEGORIES = [
-  'All', 'Favorites', 'Filipino', 'News', 'Sports', 'Movies', 'Anime', 'Kids',
-  'Documentary', 'Lifestyle', 'Music', 'International'
+  'All', 'Favorites'
 ] as const;
 
 export type ChannelCategory = typeof CATEGORIES[number];

@@ -39,14 +39,6 @@ const WatchLive = () => {
     return (dbChannels || []).map(toAppChannel);
   }, [dbChannels]);
 
-  // Quick access to other favorites
-  const favoriteChannels = useMemo(() => {
-    const favoriteIds = myList
-      .filter(item => item.type === 'channel')
-      .map(item => String(item.id));
-    return allChannels.filter(c => c.id !== channelId && favoriteIds.includes(String(c.id)));
-  }, [allChannels, myList, channelId]);
-  
   const channel = useMemo(() => {
     return allChannels.find((c) => c.id.toLowerCase() === channelId?.toLowerCase());
   }, [allChannels, channelId]);
@@ -224,33 +216,6 @@ const WatchLive = () => {
               </div>
             </div>
 
-            {/* QUICK FAVORITES ROW */}
-            {!isPrefsLoading && favoriteChannels.length > 0 && (
-              <div className="mt-8 max-w-4xl mx-auto w-full animate-fade-in">
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-4 h-4 text-primary fill-current" />
-                  <h2 className="text-sm font-black uppercase tracking-widest text-foreground">Your Favorites</h2>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                  {favoriteChannels.map((ch) => (
-                    <button
-                      key={ch.id}
-                      onClick={() => handleChannelSwitch(ch.id)}
-                      className="flex-shrink-0 w-24 flex flex-col items-center gap-2 p-3 rounded-2xl bg-card/50 border border-primary/10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 group"
-                    >
-                      <img
-                        src={ch.logo}
-                        alt={ch.name}
-                        className="w-12 h-12 object-contain rounded-xl bg-background p-1.5 shadow-sm group-hover:scale-110 transition-transform"
-                      />
-                      <span className="text-[10px] font-bold text-center text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 w-full">
-                        {ch.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Other Channels - Separate Scrollable Section */}
             {allChannels.length > 1 && (
