@@ -6,12 +6,13 @@ import { ShareButton } from '@/components/ShareButton';
 import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
-import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart } from 'lucide-react';
+import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CATEGORIES } from '@/lib/channelCategories';
 import {
   Select,
   SelectContent,
@@ -27,10 +28,11 @@ const WatchLive = () => {
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
-  const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
+  const { isInMyList, addToMyList, removeFromMyList, myList } = useUserPreferences();
 
   // All channels from database
   const allChannels: Channel[] = useMemo(() => {
@@ -68,10 +70,24 @@ const WatchLive = () => {
     }
   };
 
-  // Sort other channels based on selected option
+  // Sort and Filter other channels based on selected options
   const sortedOtherChannels = useMemo(() => {
-    const others = allChannels.filter((c) => c.id !== channelId);
+    let others = allChannels.filter((c) => c.id !== channelId);
     
+    // Category Filtering
+    if (selectedCategory === 'Favorites') {
+      const favoriteIds = myList
+        .filter(item => item.type === 'channel')
+        .map(item => String(item.id));
+      others = others.filter(c => favoriteIds.includes(String(c.id)));
+    } else if (selectedCategory !== 'All') {
+      others = others.filter(c => {
+        const dbCh = (dbChannels || []).find(d => d.id === c.id);
+        const cat = dbCh?.category || 'general';
+        return cat.toLowerCase() === selectedCategory.toLowerCase();
+      });
+    }
+
     switch (sortBy) {
       case 'a-z':
         return [...others].sort((a, b) => a.name.localeCompare(b.name));
@@ -94,7 +110,7 @@ const WatchLive = () => {
       default:
         return others;
     }
-  }, [allChannels, channelId, viewCounts, dbChannels, sortBy]);
+  }, [allChannels, channelId, viewCounts, dbChannels, sortBy, selectedCategory, myList]);
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
@@ -199,37 +215,56 @@ const WatchLive = () => {
             </div>
 
             {/* Other Channels - Separate Scrollable Section */}
-            {sortedOtherChannels.length > 0 && (
+            {allChannels.length > 1 && (
               <div className="mt-6 max-w-4xl mx-auto w-full">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                   <h2 className="text-sm font-semibold">Other Channels</h2>
                   
-                  {/* Sort Dropdown */}
-                  <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                    <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover">
-                      <SelectItem value="a-z">
-                        <div className="flex items-center gap-2">
-                          <ArrowUpAZ className="w-3 h-3" />
-                          <span>A-Z</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="popular">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="w-3 h-3" />
-                          <span>Popular</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="recent">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3 h-3" />
-                          <span>Recent</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    {/* Category Filter */}
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
+                        <SelectValue placeholder="Genre" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {CATEGORIES.map(cat => (
+                          <SelectItem key={cat} value={cat}>
+                            <div className="flex items-center gap-2">
+                              {cat === 'Favorites' ? <Star className="w-3 h-3 text-primary" /> : <div className="w-3" />}
+                              <span>{cat === 'All' ? 'All Channels' : cat}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Sort Dropdown */}
+                    <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                      <SelectTrigger className="w-[120px] h-8 text-xs bg-card">
+                        <SelectValue placeholder="Sort" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        <SelectItem value="a-z">
+                          <div className="flex items-center gap-2">
+                            <ArrowUpAZ className="w-3 h-3" />
+                            <span>A-Z</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="popular">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-3 h-3" />
+                            <span>Popular</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="recent">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            <span>Recent</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 
                 <div className="border border-border rounded-xl bg-card/50 p-3">
