@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { LivePlayer } from '@/components/LivePlayer';
@@ -6,9 +6,12 @@ import { ShareButton } from '@/components/ShareButton';
 import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
-import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock } from 'lucide-react';
+import { ChevronLeft, Radio, WifiOff, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -27,6 +30,7 @@ const WatchLive = () => {
   
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
+  const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
 
   // All channels from database
   const allChannels: Channel[] = useMemo(() => {
@@ -42,22 +46,44 @@ const WatchLive = () => {
     }
   }, [channel?.id, channel?.name]);
 
+  const isFavorite = channel ? isInMyList(channel.id, 'channel') : false;
+
+  const toggleFavorite = (targetChannel: Channel, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if (isInMyList(targetChannel.id, 'channel')) {
+      removeFromMyList(targetChannel.id, 'channel');
+      toast.success(`${targetChannel.name} removed from favorites`);
+    } else {
+      addToMyList({
+        id: targetChannel.id,
+        type: 'channel',
+        title: targetChannel.name,
+        poster_path: targetChannel.logo,
+      });
+      toast.success(`${targetChannel.name} added to favorites`);
+    }
+  };
+
   // Sort other channels based on selected option
   const sortedOtherChannels = useMemo(() => {
     const others = allChannels.filter((c) => c.id !== channelId);
     
     switch (sortBy) {
       case 'a-z':
-        return others.sort((a, b) => a.name.localeCompare(b.name));
+        return [...others].sort((a, b) => a.name.localeCompare(b.name));
       case 'popular':
-        return others.sort((a, b) => {
+        return [...others].sort((a, b) => {
           const aViews = viewCounts?.[a.id] || 0;
           const bViews = viewCounts?.[b.id] || 0;
           if (bViews !== aViews) return bViews - aViews;
           return a.name.localeCompare(b.name);
         });
       case 'recent':
-        return others.sort((a, b) => {
+        return [...others].sort((a, b) => {
           const aDb = (dbChannels || []).find(ch => ch.id === a.id);
           const bDb = (dbChannels || []).find(ch => ch.id === b.id);
           if (aDb && bDb) {
@@ -121,28 +147,43 @@ const WatchLive = () => {
             {/* Player Section */}
             <div className="max-w-4xl mx-auto w-full">
               {/* Channel Info */}
-              <div className="flex items-center gap-3 mb-3">
-                <img
-                  src={channel.logo}
-                  alt={channel.name}
-                  className="w-10 h-10 object-contain rounded-lg bg-secondary p-1.5"
-                />
-                <div>
-                  <h1 className="text-lg font-bold">{channel.name}</h1>
-                  <div className="flex items-center gap-2 text-xs">
-                    {isOnline ? (
-                      <>
-                        <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                        <span className="text-green-500">Live Now</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="w-3 h-3 text-destructive" />
-                        <span className="text-destructive">Offline</span>
-                      </>
-                    )}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={channel.logo}
+                    alt={channel.name}
+                    className="w-10 h-10 object-contain rounded-lg bg-secondary p-1.5"
+                  />
+                  <div>
+                    <h1 className="text-lg font-bold">{channel.name}</h1>
+                    <div className="flex items-center gap-2 text-xs">
+                      {isOnline ? (
+                        <>
+                          <Radio className="w-3 h-3 text-green-500 animate-pulse" />
+                          <span className="text-green-500">Live Now</span>
+                        </>
+                      ) : (
+                        <>
+                          <WifiOff className="w-3 h-3 text-destructive" />
+                          <span className="text-destructive">Offline</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => toggleFavorite(channel, e)}
+                  className={cn(
+                    "rounded-full transition-all duration-300 h-10 w-10",
+                    isFavorite 
+                      ? "text-primary bg-primary/10 hover:bg-primary/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <Heart className={cn("w-5 h-5", isFavorite && "fill-current scale-110")} />
+                </Button>
               </div>
 
               {/* Player */}
@@ -194,22 +235,37 @@ const WatchLive = () => {
                 <div className="border border-border rounded-xl bg-card/50 p-3">
                   <ScrollArea className="h-[280px]">
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 pr-3">
-                      {sortedOtherChannels.map((ch) => (
-                        <button
-                          key={ch.id}
-                          onClick={() => handleChannelSwitch(ch.id)}
-                          className="flex flex-col items-center p-2 rounded-lg bg-background border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 group"
-                        >
-                          <img
-                            src={ch.logo}
-                            alt={ch.name}
-                            className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-md bg-secondary/50 p-1"
-                          />
-                          <p className="font-medium text-[9px] sm:text-[10px] group-hover:text-primary transition-colors text-center mt-1.5 line-clamp-1 w-full">
-                            {ch.name}
-                          </p>
-                        </button>
-                      ))}
+                      {sortedOtherChannels.map((ch) => {
+                        const isFav = isInMyList(ch.id, 'channel');
+                        return (
+                          <div key={ch.id} className="relative group">
+                            <button
+                              onClick={() => handleChannelSwitch(ch.id)}
+                              className="w-full flex flex-col items-center p-2 rounded-lg bg-background border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200"
+                            >
+                              <img
+                                src={ch.logo}
+                                alt={ch.name}
+                                className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-md bg-secondary/50 p-1"
+                              />
+                              <p className="font-medium text-[9px] sm:text-[10px] group-hover:text-primary transition-colors text-center mt-1.5 line-clamp-1 w-full">
+                                {ch.name}
+                              </p>
+                            </button>
+                            <button
+                              onClick={(e) => toggleFavorite(ch, e)}
+                              className={cn(
+                                "absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 z-10 backdrop-blur-md",
+                                isFav 
+                                  ? "bg-primary/20 text-primary opacity-100" 
+                                  : "bg-black/40 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white"
+                              )}
+                            >
+                              <Heart className={cn("w-2.5 h-2.5", isFav && "fill-current")} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
