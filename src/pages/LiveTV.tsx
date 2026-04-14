@@ -6,10 +6,11 @@ import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { Radio, Filter, Star, Trophy, Coffee, Loader2 } from 'lucide-react';
+import { Radio, Filter, Star, Trophy, Coffee, Loader2, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import {
   Select,
   SelectContent,
@@ -23,21 +24,27 @@ type SortOption = 'a-z' | 'popular' | 'recent';
 const LiveTV = () => {
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
+  const { myList } = useUserPreferences();
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
   usePagePopup('livetv');
 
   const channels: Channel[] = useMemo(() => {
-    const allChannels = (dbChannels || []).map(toAppChannel);
+    let filtered = (dbChannels || []).map(toAppChannel);
 
-    const filtered = selectedCategory === 'All'
-      ? allChannels
-      : allChannels.filter(c => {
-          const dbCh = (dbChannels || []).find(d => d.id === c.id);
-          const cat = dbCh?.category || 'general';
-          return cat.toLowerCase() === selectedCategory.toLowerCase();
-        });
+    if (selectedCategory === 'Favorites') {
+      const favoriteIds = myList
+        .filter(item => item.type === 'channel')
+        .map(item => String(item.id));
+      filtered = filtered.filter(c => favoriteIds.includes(String(c.id)));
+    } else if (selectedCategory !== 'All') {
+      filtered = filtered.filter(c => {
+        const dbCh = (dbChannels || []).find(d => d.id === c.id);
+        const cat = dbCh?.category || 'general';
+        return cat.toLowerCase() === selectedCategory.toLowerCase();
+      });
+    }
 
     switch (sortBy) {
       case 'a-z':
@@ -61,9 +68,10 @@ const LiveTV = () => {
       default:
         return filtered;
     }
-  }, [dbChannels, viewCounts, sortBy, selectedCategory]);
+  }, [dbChannels, viewCounts, sortBy, selectedCategory, myList]);
 
   const getDynamicTitle = () => {
+    if (selectedCategory === 'Favorites') return 'My Favorite Channels';
     const prefix = selectedCategory !== 'All' ? `${selectedCategory} ` : '';
     switch (sortBy) {
       case 'popular': return `Trending ${prefix}Channels`;
@@ -71,6 +79,7 @@ const LiveTV = () => {
       default: return `${prefix}Live TV Channels`;
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -169,13 +178,24 @@ const LiveTV = () => {
               ))}
 
               {channels.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground/50 border-2 border-dashed border-border/50 rounded-3xl">
-                  <Radio className="w-16 h-16 mb-4 opacity-20" />
-                  <p className="text-xl font-medium">No channels found in this category.</p>
-                  <Button variant="link" onClick={() => {
-                    setSortBy('a-z');
-                    setSelectedCategory('All');
-                  }} className="mt-2 text-primary">Reset filters</Button>
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground/50 border-2 border-dashed border-border/50 rounded-3xl animate-fade-in">
+                  {selectedCategory === 'Favorites' ? (
+                    <>
+                      <Heart className="w-16 h-16 mb-4 opacity-20" />
+                      <p className="text-xl font-medium">You haven't added any favorites yet.</p>
+                      <p className="text-sm mt-1">Click the heart icon on any channel to add it here!</p>
+                      <Button variant="link" onClick={() => setSelectedCategory('All')} className="mt-4 text-primary">Browse All Channels</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Radio className="w-16 h-16 mb-4 opacity-20" />
+                      <p className="text-xl font-medium">No channels found in this category.</p>
+                      <Button variant="link" onClick={() => {
+                        setSortBy('a-z');
+                        setSelectedCategory('All');
+                      }} className="mt-2 text-primary">Reset filters</Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

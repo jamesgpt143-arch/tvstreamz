@@ -48,7 +48,7 @@ const categoryMap: Record<string, string> = {
 };
 
 export const CATEGORIES = [
-  'All', 'Filipino', 'News', 'Sports', 'Movies', 'Anime', 'Kids',
+  'All', 'Favorites', 'Filipino', 'News', 'Sports', 'Movies', 'Anime', 'Kids',
   'Documentary', 'Lifestyle', 'Music', 'International'
 ] as const;
 

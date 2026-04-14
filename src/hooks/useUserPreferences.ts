@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface MyListItem {
-  id: number;
-  type: 'movie' | 'tv';
+  id: number | string;
+  type: 'movie' | 'tv' | 'channel';
   title: string;
   poster_path: string | null;
   vote_average?: number | string;
@@ -56,7 +56,7 @@ export function useUserPreferences() {
         if (data) {
           const formattedList: MyListItem[] = data.map(item => ({
             id: item.content_id,
-            type: item.content_type as 'movie' | 'tv',
+            type: item.content_type as 'movie' | 'tv' | 'channel',
             title: item.title,
             poster_path: item.poster_path,
             vote_average: item.vote_average
@@ -119,7 +119,7 @@ export function useUserPreferences() {
     return true;
   }, [myList, userId, fetchList]);
 
-  const removeFromMyList = useCallback(async (id: number, type: 'movie' | 'tv') => {
+  const removeFromMyList = useCallback(async (id: number | string, type: 'movie' | 'tv' | 'channel') => {
     // Optimistic update
     const newList = myList.filter((item) => !(item.id === id && item.type === type));
     setMyList(newList);
@@ -158,9 +158,10 @@ export function useUserPreferences() {
     }
   }, [userId, fetchList]);
 
-  const isInMyList = useCallback((id: number, type: 'movie' | 'tv') => {
-    return myList.some((item) => item.id === id && item.type === item.type);
+  const isInMyList = useCallback((id: number | string, type: 'movie' | 'tv' | 'channel') => {
+    return myList.some((item) => String(item.id) === String(id) && item.type === type);
   }, [myList]);
+
 
   return { 
     myList, 
