@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Mail, Shield, MonitorUp, ListMusic } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from './ThemeToggle';
+
 import { NotificationBell } from './NotificationBell';
 import { SearchSuggestions } from './SearchSuggestions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -146,7 +146,7 @@ export const Navbar = () => {
               )}
             </div>
 
-            <ThemeToggle />
+
             <NotificationBell />
             
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>

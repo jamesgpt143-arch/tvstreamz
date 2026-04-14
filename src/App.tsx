@@ -142,7 +142,7 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
         <BrowserRouter>
           <MaintenanceWrapper maintenance={maintenance} isAdmin={isAdmin}>
             <TooltipProvider>
