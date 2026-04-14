@@ -98,7 +98,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [userId]);
 
   const addToMyList = useCallback(async (item: MyListItem) => {
-    const exists = myList.some((i) => String(i.id) === String(item.id) && i.type === item.type);
+    const exists = myList.some((i) => {
+      const isSameId = String(i.id).toLowerCase() === String(item.id).toLowerCase();
+      return isSameId && i.type === item.type;
+    });
     if (exists) return false;
 
     // Optimistic UI update
@@ -128,7 +131,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [myList, userId, fetchList]);
 
   const removeFromMyList = useCallback(async (id: number | string, type: 'movie' | 'tv' | 'channel') => {
-    const newList = myList.filter((item) => !(String(item.id) === String(id) && item.type === type));
+    const newList = myList.filter((item) => {
+      const isSameId = String(item.id).toLowerCase() === String(id).toLowerCase();
+      return !(isSameId && item.type === type);
+    });
     setMyList(newList);
 
     if (userId) {
@@ -166,7 +172,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [userId, fetchList]);
 
   const isInMyList = useCallback((id: number | string, type: 'movie' | 'tv' | 'channel') => {
-    return myList.some((item) => String(item.id) === String(id) && item.type === type);
+    return myList.some((item) => {
+      const isSameId = String(item.id).toLowerCase() === String(id).toLowerCase();
+      return isSameId && item.type === type;
+    });
   }, [myList]);
 
   return (

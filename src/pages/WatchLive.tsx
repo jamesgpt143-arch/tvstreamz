@@ -47,7 +47,9 @@ const WatchLive = () => {
     return allChannels.filter(c => c.id !== channelId && favoriteIds.includes(String(c.id)));
   }, [allChannels, myList, channelId]);
   
-  const channel = allChannels.find((c) => c.id === channelId);
+  const channel = useMemo(() => {
+    return allChannels.find((c) => c.id.toLowerCase() === channelId?.toLowerCase());
+  }, [allChannels, channelId]);
 
   // Track channel view
   useEffect(() => {
