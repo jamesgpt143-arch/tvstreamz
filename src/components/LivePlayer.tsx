@@ -313,16 +313,16 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
 
         let activeProxyUrl = '';
         
-        const testConnection = (proxy: string | null) => {
+        const testConnection = (proxy: string | null, timeoutMs: number = 6000) => {
           return new Promise<string>(async (resolve, reject) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             
             const tryFetch = async (url: string) => {
               return fetch(url, { 
                 signal: controller.signal,
                 mode: 'cors',
-                credentials: 'omit' // Fixed: wildcard * origin doesn't allow 'include'
+                credentials: 'omit' 
               });
             };
 
@@ -335,14 +335,12 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               try {
                 res = await tryFetch(testUrl);
                 
-                // If metadata parameters trigger a block (e.g., Brave Shields returning 403/400)
                 if (!res.ok && proxy !== 'direct') {
                   const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
                   const retryRes = await tryFetch(cleanUrl);
                   if (retryRes.ok) res = retryRes;
                 }
               } catch (fetchErr) {
-                // If the first fetch failed due to CORS or metadata blocking, try a clean hit
                 if (proxy !== 'direct') {
                   const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
                   res = await tryFetch(cleanUrl);
@@ -356,8 +354,9 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
               if (res.ok || res.status === 402) {
                 resolve(proxy!);
               } else {
-                if (proxy !== 'direct' && (res.status === 429 || res.status === 403 || res.status >= 500)) {
-                  badProxiesCache.set(`${channel.id}:${proxy!}`, Date.now());
+                // Mark 404s and other errors as bad
+                if (proxy !== 'direct' && proxy) {
+                  badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
                 }
                 reject(new Error(`Status ${res.status}`));
               }
@@ -400,23 +399,41 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             const cachedProxy = getStoredProxy(channel.id);
             let selectionSuccessful = false;
 
-            // Step A: Quick Connect (Cache Check)
+            // Step A: Verified Quick Connect (Fast Ping)
             if (cachedProxy && candidates.includes(cachedProxy)) {
-              if (isMounted) onProxyChange?.(`Quick Connect (${labelMap.get(cachedProxy) || 'Cache'})...`);
-              activeProxyUrl = cachedProxy;
-              selectionSuccessful = true;
+              if (isMounted) onProxyChange?.(`Verifying ${labelMap.get(cachedProxy) || 'Cache'}...`);
+              
+              try {
+                // Short timeout for verification (2s)
+                activeProxyUrl = await testConnection(cachedProxy, 2000);
+                selectionSuccessful = true;
+                if (isMounted) onProxyChange?.(`${labelMap.get(activeProxyUrl) || 'Connected'} (Verified)`);
+              } catch (e) {
+                console.warn('[QuickConnect] Cached proxy failed verification. Clearing.', cachedProxy);
+                setStoredProxy(channel.id, ''); // Clear broken cache
+              }
             }
 
-            // Step B: Parallel Race Fallback
+            // Step B: Parallel Race Fallback (if no cache or cache failed)
             if (!selectionSuccessful) {
               if (isMounted) onProxyChange?.('Finding best connection...');
-              const racePromises = candidates.map(c => testConnection(c));
-
-              activeProxyUrl = await (Promise as any).any(racePromises);
               
-              // Only save if it's not 'direct'
-              if (activeProxyUrl && activeProxyUrl !== 'direct') {
-                setStoredProxy(channel.id, activeProxyUrl);
+              // Filter out bad proxies from race
+              const raceCandidates = candidates.filter(p => {
+                const cacheKey = `${channel.id}:${p}`;
+                return !badProxiesCache.has(cacheKey) || (Date.now() - badProxiesCache.get(cacheKey)! >= PROXY_TIMEOUT_MS);
+              });
+
+              if (raceCandidates.length > 0) {
+                const racePromises = raceCandidates.map(c => testConnection(c));
+                activeProxyUrl = await (Promise as any).any(racePromises);
+                
+                // Only save if it's not 'direct'
+                if (activeProxyUrl && activeProxyUrl !== 'direct') {
+                  setStoredProxy(channel.id, activeProxyUrl);
+                }
+              } else {
+                throw new Error('No working proxies found');
               }
             }
 
