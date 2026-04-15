@@ -18,6 +18,7 @@ export function SiteSettingsManager() {
   const [maintenance, setMaintenance] = useState({ enabled: false, message: "" });
   const [seo, setSeo] = useState({ title: "", description: "", keywords: "", og_image: "" });
   const [announcement, setAnnouncement] = useState({ is_active: false, message: "", bgColor: "#8b5cf6", textColor: "#ffffff", link: "" });
+  const [chatSettings, setChatSettings] = useState({ enabled: true });
 
   useEffect(() => {
     fetchSettings();
@@ -34,6 +35,7 @@ export function SiteSettingsManager() {
         if (setting.key === "maintenance_mode") setMaintenance(val || { enabled: false, message: "" });
         if (setting.key === "seo_settings") setSeo(val || { title: "", description: "", keywords: "", og_image: "" });
         if (setting.key === "announcement_settings") setAnnouncement(val || { is_active: false, message: "", bgColor: "#8b5cf6", textColor: "#ffffff", link: "" });
+        if (setting.key === "chat_settings") setChatSettings(val || { enabled: true });
       });
     } catch (error: any) {
       toast({ title: "Error fetching settings", description: error.message, variant: "destructive" });
@@ -228,6 +230,33 @@ export function SiteSettingsManager() {
           >
             {saving === "announcement_settings" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Announcement Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Community Chat Settings */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary" />
+              <CardTitle>Community Chat</CardTitle>
+            </div>
+            <Switch
+              checked={chatSettings.enabled}
+              onCheckedChange={(checked) => setChatSettings({ enabled: checked })}
+            />
+          </div>
+          <CardDescription>Enable or disable the real-time public chat for all users.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={() => handleSave("chat_settings", chatSettings)} 
+            disabled={saving === "chat_settings"}
+            className="w-full sm:w-auto gap-2"
+          >
+            {saving === "chat_settings" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Chat Settings
           </Button>
         </CardContent>
       </Card>
