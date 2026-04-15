@@ -261,7 +261,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
         
         // Strict Priority Logic
         if (isStrict) {
-          // 1. First, add the strictly selected provider's proxies
+          // 1. Only add the strictly selected provider's proxies
           const preferredProxies = channel.proxyType === 'supabase' ? sbProxies : 
                                    channel.proxyType === 'vercel' ? vercelProxies : cfProxies;
           
@@ -274,14 +274,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
             preferredUrls = Object.values(preferredProxies).filter(p => p && typeof p === 'string');
           }
           
-          // 2. Add all other proxies as fallbacks
-          const otherProxies = Array.from(new Set([
-            ...Object.values(cfProxies),
-            ...Object.values(sbProxies),
-            ...Object.values(vercelProxies)
-          ].filter(p => p && typeof p === 'string' && !preferredUrls.includes(p)))) as string[];
-
-          providerProxies = [...preferredUrls, ...otherProxies];
+          providerProxies = [...preferredUrls];
         } else {
           // Auto Mode: Mix all unique proxies
           providerProxies = Array.from(new Set([
