@@ -11,7 +11,8 @@ import {
   LogIn, 
   CornerDownRight, 
   MessageSquare,
-  Reply
+  Reply,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ export const CommunityChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,14 @@ export const CommunityChat = () => {
           const newMsg = payload.new as ChatMessage;
           setMessages((prev) => [...prev, newMsg]);
           scrollToBottom();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'community_messages' },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setMessages((prev) => prev.filter(msg => msg.id !== deletedId));
         }
       )
       .subscribe();
@@ -77,6 +87,15 @@ export const CommunityChat = () => {
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
+    
+    if (user) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin");
+      setIsAdmin(!!(roles && roles.length > 0));
+    }
   };
 
   const fetchMessages = async () => {
@@ -138,6 +157,23 @@ export const CommunityChat = () => {
       console.error(error);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!window.confirm('Sigurado ka bang gusto mong burahin ang message na ito?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('community_messages' as any)
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+      toast.success('Message deleted.');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Galing! Hindi ma-delete ang message.');
     }
   };
 
@@ -232,14 +268,27 @@ export const CommunityChat = () => {
                         {msg.message}
                       </div>
 
-                      {user && msg.user_id !== user.id && (
-                        <button
-                          onClick={() => setReplyingTo(msg)}
-                          className="absolute top-0 -right-8 p-1 opacity-0 group-hover:opacity-100 hover:text-primary transition-all bg-card border border-border rounded-full shadow-lg"
-                        >
-                          <Reply className="w-3 h-3" />
-                        </button>
-                      )}
+                      <div className="absolute top-0 -right-8 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        {user && msg.user_id !== user.id && (
+                          <button
+                            onClick={() => setReplyingTo(msg)}
+                            className="p-1 hover:text-primary transition-all bg-card border border-border rounded-full shadow-lg"
+                            title="Reply"
+                          >
+                            <Reply className="w-3 h-3" />
+                          </button>
+                        )}
+                        
+                        {(isAdmin || (user && msg.user_id === user.id)) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="p-1 hover:text-destructive transition-all bg-card border border-border rounded-full shadow-lg"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
