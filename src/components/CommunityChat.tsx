@@ -220,7 +220,7 @@ export const CommunityChat = () => {
           </div>
 
           {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 px-10 py-4">
             {isLoading ? (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -268,11 +268,16 @@ export const CommunityChat = () => {
                         {msg.message}
                       </div>
 
-                      <div className="absolute top-0 -right-8 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <div 
+                        className={cn(
+                          "absolute top-0 flex flex-col gap-1 transition-all",
+                          msg.user_id === user?.id ? "-left-8" : "-right-8"
+                        )}
+                      >
                         {user && msg.user_id !== user.id && (
                           <button
                             onClick={() => setReplyingTo(msg)}
-                            className="p-1 hover:text-primary transition-all bg-card border border-border rounded-full shadow-lg"
+                            className="p-1 text-primary/70 hover:text-primary transition-all bg-card border border-border rounded-full shadow-md"
                             title="Reply"
                           >
                             <Reply className="w-3 h-3" />
@@ -282,7 +287,7 @@ export const CommunityChat = () => {
                         {(isAdmin || (user && msg.user_id === user.id)) && (
                           <button
                             onClick={() => handleDeleteMessage(msg.id)}
-                            className="p-1 hover:text-destructive transition-all bg-card border border-border rounded-full shadow-lg"
+                            className="p-1 text-destructive/70 hover:text-destructive transition-all bg-card border border-border rounded-full shadow-md"
                             title="Delete"
                           >
                             <Trash2 className="w-3 h-3" />
