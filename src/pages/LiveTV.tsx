@@ -98,7 +98,7 @@ const LiveTV = () => {
               </div>
               <div className="flex items-center gap-4">
                 <p className="text-muted-foreground transition-all duration-300">
-                  {channels.length} channels available online
+                  {channels.length} channels available
                 </p>
                 <Link
                   to="/live-events"

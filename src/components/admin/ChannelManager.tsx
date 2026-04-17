@@ -100,15 +100,6 @@ export function ChannelManager() {
                           Inactive
                         </Badge>
                       )}
-                      {channel.status === 'offline' ? (
-                        <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black bg-amber-500/5 transition-all animate-pulse">
-                          Offline
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-emerald-500 border-emerald-500/50 gap-1 rounded-full text-[10px] px-2 py-0 h-4 uppercase font-black bg-emerald-500/5">
-                          Online
-                        </Badge>
-                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {channel.stream_type.toUpperCase()} • {channel.category || 'General'}

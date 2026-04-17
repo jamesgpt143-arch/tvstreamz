@@ -26,7 +26,6 @@ type SortOption = 'a-z' | 'popular' | 'recent';
 const WatchLive = () => {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
-  const [isOnline, setIsOnline] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
@@ -118,9 +117,6 @@ const WatchLive = () => {
     navigate(`/live/${newChannelId}`, { replace: true });
   }, [navigate]);
 
-  const handleStatusChange = useCallback((online: boolean) => {
-    setIsOnline(online);
-  }, []);
 
   if (isLoading) {
     return (
@@ -174,19 +170,6 @@ const WatchLive = () => {
                   />
                   <div>
                     <h1 className="text-lg font-bold">{channel.name}</h1>
-                    <div className="flex items-center gap-2 text-xs">
-                      {isOnline ? (
-                        <>
-                          <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                          <span className="text-green-500">Live Now</span>
-                        </>
-                      ) : (
-                        <>
-                          <WifiOff className="w-3 h-3 text-destructive" />
-                          <span className="text-destructive">Offline</span>
-                        </>
-                      )}
-                    </div>
                   </div>
                 </div>
                 <Button
@@ -207,7 +190,7 @@ const WatchLive = () => {
               {/* Player */}
               <LivePlayer 
                 channel={channel} 
-                onStatusChange={handleStatusChange}
+                onProxyChange={setActiveProxyLabel}
               />
 
               {/* Share Button & Optional Metadata */}

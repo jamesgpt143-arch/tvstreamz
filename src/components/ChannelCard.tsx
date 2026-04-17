@@ -61,14 +61,6 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
           <Heart className={cn("w-4 h-4 transition-transform duration-300", isFavorite && "fill-current scale-110")} />
         </button>
 
-        {/* Offline overlay */}
-        {channel.status === 'offline' && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="text-[9px] uppercase font-black tracking-widest text-zinc-400 bg-zinc-800/90 px-2 py-1 rounded-full border border-white/5">
-              Offline
-            </span>
-          </div>
-        )}
       </div>
 
       <span className="text-xs sm:text-sm font-bold text-center text-foreground group-hover:text-primary transition-colors leading-tight px-1">

@@ -97,11 +97,10 @@ export const getProxiedLogoUrl = (logo?: string, proxyBase?: string) => {
 
 interface LivePlayerProps {
   channel: Channel;
-  onStatusChange?: (isOnline: boolean) => void;
   onProxyChange?: (label: string) => void;
 }
 
-const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps) => {
+const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -121,39 +120,10 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [offlineText, setOfflineText] = useState({
-    title: "Channel is currently offline.",
-    message: "Please try another channel or use a backup link."
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchOfflineText = async () => {
-      if (channel.offlineTitle || channel.offlineMessage) {
-        if (isMounted) {
-          setOfflineText({
-            title: channel.offlineTitle || "Channel is currently offline.",
-            message: channel.offlineMessage || "Please try another channel or use a backup link."
-          });
-        }
-      } 
-      else {
-        const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').maybeSingle();
-        if (isMounted && data?.value) {
-          const conf = data.value as any;
-          setOfflineText({
-            title: conf.offline_title || "Channel is currently offline.",
-            message: conf.offline_message || "Please try another channel or use a backup link."
-          });
-        }
-      }
-    };
-
-    fetchOfflineText();
-
-    return () => { isMounted = false; };
-  }, [channel.offlineTitle, channel.offlineMessage]);
+  const offlineText = {
+    title: "Playback Error",
+    message: "The stream could not be loaded. Please try again or choose another channel."
+  };
 
   useEffect(() => {
     setReloadTrigger(0);
@@ -171,9 +141,6 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
     return null;
   }, [channel]);
 
-  useEffect(() => {
-    onStatusChange?.(!error && !iosWarning);
-  }, [error, iosWarning, onStatusChange]);
   
   useEffect(() => {
     if (checkIOSCompatibility) setIosWarning(checkIOSCompatibility);
@@ -599,7 +566,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
                   }
                   
                   if (!triggerAutoRefresh()) {
-                    setError('Channel is currently offline.');
+                    setError('Playback Error');
                     setIsLoading(false);
                     setIsRefreshing(false);
                   }
@@ -772,7 +739,7 @@ const PlayerCore = ({ channel, onStatusChange, onProxyChange }: LivePlayerProps)
   );
 };
 
-export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
+export const LivePlayer = ({ channel }: LivePlayerProps) => {
   const [activeProxyLabel, setActiveProxyLabel] = useState<string | null>(null);
 
   if (channel.type === 'youtube') {
@@ -786,7 +753,7 @@ export const LivePlayer = ({ channel, onStatusChange }: LivePlayerProps) => {
   return (
     <div>
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
-        <PlayerCore key={channel.id} channel={channel} onStatusChange={onStatusChange} onProxyChange={setActiveProxyLabel} />
+        <PlayerCore key={channel.id} channel={channel} onProxyChange={setActiveProxyLabel} />
       </div>
 
     </div>

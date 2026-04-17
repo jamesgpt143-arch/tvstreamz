@@ -15,7 +15,6 @@ import { NotificationManager } from "@/components/admin/NotificationManager";
 import { MessageManager } from "@/components/admin/MessageManager";
 import { AppUpdateManager } from "@/components/admin/AppUpdateManager";
 import { SiteSettingsManager } from "@/components/admin/SiteSettingsManager";
-import { LinkValidator } from "@/components/admin/LinkValidator";
 
 interface DailyStats {
   date: string;
@@ -169,8 +168,7 @@ export default function AdminDashboard() {
     { id: 'app-update', title: 'App Updater', icon: Rocket, desc: 'Manage APK versions and update popups', color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' }, // <--- BAGONG MENU ITEM
     { id: 'settings', title: 'Welcome Popup', icon: MessageSquare, desc: 'Edit the initial welcome dialog', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
     { id: 'page-popups', title: 'Page Popups', icon: ExternalLink, desc: 'Manage redirect links and ads', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-    { id: 'site-settings', title: 'Site Config', icon: Globe, desc: 'Maintenance, SEO, and Announcements', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { id: 'link-validator', title: 'Link Validator', icon: RefreshCw, desc: 'Check if stream URLs are still active', color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+ { id: 'site-settings', title: 'Site Config', icon: Globe, desc: 'Maintenance, SEO, and Announcements', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
   ];
 
   if (loading) {
@@ -288,8 +286,7 @@ export default function AdminDashboard() {
             {activeView === 'iptv' && <IptvSettings />}
             {activeView === 'notifications' && <NotificationManager />}
             {activeView === 'app-update' && <AppUpdateManager />}
-            {activeView === 'site-settings' && <SiteSettingsManager />}
-            {activeView === 'link-validator' && <LinkValidator />}
+ {activeView === 'site-settings' && <SiteSettingsManager />}
             
             {activeView === 'analytics' && (
               <div className="space-y-6">

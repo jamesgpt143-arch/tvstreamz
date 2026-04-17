@@ -71,8 +71,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
     tvapp_slug: channel?.tvapp_slug || '',
     proxy_type: (channel as any)?.proxy_type || 'none',
-    offline_title: (channel as any)?.offline_title || '',     // <-- BAGONG FIELD
-    offline_message: (channel as any)?.offline_message || '', // <-- BAGONG FIELD
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -105,8 +103,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
         tvapp_slug: formData.tvapp_slug || null,
         use_proxy: formData.proxy_type !== 'none',
         proxy_type: formData.proxy_type || 'none',
-        offline_title: formData.offline_title || null,
-        offline_message: formData.offline_message || null,
       };
 
       if (isEditing && channel) {
@@ -208,31 +204,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             </Select>
           </div>
 
-          {/* CUSTOM OFFLINE MESSAGE SECTION */}
-          <div className="space-y-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-sm font-medium text-red-500">Custom Offline Message (Optional)</p>
-            <p className="text-xs text-muted-foreground mb-2">
-              Kung lalagyan mo ito, ito ang ipapakita sa user kapag sira ang channel imbes na ang default settings. Maganda ito kung gusto mong sabihing <b>"VPN Required"</b> o <b>"Under Maintenance"</b>.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="offline_title">Custom Title</Label>
-              <Input
-                id="offline_title"
-                value={formData.offline_title || ''}
-                onChange={(e) => setFormData({ ...formData, offline_title: e.target.value })}
-                placeholder="e.g., VPN REQUIRED!"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="offline_message">Custom Message</Label>
-              <Input
-                id="offline_message"
-                value={formData.offline_message || ''}
-                onChange={(e) => setFormData({ ...formData, offline_message: e.target.value })}
-                placeholder="e.g., Kailangan ng VPN (Malaysia) para mag-play ito."
-              />
-            </div>
-          </div>
 
           {/* DRM Configuration (for MPD/HLS streams) */}
           {(formData.stream_type === 'mpd' || formData.stream_type === 'hls') && (
