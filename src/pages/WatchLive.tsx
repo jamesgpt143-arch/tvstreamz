@@ -6,7 +6,7 @@ import { ShareButton } from '@/components/ShareButton';
 import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
-import { ChevronLeft, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart, Star, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -29,11 +29,6 @@ const WatchLive = () => {
   const [sortBy, setSortBy] = useState<SortOption>('a-z');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
-  // =========================================
-  // FIX: IDINAGDAG NATIN ANG NAWAWALANG STATE
-  // =========================================
-  const [activeProxyLabel, setActiveProxyLabel] = useState<string | null>(null);
-
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
   const { isInMyList, addToMyList, removeFromMyList, myList, isLoading: isPrefsLoading } = useUserPreferences();
@@ -174,17 +169,6 @@ const WatchLive = () => {
                   />
                   <div>
                     <h1 className="text-lg font-bold">{channel.name}</h1>
-                    
-                    {/* ========================================= */}
-                    {/* FIX: IDINAGDAG NATIN ANG PROXY INDICATOR UI */}
-                    {/* ========================================= */}
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                        Proxy: <span className="text-green-500">{activeProxyLabel || 'Connecting...'}</span>
-                      </span>
-                    </div>
-
                   </div>
                 </div>
                 <Button
@@ -205,7 +189,6 @@ const WatchLive = () => {
               {/* Player */}
               <LivePlayer 
                 channel={{...channel, useProxy: true}} // Sapilitang i-on ang Auto-Proxy
-                onProxyChange={setActiveProxyLabel}
               />
 
               {/* Share Button & Optional Metadata */}
