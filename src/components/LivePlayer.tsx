@@ -296,13 +296,14 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 res = await tryFetch(testUrl);
                 
                 if (!res.ok && proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
+                  // Retry with base headers if first attempt failed
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
                   const retryRes = await tryFetch(cleanUrl);
                   if (retryRes.ok) res = retryRes;
                 }
               } catch (fetchErr) {
                 if (proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl);
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
                   res = await tryFetch(cleanUrl);
                 } else {
                   throw fetchErr;
@@ -316,6 +317,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               } else {
                 // Mark 404s and other errors as bad
                 if (proxy !== 'direct' && proxy) {
+                  console.warn(`[ProxyTest] ${labelMap.get(proxy)} failed for ${channel.name}: ${res.status}`);
                   badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
                 }
                 reject(new Error(`Status ${res.status}`));
@@ -451,7 +453,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               }
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, channel.userAgent, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, channel.referrer);
               return;
             }
             request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
@@ -493,7 +495,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             configureShakaProxy(player, proxyUrl);
 
             try {
-              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
               if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
               if (isMounted) {
@@ -534,7 +536,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 }
               });
               hlsRef.current = hls;
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -561,7 +563,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                   if (currentProxyIndex < candidates.length) {
                     const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, channel.userAgent, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, channel.referrer));
                     return;
                   }
                   
@@ -573,7 +575,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
               videoRef.current.addEventListener('loadedmetadata', () => {
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
               });
@@ -605,7 +607,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           configureShakaProxy(player, proxyUrl);
 
           try {
-            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             // If cached proxy failed, clear it
@@ -622,7 +624,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
               configureShakaProxy(player, finalFallback);
               try {
-                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, channel.userAgent, channel.referrer) : streamUrl);
+                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer) : streamUrl);
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
@@ -640,7 +642,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         else if (channel.type === 'plain') {
           if (videoRef.current) {
             videoRef.current.controls = true;
-            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, channel.userAgent, channel.referrer) : streamUrl;
+            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
             videoRef.current.src = finalUrl;
             videoRef.current.addEventListener('loadedmetadata', () => {
               if (isMounted) {
