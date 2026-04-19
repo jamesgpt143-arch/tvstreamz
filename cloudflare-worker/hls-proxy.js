@@ -73,6 +73,22 @@ export default {
         upstreamHeaders.set('Range', rangeHeader);
       }
 
+      // GEOBLOCK BYPASS: Inject Philippines IP Headers
+      const phIPs = [
+        '112.204.1.10', '120.28.45.1', '49.145.23.5', 
+        '180.191.102.3', '203.177.42.8', '210.213.122.5'
+      ];
+      const randomPHIP = phIPs[Math.floor(Math.random() * phIPs.length)];
+      
+      upstreamHeaders.set('X-Forwarded-For', randomPHIP);
+      upstreamHeaders.set('X-Real-IP', randomPHIP);
+      upstreamHeaders.set('True-Client-IP', randomPHIP);
+      upstreamHeaders.set('X-Visitor-IP', randomPHIP);
+      upstreamHeaders.set('X-Originating-IP', randomPHIP);
+      
+      // Some CDNs check these for location
+      upstreamHeaders.set('CF-IPCountry', 'PH');
+
       // Fetch the resource - use manual redirect to preserve custom headers
       let response = await fetch(targetUrl, {
         method: request.method,
