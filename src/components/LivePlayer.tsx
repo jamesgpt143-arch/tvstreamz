@@ -326,7 +326,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         let activeProxyUrl = '';
         
-        const testConnection = (proxy: string | null, timeoutMs: number = 6000) => {
+        const testConnection = (proxy: string | null, timeoutMs: number = 8000) => {
           return new Promise<string>(async (resolve, reject) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -463,13 +463,19 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             if (isMounted) onProxyChange?.('Direct');
           }
         } catch (err) {
-          console.warn('[Connection] Failed to select proxy. Using fallback trigger.');
+          console.warn('[Connection] Race failed. Trying primary proxy or fallback.');
           if (isMounted) {
-            if (triggerAutoRefresh()) {
+            // Fallback strategy: If it's Strict mode, try the primary anyway
+            const primaryUrl = isStrict ? combinedMap.primary : '';
+            if (isStrict && primaryUrl && !badProxiesCache.has(`${channel.id}:${primaryUrl}`)) {
+              activeProxyUrl = primaryUrl;
+              onProxyChange?.(`${labelMap.get(primaryUrl) || 'Primary'} (Retry)`);
+            } else if (triggerAutoRefresh()) {
               return; // Re-running useEffect with fallback
+            } else {
+              activeProxyUrl = ''; 
+              onProxyChange?.('Direct (Retry)');
             }
-            activeProxyUrl = ''; 
-            onProxyChange?.('Direct (Retry)');
           }
         }
 
