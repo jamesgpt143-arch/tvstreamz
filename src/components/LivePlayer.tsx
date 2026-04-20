@@ -7,6 +7,7 @@ import 'shaka-player/dist/controls.css';
 import { supabase } from '@/integrations/supabase/client';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 import { getIptvConfig } from '@/lib/siteSettings';
+import { toast } from 'sonner';
 
 const badProxiesCache = new Map<string, number>(); // format: "channelId:proxyUrl" -> timestamp
 const PROXY_TIMEOUT_MS = 5 * 60 * 1000; 
@@ -133,6 +134,30 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
     setIsUsingFallback(false);
     setFallbackMessage(null);
   }, [channel.id]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlaying = () => {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    };
+
+    const handleWaiting = () => {
+      if (!isRefreshing) setIsLoading(true);
+    };
+
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('canplay', handlePlaying);
+
+    return () => {
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('canplay', handlePlaying);
+    };
+  }, [isRefreshing]);
 
   useEffect(() => {
     return setupOrientationFullscreen(containerRef.current, !error && !iosWarning);
@@ -492,8 +517,8 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             if (isMounted) {
               setIsUsingFallback(true);
               setFallbackMessage('Primary stream failed. Switching to backup...');
-              toast.info('Switching to backup stream...');
-              setTimeout(() => setFallbackMessage(null), 5000);
+              toast.info('Switching to backup stream (Automatic Fallback)');
+              setTimeout(() => setFallbackMessage(null), 8000);
             }
             return true;
           }
@@ -756,6 +781,14 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
       <div ref={containerRef} className="relative w-full h-full">
         <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
+        
+        {isUsingFallback && (
+          <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2 py-1 bg-orange-600/90 backdrop-blur-sm text-[10px] font-bold text-white rounded border border-orange-400/50 shadow-lg animate-pulse">
+            <Shield className="w-3 h-3" />
+            BACKUP STREAM ACTIVE
+          </div>
+        )}
+
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
             <button onClick={() => setShowQualityMenu(prev => !prev)} className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
