@@ -70,11 +70,17 @@ const pickBestProxy = (
 };
 
 const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string): string => {
-  const url = new URL(proxyBase);
-  url.searchParams.set('url', manifestUrl);
-  if (userAgent) url.searchParams.set('ua', userAgent);
-  if (referrer) url.searchParams.set('referer', referrer);
-  return url.toString();
+  if (!proxyBase || proxyBase === 'direct') return manifestUrl;
+  try {
+    const url = new URL(proxyBase);
+    url.searchParams.set('url', manifestUrl);
+    if (userAgent) url.searchParams.set('ua', userAgent);
+    if (referrer) url.searchParams.set('referer', referrer);
+    return url.toString();
+  } catch (e) {
+    console.warn('[Proxy] Invalid proxy base URL:', proxyBase);
+    return manifestUrl;
+  }
 };
 
 const isIOS = (): boolean => {
@@ -320,7 +326,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         let activeProxyUrl = '';
         
-        const testConnection = (proxy: string | null, timeoutMs: number = 4000) => {
+        const testConnection = (proxy: string | null, timeoutMs: number = 6000) => {
           return new Promise<string>(async (resolve, reject) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
