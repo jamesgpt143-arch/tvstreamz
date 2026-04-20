@@ -90,8 +90,9 @@ export default {
       upstreamHeaders.set('CF-IPCountry', 'PH');
 
       // Fetch the resource - use manual redirect to preserve custom headers
+      // Force GET to avoid 405 Method Not Allowed from strict CDNs on HEAD requests
       let response = await fetch(targetUrl, {
-        method: request.method,
+        method: 'GET',
         headers: upstreamHeaders,
         redirect: 'manual',
       });
@@ -103,7 +104,7 @@ export default {
         if (!location) break;
         const redirectUrl = location.startsWith('http') ? location : new URL(location, targetUrl).href;
         response = await fetch(redirectUrl, {
-          method: request.method,
+          method: 'GET',
           headers: upstreamHeaders,
           redirect: 'manual',
         });
@@ -127,7 +128,12 @@ export default {
       if (isManifest) {
         const text = await response.text();
         const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
-        const proxyBase = `${url.origin}${url.pathname}?url=`;
+        
+        // Build a base for sub-resources that preserves all original params (UA, Referer, etc.)
+        const currentUrl = new URL(request.url);
+        const subParams = new URLSearchParams(currentUrl.search);
+        subParams.delete('url'); // We'll set this dynamically
+        const proxyBase = `${currentUrl.origin}${currentUrl.pathname}?${subParams.toString()}${subParams.toString() ? '&' : ''}url=`;
 
         // Rewrite URLs in the manifest
         const rewritten = text.split('\n').map(line => {
@@ -170,10 +176,30 @@ export default {
       if (isDash) {
         const text = await response.text();
         const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
-        const proxyBase = `${url.origin}${url.pathname}?url=`;
+        
+        // Build a base for sub-resources that preserves all original params
+        const currentUrl = new URL(request.url);
+        const subParams = new URLSearchParams(currentUrl.search);
+        subParams.delete('url');
+        const proxyBase = `${currentUrl.origin}${currentUrl.pathname}?${subParams.toString()}${subParams.toString() ? '&' : ''}url=`;
 
         // Rewrite BaseURL and media/init URLs in MPD
         let rewritten = text;
+
+        // MEDIAQUEST DASH FIX: If we are in a tokenized Mediaquest path, 
+        // ensure absolute <BaseURL> tags don't jump to the un-tokenized 'ucdn' domain.
+        if (targetUrl.includes('/bpk-token/') && targetUrl.includes('mediaquest.com.ph')) {
+          const tokenMatch = targetUrl.match(/(\/bpk-token\/[^/]+\/)/);
+          if (tokenMatch) {
+            const tokenPart = tokenMatch[1];
+            // If the manifest points to ucdn, force it back to cdnsc01 with the token
+            rewritten = rewritten.replace(/<BaseURL>https:\/\/ucdn\.mediaquest\.com\.ph\/([^<]+)<\/BaseURL>/g, (match, path) => {
+              const authorizedBase = `https://cdnsc01.mediaquest.com.ph${tokenPart}${path}`;
+              console.log(`[Proxy] Correcting DASH BaseURL: ${authorizedBase}`);
+              return `<BaseURL>${proxyBase}${encodeURIComponent(authorizedBase)}</BaseURL>`;
+            });
+          }
+        }
         
         // Rewrite BaseURL elements
         rewritten = rewritten.replace(/<BaseURL>([^<]+)<\/BaseURL>/g, (match, url) => {

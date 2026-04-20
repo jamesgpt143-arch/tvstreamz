@@ -119,6 +119,8 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
 
   const offlineText = {
     title: "Playback Error",
@@ -128,6 +130,8 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
   useEffect(() => {
     setReloadTrigger(0);
     setIsRefreshing(false);
+    setIsUsingFallback(false);
+    setFallbackMessage(null);
   }, [channel.id]);
 
   useEffect(() => {
@@ -209,11 +213,30 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         }
 
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
-        const targetUA = channel.userAgent || defaultUA;
+        
+        // --- FALLBACK OVERRIDE ---
+        let targetUA = channel.userAgent || defaultUA;
+        let activeStreamType = channel.type;
+        let activeLicenseUrl = channel.widevineUrl;
+        let activeClearKey = channel.clearKey;
+        let activeProxyType = channel.proxyType || 'none';
+        let activeReferrer = channel.referrer;
+
+        if (isUsingFallback && channel.fallbackUrl) {
+          streamUrl = channel.fallbackUrl;
+          activeStreamType = channel.fallbackType || channel.type;
+          activeLicenseUrl = channel.fallbackWidevineUrl;
+          activeClearKey = channel.fallbackClearKey;
+          activeProxyType = channel.fallbackProxyType || 'none';
+          targetUA = channel.fallbackUserAgent || channel.userAgent || defaultUA;
+          activeReferrer = channel.fallbackReferrer || channel.referrer;
+          console.log('[Fallback] Switching to backup stream:', streamUrl);
+        }
+        // -------------------------
 
         // 2. Gather All Potential Proxies (Fetch All for Fallback Resilience)
-        const isStrict = channel.proxyType && channel.proxyType !== 'none';
-        const isAuto = !isStrict && channel.useProxy;
+        const isStrict = activeProxyType && activeProxyType !== 'none';
+        const isAuto = !isStrict && (isUsingFallback ? true : channel.useProxy); // Fallback usually wants proxy if available
         
         // Fetch all providers regardless of strict mode to allow fallback if the strict one fails
         const [cfProxies, sbProxies, vercelProxies] = await Promise.all([
@@ -229,11 +252,11 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         // Strict Priority Logic
         if (isStrict) {
           // 1. Only add the strictly selected provider's proxies
-          const preferredProxies = channel.proxyType === 'supabase' ? sbProxies : 
-                                   channel.proxyType === 'vercel' ? vercelProxies : cfProxies;
+          const preferredProxies = activeProxyType === 'supabase' ? sbProxies : 
+                                   activeProxyType === 'vercel' ? vercelProxies : cfProxies;
           
           let preferredUrls: string[] = [];
-          if (channel.proxyOrder && channel.proxyOrder.length > 0) {
+          if (channel.proxyOrder && channel.proxyOrder.length > 0 && !isUsingFallback) {
             preferredUrls = channel.proxyOrder
               .map(key => (preferredProxies as any)[key])
               .filter(p => p && typeof p === 'string');
@@ -269,7 +292,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         proxyLabelMapRef.current = labelMap;
 
         // 3. The Universal Race
-        if (isMounted) onProxyChange?.(isStrict ? `Using ${channel.proxyType}...` : 'Detecting best connection...');
+        if (isMounted) onProxyChange?.(isStrict ? `Using ${activeProxyType}...` : 'Detecting best connection...');
 
         let activeProxyUrl = '';
         
@@ -289,7 +312,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             try {
               const testUrl = proxy === 'direct' 
                 ? streamUrl 
-                : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+                : buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
               
               let res: Response;
               try {
@@ -297,13 +320,13 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 
                 if (!res.ok && proxy !== 'direct') {
                   // Retry with base headers if first attempt failed
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
                   const retryRes = await tryFetch(cleanUrl);
                   if (retryRes.ok) res = retryRes;
                 }
               } catch (fetchErr) {
                 if (proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
                   res = await tryFetch(cleanUrl);
                 } else {
                   throw fetchErr;
@@ -453,16 +476,25 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               }
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, activeReferrer);
               return;
             }
-            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, activeReferrer);
           });
         };
 
         const triggerAutoRefresh = () => {
-          if (channel.tvappSlug && reloadTrigger < 2) { 
+          if (channel.tvappSlug && reloadTrigger < 2 && !isUsingFallback) { 
             if (isMounted) setReloadTrigger(prev => prev + 1);
+            return true;
+          }
+          if (channel.fallbackUrl && !isUsingFallback) {
+            if (isMounted) {
+              setIsUsingFallback(true);
+              setFallbackMessage('Primary stream failed. Switching to backup...');
+              toast.info('Switching to backup stream...');
+              setTimeout(() => setFallbackMessage(null), 5000);
+            }
             return true;
           }
           return false;
@@ -486,7 +518,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             
             player.configure({ 
               preferredAudioLanguage: 'en',
-              drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, 
+              drm: { servers: { 'com.widevine.alpha': activeLicenseUrl } }, 
               abr: { enabled: true },
               offline: { usePersistentLicense: false } // FIX PARA SA INCOGNITO (HLS DRM)
             });
@@ -495,7 +527,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             configureShakaProxy(player, proxyUrl);
 
             try {
-              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl);
               if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
               if (isMounted) {
@@ -528,15 +560,15 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                        relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
                        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
                        const fullOriginalUrl = manifestBase + relativePath;
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, activeReferrer), true);
                     } else if (url.startsWith('http')) {
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, activeReferrer), true);
                     }
                   }
                 }
               });
               hlsRef.current = hls;
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -563,7 +595,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                   if (currentProxyIndex < candidates.length) {
                     const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, activeReferrer));
                     return;
                   }
                   
@@ -575,7 +607,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl;
               videoRef.current.addEventListener('loadedmetadata', () => {
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
               });
@@ -599,7 +631,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           
           player.configure({ 
             preferredAudioLanguage: 'en',
-            drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} },
+            drm: { clearKeys: activeClearKey || {}, servers: activeLicenseUrl ? { 'com.widevine.alpha': activeLicenseUrl } : {} },
             offline: { usePersistentLicense: false } // FIX PARA SA INCOGNITO (MPD)
           });
           ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
@@ -607,7 +639,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           configureShakaProxy(player, proxyUrl);
 
           try {
-            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             // If cached proxy failed, clear it
@@ -624,7 +656,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
               configureShakaProxy(player, finalFallback);
               try {
-                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer) : streamUrl);
+                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, activeReferrer) : streamUrl);
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                 dashRecovered = true;
                 break;
@@ -639,10 +671,10 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             }
           }
         }
-        else if (channel.type === 'plain') {
+        else if (channel.type === 'plain' || (isUsingFallback && activeStreamType === 'plain')) {
           if (videoRef.current) {
             videoRef.current.controls = true;
-            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
+            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl;
             videoRef.current.src = finalUrl;
             videoRef.current.addEventListener('loadedmetadata', () => {
               if (isMounted) {
@@ -672,7 +704,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
     return () => {
       isMounted = false;
     };
-  }, [channel, reloadTrigger]);
+  }, [channel, reloadTrigger, isUsingFallback]);
 
   return (
     <>
@@ -687,6 +719,13 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           <RefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
           <p className="text-primary font-medium">Auto-refreshing stream...</p>
           <p className="text-xs text-muted-foreground mt-1">Getting fresh token</p>
+        </div>
+      )}
+
+      {fallbackMessage && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-orange-500 text-white rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <Shield className="w-4 h-4 animate-pulse" />
+          <p className="text-xs font-bold whitespace-nowrap">{fallbackMessage}</p>
         </div>
       )}
 
