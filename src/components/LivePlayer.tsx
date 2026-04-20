@@ -261,7 +261,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         // 2. Gather All Potential Proxies (Fetch All for Fallback Resilience)
         const isStrict = activeProxyType && activeProxyType !== 'none';
-        const isAuto = !isStrict && (isUsingFallback ? true : channel.useProxy); // Fallback usually wants proxy if available
+        const isAuto = !isStrict && (isUsingFallback ? (activeProxyType !== 'none') : channel.useProxy);
         
         // Fetch all providers regardless of strict mode to allow fallback if the strict one fails
         const [cfProxies, sbProxies, vercelProxies] = await Promise.all([
@@ -274,7 +274,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         let providerProxies: string[] = [];
         const combinedMap = { ...cfProxies, ...sbProxies, ...vercelProxies } as Record<string, string>;
         
-        // Strict Priority Logic
         if (isStrict) {
           // 1. Only add the strictly selected provider's proxies
           const preferredProxies = activeProxyType === 'supabase' ? sbProxies : 
@@ -290,7 +289,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           }
           
           providerProxies = [...preferredUrls];
-        } else {
+        } else if (isAuto) {
           // Auto Mode: Mix all unique proxies
           providerProxies = Array.from(new Set([
             ...Object.values(cfProxies),
@@ -321,7 +320,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         let activeProxyUrl = '';
         
-        const testConnection = (proxy: string | null, timeoutMs: number = 6000) => {
+        const testConnection = (proxy: string | null, timeoutMs: number = 4000) => {
           return new Promise<string>(async (resolve, reject) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -458,9 +457,14 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             if (isMounted) onProxyChange?.('Direct');
           }
         } catch (err) {
-          console.warn('[Connection] Failed to select proxy. Using fallback.');
-          activeProxyUrl = ''; 
-          if (isMounted) onProxyChange?.('Fallback');
+          console.warn('[Connection] Failed to select proxy. Using fallback trigger.');
+          if (isMounted) {
+            if (triggerAutoRefresh()) {
+              return; // Re-running useEffect with fallback
+            }
+            activeProxyUrl = ''; 
+            onProxyChange?.('Direct (Retry)');
+          }
         }
 
         currentBestProxyRef.current = activeProxyUrl || combinedMap.primary || '';
