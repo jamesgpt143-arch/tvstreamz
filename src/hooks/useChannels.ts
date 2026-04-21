@@ -20,14 +20,6 @@ export interface DbChannel {
   proxy_order: string[] | null;
   tvapp_slug: string | null;
   proxy_type: string;
-  fallback_stream_url: string | null;
-  fallback_stream_type: 'mpd' | 'hls' | 'youtube' | 'plain' | null;
-  fallback_drm_key_id: string | null;
-  fallback_drm_key: string | null;
-  fallback_license_url: string | null;
-  fallback_proxy_type: string | null;
-  fallback_user_agent: string | null;
-  fallback_referrer: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,14 +42,6 @@ export interface ChannelInput {
   proxy_order?: string[] | null;
   tvapp_slug?: string | null;
   proxy_type?: string;
-  fallback_stream_url?: string | null;
-  fallback_stream_type?: 'mpd' | 'hls' | 'youtube' | 'plain' | null;
-  fallback_drm_key_id?: string | null;
-  fallback_drm_key?: string | null;
-  fallback_license_url?: string | null;
-  fallback_proxy_type?: string | null;
-  fallback_user_agent?: string | null;
-  fallback_referrer?: string | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -80,15 +64,6 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   proxyOrder: dbChannel.proxy_order as any || undefined,
   tvappSlug: dbChannel.tvapp_slug || undefined,
   proxyType: dbChannel.proxy_type || 'none',
-  fallbackUrl: dbChannel.fallback_stream_url || undefined,
-  fallbackType: dbChannel.fallback_stream_type || undefined,
-  fallbackClearKey: dbChannel.fallback_drm_key_id && dbChannel.fallback_drm_key 
-    ? { [dbChannel.fallback_drm_key_id]: dbChannel.fallback_drm_key } 
-    : undefined,
-  fallbackWidevineUrl: dbChannel.fallback_license_url || undefined,
-  fallbackUserAgent: dbChannel.fallback_user_agent || undefined,
-  fallbackReferrer: dbChannel.fallback_referrer || undefined,
-  fallbackProxyType: dbChannel.fallback_proxy_type || undefined,
 });
 
 export function useChannels(includeInactive = false) {

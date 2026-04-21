@@ -71,14 +71,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
     tvapp_slug: channel?.tvapp_slug || '',
     proxy_type: (channel as any)?.proxy_type || 'none',
-    fallback_stream_url: channel?.fallback_stream_url || '',
-    fallback_stream_type: channel?.fallback_stream_type || 'hls',
-    fallback_drm_key_id: channel?.fallback_drm_key_id || '',
-    fallback_drm_key: channel?.fallback_drm_key || '',
-    fallback_license_url: channel?.fallback_license_url || '',
-    fallback_proxy_type: channel?.fallback_proxy_type || 'none',
-    fallback_user_agent: channel?.fallback_user_agent || '',
-    fallback_referrer: channel?.fallback_referrer || '',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -111,14 +103,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
         tvapp_slug: formData.tvapp_slug || null,
         use_proxy: formData.proxy_type !== 'none',
         proxy_type: formData.proxy_type || 'none',
-        fallback_stream_url: formData.fallback_stream_url || null,
-        fallback_stream_type: formData.fallback_stream_url ? formData.fallback_stream_type : null,
-        fallback_drm_key_id: formData.fallback_drm_key_id || null,
-        fallback_drm_key: formData.fallback_drm_key || null,
-        fallback_license_url: formData.fallback_license_url || null,
-        fallback_proxy_type: formData.fallback_proxy_type || 'none',
-        fallback_user_agent: formData.fallback_user_agent || null,
-        fallback_referrer: formData.fallback_referrer || null,
       };
 
       if (isEditing && channel) {
@@ -313,91 +297,6 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
             </div>
           )}
 
-          {/* FALLBACK STREAM SECTION */}
-          <div className="space-y-4 p-4 rounded-lg bg-orange-500/5 border border-orange-500/20">
-            <p className="text-sm font-bold text-orange-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-              Fallback Stream (Backup)
-            </p>
-            
-            <div className="space-y-2">
-              <Label htmlFor="fallback_stream_url">Fallback URL</Label>
-              <Input
-                id="fallback_stream_url"
-                value={formData.fallback_stream_url || ''}
-                onChange={(e) => setFormData({ ...formData, fallback_stream_url: e.target.value })}
-                placeholder="Backup stream URL"
-                className="border-orange-500/20 focus-visible:ring-orange-500"
-              />
-            </div>
-
-            {formData.fallback_stream_url && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="space-y-2">
-                  <Label htmlFor="fallback_stream_type">Fallback Type</Label>
-                  <Select
-                    value={formData.fallback_stream_type || 'hls'}
-                    onValueChange={(value: any) => setFormData({ ...formData, fallback_stream_type: value })}
-                  >
-                    <SelectTrigger className="border-orange-500/20"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hls">HLS (.m3u8)</SelectItem>
-                      <SelectItem value="mpd">DASH (.mpd)</SelectItem>
-                      <SelectItem value="plain">Direct MP4/WebM</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fallback_proxy_type">Fallback Proxy</Label>
-                  <Select
-                    value={formData.fallback_proxy_type || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, fallback_proxy_type: value })}
-                  >
-                    <SelectTrigger className="border-orange-500/20"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Direct (No Proxy)</SelectItem>
-                      <SelectItem value="cloudflare">Cloudflare Workers</SelectItem>
-                      <SelectItem value="supabase">Supabase Edge Functions</SelectItem>
-                      <SelectItem value="vercel">Vercel HLS Proxy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* DRM for Fallback */}
-                {(formData.fallback_stream_type === 'mpd' || formData.fallback_stream_type === 'hls') && (
-                  <div className="space-y-3 pt-2 border-t border-orange-500/10">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-orange-500/70">Fallback DRM (Optional)</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="fallback_drm_key_id" className="text-[10px]">Key ID</Label>
-                        <Input id="fallback_drm_key_id" value={formData.fallback_drm_key_id || ''} onChange={(e) => setFormData({ ...formData, fallback_drm_key_id: e.target.value })} className="h-8 font-mono text-[10px] border-orange-500/10" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="fallback_drm_key" className="text-[10px]">Key</Label>
-                        <Input id="fallback_drm_key" value={formData.fallback_drm_key || ''} onChange={(e) => setFormData({ ...formData, fallback_drm_key: e.target.value })} className="h-8 font-mono text-[10px] border-orange-500/10" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="fallback_license_url" className="text-[10px]">Widevine License URL</Label>
-                      <Input id="fallback_license_url" value={formData.fallback_license_url || ''} onChange={(e) => setFormData({ ...formData, fallback_license_url: e.target.value })} className="h-8 font-mono text-[10px] border-orange-500/10" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="fallback_user_agent" className="text-[10px]">Fallback User-Agent</Label>
-                    <Input id="fallback_user_agent" value={formData.fallback_user_agent || ''} onChange={(e) => setFormData({ ...formData, fallback_user_agent: e.target.value })} className="h-8 font-mono text-[10px] border-orange-500/10" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fallback_referrer" className="text-[10px]">Fallback Referrer</Label>
-                    <Input id="fallback_referrer" value={formData.fallback_referrer || ''} onChange={(e) => setFormData({ ...formData, fallback_referrer: e.target.value })} className="h-8 font-mono text-[10px] border-orange-500/10" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Active Toggle */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">

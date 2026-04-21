@@ -43,12 +43,4 @@ export interface Channel {
   proxyOrder?: ProxyKey[];
   tvappSlug?: string;
   proxyType?: string;
-  // Fallback fields
-  fallbackUrl?: string;
-  fallbackType?: 'mpd' | 'hls' | 'youtube' | 'plain';
-  fallbackClearKey?: Record<string, string>;
-  fallbackWidevineUrl?: string;
-  fallbackUserAgent?: string;
-  fallbackReferrer?: string;
-  fallbackProxyType?: string;
 }

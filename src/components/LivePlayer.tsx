@@ -126,8 +126,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
-  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
 
   const offlineText = {
     title: "Playback Error",
@@ -137,8 +135,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
   useEffect(() => {
     setReloadTrigger(0);
     setIsRefreshing(false);
-    setIsUsingFallback(false);
-    setFallbackMessage(null);
   }, [channel.id]);
 
   useEffect(() => {
@@ -201,6 +197,56 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
       setIsLoading(true);
       setError(null);
       if (reloadTrigger > 0) setIsRefreshing(true);
+      console.log(`[PlayerCore] Start Loading. reload: ${reloadTrigger}`, channel.name);
+
+      function triggerAutoRefresh() {
+        console.log(`[triggerAutoRefresh] Checking options. Slug: ${!!channel.tvappSlug}, reload: ${reloadTrigger}`);
+        
+        if (channel.tvappSlug && reloadTrigger < 2) { 
+          console.log('[triggerAutoRefresh] Incrementing reload trigger ( slug refresh )');
+          if (isMounted) setReloadTrigger(prev => prev + 1);
+          return true;
+        }
+        console.log('[triggerAutoRefresh] No more auto-refresh options available.');
+        return false;
+      }
+
+      function configureShakaProxy(player: shaka.Player, proxyToUse: string) {
+        if (!proxyToUse) return;
+        const netEngine = player.getNetworkingEngine();
+        if (!netEngine) return;
+        
+        netEngine.clearAllRequestFilters();
+        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
+        const proxyOrigin = new URL(proxyToUse).origin;
+        const proxyPathname = new URL(proxyToUse).pathname;
+        
+        netEngine.registerRequestFilter((type: any, request: any) => {
+          request.allowCrossSiteCredentials = false;
+          const url = request.uris[0];
+          if (!url) return;
+          if (!url.startsWith('http')) return;
+          if (url.includes('?url=') || url.includes('&url=')) return;
+          
+          if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
+            return;
+          }
+
+          if (url.startsWith(proxyOrigin)) {
+            const path = url.substring(proxyOrigin.length);
+            let relativePath = path;
+            if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
+              relativePath = relativePath.substring(proxyPathname.length);
+            }
+            relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+            const fullOriginalUrl = manifestBase + relativePath;
+            request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, activeReferrer);
+            return;
+          }
+          request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, activeReferrer);
+        });
+      }
 
       try {
         if (uiRef.current) { 
@@ -236,7 +282,10 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             const res = await fetch(resolveUrl);
             if (res.ok) {
               const data = await res.json();
-              if (data.resolved_url) streamUrl = data.resolved_url;
+              if (data.resolved_url) {
+                streamUrl = data.resolved_url;
+                console.log('[TVApp] Resolved slug to:', streamUrl);
+              }
             }
           } catch (e) {
             console.warn('[TVApp] Failed to resolve slug', e);
@@ -245,29 +294,20 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         
-        // --- FALLBACK OVERRIDE ---
+        // --- Player Settings ---
         let targetUA = channel.userAgent || defaultUA;
         let activeStreamType = channel.type;
         let activeLicenseUrl = channel.widevineUrl;
         let activeClearKey = channel.clearKey;
         let activeProxyType = channel.proxyType || 'none';
         let activeReferrer = channel.referrer;
-
-        if (isUsingFallback && channel.fallbackUrl) {
-          streamUrl = channel.fallbackUrl;
-          activeStreamType = channel.fallbackType || channel.type;
-          activeLicenseUrl = channel.fallbackWidevineUrl;
-          activeClearKey = channel.fallbackClearKey;
-          activeProxyType = channel.fallbackProxyType || 'none';
-          targetUA = channel.fallbackUserAgent || channel.userAgent || defaultUA;
-          activeReferrer = channel.fallbackReferrer || channel.referrer;
-          console.log('[Fallback] Switching to backup stream:', streamUrl);
-        }
         // -------------------------
 
-        // 2. Gather All Potential Proxies (Fetch All for Fallback Resilience)
-        const isStrict = activeProxyType && activeProxyType !== 'none';
-        const isAuto = !isStrict && (isUsingFallback ? (activeProxyType !== 'none') : channel.useProxy);
+        // 2. Gather All Potential Proxies
+        const isStrict = activeProxyType && !['none', 'auto'].includes(activeProxyType);
+        const isAuto = activeProxyType === 'auto' || (!isStrict && channel.useProxy);
+        
+        console.log(`[PlayerCore] Proxy Settings - isStrict: ${isStrict}, isAuto: ${isAuto}, type: ${activeProxyType}`);
         
         // Fetch all providers regardless of strict mode to allow fallback if the strict one fails
         const [cfProxies, sbProxies, vercelProxies] = await Promise.all([
@@ -278,15 +318,15 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
         // Deduplicate and Order Candidates
         let providerProxies: string[] = [];
-        const combinedMap = { ...cfProxies, ...sbProxies, ...vercelProxies } as Record<string, string>;
+        const preferredProxies = activeProxyType === 'supabase' ? sbProxies : 
+                                 activeProxyType === 'vercel' ? vercelProxies : cfProxies;
+        
+        const primaryUrlCandidate = (preferredProxies as any)['primary'] || '';
         
         if (isStrict) {
           // 1. Only add the strictly selected provider's proxies
-          const preferredProxies = activeProxyType === 'supabase' ? sbProxies : 
-                                   activeProxyType === 'vercel' ? vercelProxies : cfProxies;
-          
           let preferredUrls: string[] = [];
-          if (channel.proxyOrder && channel.proxyOrder.length > 0 && !isUsingFallback) {
+          if (channel.proxyOrder && channel.proxyOrder.length > 0) {
             preferredUrls = channel.proxyOrder
               .map(key => (preferredProxies as any)[key])
               .filter(p => p && typeof p === 'string');
@@ -339,71 +379,80 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               });
             };
 
+            let res: Response | null = null;
+            const testUrl = proxy === 'direct' 
+              ? streamUrl 
+              : buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
+            
             try {
-              const testUrl = proxy === 'direct' 
-                ? streamUrl 
-                : buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
+              res = await tryFetch(testUrl);
+              console.log(`[ProxyTest] ${labelMap.get(proxy!) || proxy} status: ${res.status}`);
               
-              let res: Response;
-              try {
-                res = await tryFetch(testUrl);
-                
-                if (!res.ok && proxy !== 'direct') {
-                  // Retry with base headers if first attempt failed
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
+              // Clean up: Retry with NO custom headers if primary fails
+              if (!res.ok && proxy !== 'direct' && proxy) {
+                const cleanUrl = buildProxiedUrl(proxy, streamUrl);
+                try {
                   const retryRes = await tryFetch(cleanUrl);
-                  if (retryRes.ok) res = retryRes;
-                }
-              } catch (fetchErr) {
-                if (proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, activeReferrer);
-                  res = await tryFetch(cleanUrl);
-                } else {
-                  throw fetchErr;
-                }
-              }
-
-              clearTimeout(timeoutId);
-              
-              if (res.ok || res.status === 402) {
-                resolve(proxy!);
-              } else {
-                // Mark 404s and other errors as bad
-                if (proxy !== 'direct' && proxy) {
-                  console.warn(`[ProxyTest] ${labelMap.get(proxy)} failed for ${channel.name}: ${res.status}`);
-                  badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
-                }
-                reject(new Error(`Status ${res.status}`));
+                  if (retryRes.ok) {
+                    res = retryRes;
+                    console.log(`[ProxyTest] ${labelMap.get(proxy) || proxy} succeeded with Clean URL`);
+                  }
+                } catch (e) { /* ignore */ }
               }
             } catch (err) {
+              if (proxy !== 'direct' && proxy) {
+                console.warn(`[ProxyTest] ${labelMap.get(proxy)} Fetch Error:`, err);
+                badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
+              } else {
+                console.warn(`[ProxyTest] Direct connection error:`, err);
+              }
               clearTimeout(timeoutId);
-              if (proxy !== 'direct' && proxy) badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
               reject(err);
+              return;
+            }
+
+            clearTimeout(timeoutId);
+            
+            // 402/Vercel blocked is NOT success.
+            if (res && res.ok && res.status !== 402) {
+              resolve(proxy!);
+            } else {
+              if (proxy !== 'direct' && proxy) {
+                console.warn(`[ProxyTest] ${labelMap.get(proxy)} status failure: ${res?.status || 'Unknown'}`);
+                badProxiesCache.set(`${channel.id}:${proxy}`, Date.now());
+              }
+              reject(new Error(`Status ${res?.status}`));
             }
           });
         };
 
-        const candidates: string[] = [];
         const isPageHttps = window.location.protocol === 'https:';
         const isStreamHttp = streamUrl.startsWith('http:');
         const needsProxyForMixedContent = isPageHttps && isStreamHttp;
 
-        // Direct only allowed if NOT strictly using a provider, UNLESS it's the ONLY option
-        if (!needsProxyForMixedContent && !isStrict) {
-          candidates.push('direct');
-        }
-
-        candidates.push(...providerProxies.filter(p => {
+        const candidates: string[] = [
+          ...providerProxies,
+          // Only allow 'direct' if we don't strictly need a proxy for mixed content,
+          // OR if it's the only option left (last resort).
+          ...(!needsProxyForMixedContent ? ['direct'] : [])
+        ].filter(p => {
           const cacheKey = `${channel.id}:${p}`;
           if (badProxiesCache.has(cacheKey)) {
             if (Date.now() - badProxiesCache.get(cacheKey)! < PROXY_TIMEOUT_MS) return false;
             badProxiesCache.delete(cacheKey);
           }
           return true;
-        }));
-        
+        });
+
+        // Last resort: if no candidates but we strictly need a proxy, add 'direct' anyway 
+        // to show better error messages if it fails.
+        if (candidates.length === 0) {
+          candidates.push('direct');
+        }
+
+        console.log(`[PlayerCore] Connectivity Race starting with ${candidates.length} candidates (Mixed Content Protection: ${needsProxyForMixedContent}):`, candidates.map(p => labelMap.get(p) || p));
         if (candidates.length === 0 && needsProxyForMixedContent) {
-          setError("This channel requires HTTPS but only provides HTTP. No proxy is available.");
+          setError("This channel requires HTTPS but only provides HTTP. No working proxy is available.");
           setIsLoading(false);
           return;
         }
@@ -434,20 +483,23 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               if (isMounted) onProxyChange?.('Finding best connection...');
               
               // Filter out bad proxies from race
-              const raceCandidates = candidates.filter(p => {
-                const cacheKey = `${channel.id}:${p}`;
-                return !badProxiesCache.has(cacheKey) || (Date.now() - badProxiesCache.get(cacheKey)! >= PROXY_TIMEOUT_MS);
-              });
+              const raceCandidates = candidates.filter(p => !badProxiesCache.has(`${channel.id}:${p}`));
 
               if (raceCandidates.length > 0) {
                 const racePromises = raceCandidates.map(c => testConnection(c));
-                activeProxyUrl = await (Promise as any).any(racePromises);
+                try {
+                  activeProxyUrl = await (Promise as any).any(racePromises);
+                } catch (aggregateErr) {
+                  console.error('[Connection] All race candidates failed:', aggregateErr);
+                  throw new Error('All proxies failed');
+                }
                 
                 // Only save if it's not 'direct'
                 if (activeProxyUrl && activeProxyUrl !== 'direct') {
                   setStoredProxy(channel.id, activeProxyUrl);
                 }
               } else {
+                console.warn('[Connection] No valid race candidates after cache failure.');
                 throw new Error('No working proxies found');
               }
             }
@@ -466,83 +518,28 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           console.warn('[Connection] Race failed. Trying primary proxy or fallback.');
           if (isMounted) {
             // Fallback strategy: If it's Strict mode, try the primary anyway
-            const primaryUrl = isStrict ? combinedMap.primary : '';
-            if (isStrict && primaryUrl && !badProxiesCache.has(`${channel.id}:${primaryUrl}`)) {
-              activeProxyUrl = primaryUrl;
-              onProxyChange?.(`${labelMap.get(primaryUrl) || 'Primary'} (Retry)`);
-            } else if (triggerAutoRefresh()) {
-              return; // Re-running useEffect with fallback
+            if (isStrict && primaryUrlCandidate && !badProxiesCache.has(`${channel.id}:${primaryUrlCandidate}`)) {
+              activeProxyUrl = primaryUrlCandidate;
+              onProxyChange?.(`${labelMap.get(primaryUrlCandidate) || 'Primary'} (Retry)`);
             } else {
+              console.log('[Connection] No working candidates.', channel.name);
+              if (triggerAutoRefresh()) return;
               activeProxyUrl = ''; 
               onProxyChange?.('Direct (Retry)');
             }
           }
         }
 
-        currentBestProxyRef.current = activeProxyUrl || combinedMap.primary || '';
+        currentBestProxyRef.current = activeProxyUrl || primaryUrlCandidate || '';
 
         const proxyUrl = activeProxyUrl;
         const currentUA = targetUA;
 
         // SHARED SHAKA PROXY CONFIG (Ginagamit ng MPD at HLS-Widevine)
-        const configureShakaProxy = (player: shaka.Player, proxyToUse: string) => {
-          if (!proxyToUse) return;
-          const netEngine = player.getNetworkingEngine();
-          if (!netEngine) return;
-          
-          netEngine.clearAllRequestFilters();
-          const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
-          const proxyOrigin = new URL(proxyToUse).origin;
-          const proxyPathname = new URL(proxyToUse).pathname;
-          
-          netEngine.registerRequestFilter((type: any, request: any) => {
-            // FIX PARA SA INCOGNITO: Iwasan ang pag-block ng third-party cookies
-            request.allowCrossSiteCredentials = false;
 
-            const url = request.uris[0];
-            if (!url) return;
-            if (!url.startsWith('http')) return;
-            if (url.includes('?url=') || url.includes('&url=')) return;
-            
-            if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
-              return;
-            }
 
-            if (url.startsWith(proxyOrigin)) {
-              const path = url.substring(proxyOrigin.length);
-              let relativePath = path;
-              if (proxyPathname !== '/' && relativePath.startsWith(proxyPathname)) {
-                relativePath = relativePath.substring(proxyPathname.length);
-              }
-              relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
-              const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, activeReferrer);
-              return;
-            }
-            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, activeReferrer);
-          });
-        };
-
-        const triggerAutoRefresh = () => {
-          if (channel.tvappSlug && reloadTrigger < 2 && !isUsingFallback) { 
-            if (isMounted) setReloadTrigger(prev => prev + 1);
-            return true;
-          }
-          if (channel.fallbackUrl && !isUsingFallback) {
-            if (isMounted) {
-              setIsUsingFallback(true);
-              setFallbackMessage('Primary stream failed. Switching to backup...');
-              toast.info('Switching to backup stream (Automatic Fallback)');
-              setTimeout(() => setFallbackMessage(null), 8000);
-            }
-            return true;
-          }
-          return false;
-        };
-
-        if (channel.type === 'hls') {
-          if (channel.widevineUrl) {
+        if (activeStreamType === 'hls') {
+          if (activeLicenseUrl) {
             videoRef.current.controls = false;
             shaka.polyfill.installAll();
             
@@ -627,23 +624,26 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
-                  // If cached proxy failed, clear it and trigger a fresh race by forcing a refresh or trying next
+                  console.error('[HLS Error] Fatal:', data.type, data.details);
+                  // If cached proxy failed, clear it
                   if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) {
                     setStoredProxy(channel.id, '');
                   }
 
-                  currentProxyIndex++;
-                  if (currentProxyIndex < candidates.length) {
-                    const nextProxy = candidates[currentProxyIndex];
-                    onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, activeReferrer));
-                    return;
-                  }
+                  if (triggerAutoRefresh()) return;
                   
-                  if (!triggerAutoRefresh()) {
-                    setError('Playback Error');
-                    setIsLoading(false);
-                    setIsRefreshing(false);
+                  // Recovery within HLS if possible as last resort
+                  switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                      hls.startLoad();
+                      break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                      hls.recoverMediaError();
+                      break;
+                    default:
+                      setError('Channel is currently offline.');
+                      setIsLoading(false);
+                      break;
                   }
                 }
               });
@@ -655,7 +655,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             }
           }
         }
-        else if (channel.type === 'mpd') {
+        else if (activeStreamType === 'mpd' || (streamUrl && streamUrl.includes('.mpd'))) {
           videoRef.current.controls = false;
           shaka.polyfill.installAll();
           
@@ -712,7 +712,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             }
           }
         }
-        else if (channel.type === 'plain' || (isUsingFallback && activeStreamType === 'plain')) {
+        else if (activeStreamType === 'plain') {
           if (videoRef.current) {
             videoRef.current.controls = true;
             const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, activeReferrer) : streamUrl;
@@ -742,10 +742,24 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
       shakaLoadingRef.current = false;
     });
 
+    // Watchdog timer: If still loading after 25s, trigger fallback
+    const watchdogTimer = setTimeout(() => {
+      if (isMounted && isLoading && !isRefreshing) {
+        console.warn('[Watchdog] Player stuck in loading. Triggering fallback.');
+        if (triggerAutoRefresh()) {
+          console.log('[Watchdog] Fallback triggered.');
+        } else {
+          setError('Stream timeout. Please try again.');
+          setIsLoading(false);
+        }
+      }
+    }, 25000);
+
     return () => {
       isMounted = false;
+      clearTimeout(watchdogTimer);
     };
-  }, [channel, reloadTrigger, isUsingFallback]);
+  }, [channel, reloadTrigger]);
 
   return (
     <>
@@ -760,13 +774,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           <RefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
           <p className="text-primary font-medium">Auto-refreshing stream...</p>
           <p className="text-xs text-muted-foreground mt-1">Getting fresh token</p>
-        </div>
-      )}
-
-      {fallbackMessage && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-orange-500 text-white rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-4 duration-500">
-          <Shield className="w-4 h-4 animate-pulse" />
-          <p className="text-xs font-bold whitespace-nowrap">{fallbackMessage}</p>
         </div>
       )}
 
@@ -797,13 +804,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
       <div ref={containerRef} className="relative w-full h-full">
         <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
-        
-        {isUsingFallback && (
-          <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2 py-1 bg-orange-600/90 backdrop-blur-sm text-[10px] font-bold text-white rounded border border-orange-400/50 shadow-lg animate-pulse">
-            <Shield className="w-3 h-3" />
-            BACKUP STREAM ACTIVE
-          </div>
-        )}
 
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
