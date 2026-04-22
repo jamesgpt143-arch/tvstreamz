@@ -1,0 +1,1 @@
+UPDATE channels SET use_proxy = true, proxy_order = '["primary","backup","backup2","backup3","backup4"]'::jsonb WHERE id = '3cf4c259-2931-4ee5-92dc-4939099bbf2b';

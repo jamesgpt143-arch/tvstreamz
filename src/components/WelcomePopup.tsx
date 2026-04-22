@@ -1,0 +1,168 @@
+import { useState, useEffect } from 'react';
+import { X, Coffee } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+// BAGO: I-import ang Capacitor Browser plugin para magbukas sa labas ng app ang mga links
+import { Browser } from '@capacitor/browser';
+
+interface WelcomePopupData {
+  enabled: boolean;
+  emoji: string;
+  title: string;
+  message: string;
+  button_text: string;
+  tags: string[];
+  link_url?: string;
+  link_text?: string;
+}
+
+const defaultData: WelcomePopupData = {
+  enabled: true,
+  emoji: '🎬',
+  title: 'Welcome to TVStreamz!',
+  message: 'Stream your favorite movies, TV shows, anime, and live TV channels for free. Enjoy unlimited entertainment anytime, anywhere!',
+  button_text: 'Start Watching 🍿',
+  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV'],
+  link_url: '',
+  link_text: ''
+};
+
+export const WelcomePopup = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [data, setData] = useState<WelcomePopupData>(defaultData);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSettingsAndShow = async () => {
+      try {
+        const { data: settings, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'welcome_popup')
+          .single();
+
+        if (!error && settings?.value) {
+          const popupData = { ...defaultData, ...(settings.value as unknown as WelcomePopupData) };
+          setData(popupData);
+          
+          // Only show if enabled and user hasn't seen it this session
+          if (popupData.enabled) {
+            const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
+            if (!hasSeenPopup) {
+              setIsOpen(true);
+              sessionStorage.setItem('hasSeenWelcomePopup', 'true');
+            }
+          }
+        } else {
+          // Fallback to default - show if not seen
+          const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
+          if (!hasSeenPopup) {
+            setIsOpen(true);
+            sessionStorage.setItem('hasSeenWelcomePopup', 'true');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching welcome popup settings:', error);
+        // Fallback to default
+        const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
+        if (!hasSeenPopup) {
+          setIsOpen(true);
+          sessionStorage.setItem('hasSeenWelcomePopup', 'true');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettingsAndShow();
+  }, []);
+
+  const handleStartWatching = () => {
+    setIsOpen(false);
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
+  // BAGO: Universal link opener para sa Capacitor / Web
+  const handleOpenLink = async (url: string) => {
+    try {
+      await Browser.open({ url });
+    } catch (error) {
+      // Fallback kung naka-web browser lang
+      window.open(url, '_blank');
+    }
+  };
+
+  if (isLoading || !isOpen) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden border-primary/20">
+        {/* Close button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-2 top-2 z-50 h-8 w-8 rounded-full bg-background/80 hover:bg-background"
+          onClick={handleClose}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+
+        {/* Welcome Content */}
+        <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5">
+          <div className="space-y-4 text-center">
+            <div className="text-5xl">{data.emoji}</div>
+            <h2 className="text-2xl font-bold text-foreground">
+              {data.title}
+            </h2>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
+              {data.message}
+            </p>
+
+            {/* BAGO: Clickable Link na pinapagana ng Capacitor Browser */}
+            {data.link_text && data.link_url && (
+              <button
+                onClick={() => handleOpenLink(data.link_url!)}
+                className="inline-block mt-2 text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors bg-transparent border-none p-0 cursor-pointer"
+              >
+                {data.link_text}
+              </button>
+            )}
+
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              {data.tags.map((tag) => (
+                <span key={tag} className="px-2 py-1 bg-primary/20 rounded-full text-xs text-primary">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom action - May Ko-fi button na sa ibabaw ng Start Watching */}
+        <div className="p-4 bg-muted/30 border-t border-border flex flex-col gap-3">
+          
+          {/* BAGO: Ko-fi Donation Button na pinapagana ng Capacitor Browser */}
+          <button
+            onClick={() => handleOpenLink('https://ko-fi.com/james17582')}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF5E5B] hover:bg-[#E05350] text-white font-bold transition-all shadow-md hover:shadow-lg border-none cursor-pointer"
+          >
+            <Coffee className="w-5 h-5" />
+            Buy Us a Coffee to Keep Servers Free!
+          </button>
+
+          {/* Original Start Watching Button */}
+          <Button 
+            className="w-full" 
+            onClick={handleStartWatching}
+          >
+            {data.button_text}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN IF NOT EXISTS proxy_type text NOT NULL DEFAULT 'none';

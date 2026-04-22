@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN user_agent TEXT DEFAULT NULL;

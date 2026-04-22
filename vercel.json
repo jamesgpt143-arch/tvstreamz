@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/ad-proxy", "destination": "https://bkcetkqsqxxxockgmqcs.supabase.co/functions/v1/ad-proxy" },
+    { "source": "/api/ad-proxy/:path*", "destination": "https://bkcetkqsqxxxockgmqcs.supabase.co/functions/v1/ad-proxy?s=:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
