@@ -259,7 +259,7 @@ export const CommunityChat = () => {
                       )}
                       <div 
                         className={cn(
-                          "p-3 rounded-2xl text-sm shadow-sm",
+                          "p-3 rounded-2xl text-sm shadow-sm break-words whitespace-pre-wrap",
                           msg.user_id === user?.id 
                             ? "bg-primary text-primary-foreground rounded-tr-none" 
                             : "bg-muted border border-border rounded-tl-none"
