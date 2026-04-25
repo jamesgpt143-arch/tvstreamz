@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { YouTubePlayer } from './YouTubePlayer';
 import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
 import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, RefreshCw } from 'lucide-react';
 import Hls from 'hls.js';
@@ -75,6 +76,33 @@ export const getProxiedLogoUrl = (logo?: string, proxyBase?: string) => {
   } catch {
     return logo;
   }
+};
+
+const getYouTubeId = (url: string) => {
+  if (!url) return null;
+  
+  // Regular YouTube URL / Embed / Short
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2].length === 11 && match[2] !== 'live_stream') {
+    return { id: match[2], type: 'video' };
+  }
+  
+  // YouTube Live Stream embed with channel ID
+  if (url.includes('embed/live_stream')) {
+    const channelMatch = url.match(/channel=([a-zA-Z0-9_-]+)/);
+    if (channelMatch) return { id: channelMatch[1], type: 'channel' };
+  }
+
+  // YouTube Live URL format (youtube.com/live/VIDEO_ID)
+  const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
+  if (liveMatch) return { id: liveMatch[1], type: 'video' };
+  
+  // YouTube Channel Live format (youtube.com/channel/CHANNEL_ID/live)
+  const channelLiveMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)\/live/);
+  if (channelLiveMatch) return { id: channelLiveMatch[1], type: 'channel' };
+  
+  return null;
 };
 
 interface LivePlayerProps {
@@ -680,9 +708,20 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
 export const LivePlayer = ({ channel, onProxyChange }: LivePlayerProps) => {
   if (channel.type === 'youtube') {
+    const yt = getYouTubeId(channel.embedUrl || channel.manifestUri || '');
     return (
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
-        <iframe src={`${channel.embedUrl}&autoplay=1`} title={channel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
+        {yt ? (
+          <YouTubePlayer videoId={yt.id} title={channel.name} isChannel={yt.type === 'channel'} />
+        ) : (
+          <iframe 
+            src={`${channel.embedUrl}&autoplay=1`} 
+            title={channel.name} 
+            className="w-full h-full" 
+            allowFullScreen 
+            allow="autoplay; encrypted-media" 
+          />
+        )}
       </div>
     );
   }
