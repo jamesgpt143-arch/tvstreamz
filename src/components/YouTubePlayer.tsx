@@ -66,18 +66,29 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       try {
-        if (typeof event.data !== 'string') return;
-        const data = JSON.parse(event.data);
-        
+        let data;
+        if (typeof event.data === 'string') {
+          data = JSON.parse(event.data);
+        } else {
+          data = event.data;
+        }
+
+        // Handle both 'onStateChange' and 'infoDelivery' events from YouTube API
+        let state = -1;
         if (data.event === 'onStateChange') {
-          const state = data.info;
+          state = data.info;
+        } else if (data.event === 'infoDelivery' && data.info && data.info.playerState !== undefined) {
+          state = data.info.playerState;
+        }
+
+        if (state !== -1) {
           // 1: playing, 3: buffering
           if (state === 1 || state === 3) {
             setHasStarted(true);
             setIsPlaying(true);
-          } else if (state === 2) {
-            // Only update isPlaying to false if it was already playing
-            // This prevents the "pause/play" cycle if autoplay is blocked
+          } else if (state === 2) { // 2: paused
+            setIsPlaying(false);
+          } else if (state === 0) { // 0: ended
             setIsPlaying(false);
           }
         }
