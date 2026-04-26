@@ -77,7 +77,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
         let state = -1;
         if (data.event === 'onStateChange') {
           state = data.info;
-        } else if (data.event === 'infoDelivery' && data.info && data.info.playerState !== undefined) {
+        } else if (data.info && data.info.playerState !== undefined) {
           state = data.info.playerState;
         }
 
@@ -105,12 +105,20 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
     setIsLoading(true);
     setHasStarted(false);
     
-    // Initial play attempt (YouTube handles the actual autoplay logic)
+    // Initial play attempt
     const timer = setTimeout(() => {
       sendCommand('playVideo');
     }, 1000);
 
-    return () => clearTimeout(timer);
+    // Poll for state to ensure sync
+    const pollInterval = setInterval(() => {
+      sendCommand('getPlayerState');
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(pollInterval);
+    };
   }, [videoId, sendCommand]);
 
   const embedUrl = isChannel 
