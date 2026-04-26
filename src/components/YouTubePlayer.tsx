@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Play, Pause, Loader2, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PlayerOSD } from './PlayerOSD';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -15,6 +16,21 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showOSD, setShowOSD] = useState(true);
+  const osdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetOSDTimer = useCallback(() => {
+    setShowOSD(true);
+    if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
+    osdTimerRef.current = setTimeout(() => setShowOSD(false), 5000);
+  }, []);
+
+  useEffect(() => {
+    resetOSDTimer();
+    return () => {
+      if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
+    };
+  }, [videoId, resetOSDTimer]);
 
   const sendCommand = useCallback((func: string, args: any = []) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -129,6 +145,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
     <div 
       ref={containerRef}
       className="relative w-full h-full group bg-black overflow-hidden select-none rounded-xl"
+      onMouseMove={resetOSDTimer}
+      onClick={resetOSDTimer}
+      onTouchStart={resetOSDTimer}
     >
       <iframe
         ref={iframeRef}
@@ -141,10 +160,14 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
         onLoad={() => setIsLoading(false)}
       />
       
-      {/* OVERLAY: Blocks clicks but handles togglePlay */}
+      {/* OVERLAY: Blocks clicks only before starting or when paused */}
       <div 
-        className="absolute inset-0 z-10 bg-transparent cursor-pointer" 
+        className={cn(
+          "absolute inset-0 z-10 bg-transparent cursor-pointer transition-all",
+          (isPlaying && hasStarted) ? "pointer-events-none" : "pointer-events-auto"
+        )}
         onClick={(e) => {
+          if (isPlaying && hasStarted) return;
           e.preventDefault();
           e.stopPropagation();
           togglePlay();
@@ -161,18 +184,16 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
       {/* Control UI */}
       <div className={cn(
         "absolute inset-0 z-30 flex flex-col items-center justify-center transition-all duration-300",
-        // If it's playing and started, hide overlay unless hovered.
-        // Also removed backdrop-blur when playing to ensure it's clear.
         (isPlaying && hasStarted) 
-          ? "opacity-0 group-hover:opacity-100 bg-black/20" 
-          : "opacity-100 bg-black/40 backdrop-blur-[2px]"
+          ? "opacity-0 group-hover:opacity-100 bg-black/20 pointer-events-none" 
+          : "opacity-100 bg-black/40 backdrop-blur-[2px] pointer-events-auto"
       )}>
         <button 
           onClick={(e) => {
             e.stopPropagation();
             togglePlay();
           }}
-          className="relative group/btn transform transition-transform hover:scale-110 active:scale-95"
+          className="relative group/btn transform transition-transform hover:scale-110 active:scale-95 pointer-events-auto"
         >
           {(!isPlaying || !hasStarted) && !isLoading && (
             <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
@@ -200,8 +221,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
           </button>
         </div>
 
-        {/* Bottom Metadata */}
-        <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+        {/* Bottom Metadata - Old Version (Hidden but kept for structure if needed) */}
+        <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 opacity-0">
           <p className="text-white font-bold text-xl drop-shadow-lg tracking-tight">
             {title}
           </p>
@@ -209,6 +230,16 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
             {isPlaying ? (isChannel ? 'Live Streaming' : 'Now Playing') : 'Paused'}
           </p>
         </div>
+
+        {/* New Premium OSD */}
+        <PlayerOSD 
+          isVisible={showOSD && !isLoading}
+          channelName={isChannel ? 'YouTube Live' : 'YouTube Video'}
+          channelLogo="/youtube-logo.png" // Placeholder or YouTube icon
+          channelNumber="YT"
+          programTitle={title}
+          programProgress={0} // YouTube API doesn't easily give progress for live embeds via postMessage without more complex API
+        />
       </div>
 
       {/* Interaction Hint */}

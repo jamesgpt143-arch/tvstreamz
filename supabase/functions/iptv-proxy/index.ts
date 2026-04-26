@@ -106,6 +106,13 @@ async function stalkerCreateLink(portalUrl: string, mac: string, token: string, 
   return data?.js?.cmd || "";
 }
 
+async function stalkerGetEPG(portalUrl: string, mac: string, token: string, channelId: string): Promise<any> {
+  const url = `${portalUrl}/server/load.php?type=itv&action=get_short_epg&ch_id=${channelId}&JsHttpRequest=1-xml`;
+  const resp = await fetch(url, { headers: buildHeaders(mac, token) });
+  const data = await safeJsonParse(resp, "getShortEPG");
+  return data?.js || [];
+}
+
 // ─── Xtream Codes API Helpers ───
 
 async function xtreamGetChannels(serverUrl: string, username: string, password: string): Promise<{ channels: any[]; genres: any[] }> {
@@ -135,6 +142,13 @@ async function xtreamGetChannels(serverUrl: string, username: string, password: 
 
   const genres = Array.from(catMap.entries()).map(([id, name]) => ({ id, name }));
   return { channels, genres };
+}
+
+async function xtreamGetEPG(serverUrl: string, username: string, password: string, streamId: string): Promise<any> {
+  const base = serverUrl.replace(/\/+$/, "");
+  const url = `${base}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_short_epg&stream_id=${streamId}`;
+  const resp = await fetch(url);
+  return await safeJsonParse(resp, "xtream_epg");
 }
 
 function xtreamGetStreamUrl(serverUrl: string, username: string, password: string, streamId: string): string {
@@ -291,6 +305,13 @@ serve(async (req) => {
         const streamUrl = xtreamGetStreamUrl(config.server_url, config.username, config.password, cmd);
         return new Response(JSON.stringify({ url: streamUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
+      if (action === "epg") {
+        const cmd = url.searchParams.get("cmd");
+        if (!cmd) return new Response(JSON.stringify({ error: "Missing cmd" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const result = await xtreamGetEPG(config.server_url, config.username, config.password, cmd);
+        return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // ─── Stalker path ───
@@ -312,6 +333,13 @@ serve(async (req) => {
     if (action === "channels") {
       const result = await stalkerGetChannels(portalUrl, config.mac_address, token);
       return new Response(JSON.stringify({ ...result, cloudflare_proxy_url: config.cloudflare_proxy_url || "", cloudflare_proxy_url_backup: config.cloudflare_proxy_url_backup || "" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "epg") {
+      const chId = url.searchParams.get("ch_id") || url.searchParams.get("cmd");
+      if (!chId) return new Response(JSON.stringify({ error: "Missing ch_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const result = await stalkerGetEPG(portalUrl, config.mac_address, token, chId);
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "stream" || action === "play") {

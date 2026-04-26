@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { YouTubePlayer } from './YouTubePlayer';
+import { PlayerOSD } from './PlayerOSD';
 import { Channel, type ProxyKey, DEFAULT_PROXY_ORDER } from '@/lib/channels';
 import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, RefreshCw } from 'lucide-react';
 import Hls from 'hls.js';
@@ -130,6 +131,87 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [showOSD, setShowOSD] = useState(true);
+  const [epgData, setEpgData] = useState<{ title: string; progress: number }>({
+    title: 'Loading program info...',
+    progress: 0
+  });
+  const osdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetOSDTimer = useCallback(() => {
+    setShowOSD(true);
+    if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
+    osdTimerRef.current = setTimeout(() => setShowOSD(false), 5000);
+  }, []);
+
+  useEffect(() => {
+    resetOSDTimer();
+    return () => {
+      if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
+    };
+  }, [channel.id, resetOSDTimer]);
+
+  const fetchEPG = useCallback(async () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/iptv-proxy?action=epg&cmd=${encodeURIComponent(channel.id)}&ch_id=${encodeURIComponent(channel.id)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+        }
+      );
+      
+      const data = await res.json();
+      
+      if (Array.isArray(data) && data.length > 0) {
+        // Stalker format
+        const current = data[0];
+        setEpgData({
+          title: current.name || current.title || 'Live Stream',
+          progress: current.progress || 0
+        });
+      } else if (data?.epg_listings && Array.isArray(data.epg_listings)) {
+        // Xtream format
+        const listings = data.epg_listings;
+        const now = new Date();
+        const current = listings.find((p: any) => {
+          const start = new Date(p.start);
+          const end = new Date(p.end);
+          return now >= start && now <= end;
+        }) || listings[0];
+
+        if (current) {
+          const start = new Date(current.start).getTime();
+          const end = new Date(current.end).getTime();
+          const total = end - start;
+          const elapsed = now.getTime() - start;
+          const progress = Math.max(0, Math.min(100, (elapsed / total) * 100));
+
+          setEpgData({
+            title: atob(current.title) || 'Live Stream',
+            progress: progress
+          });
+        }
+      } else {
+        setEpgData({ title: 'Live Stream', progress: 0 });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch EPG', e);
+      setEpgData({ title: 'Live Stream', progress: 0 });
+    }
+  }, [channel.id]);
+
+  useEffect(() => {
+    fetchEPG();
+    const interval = setInterval(fetchEPG, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [fetchEPG]);
 
   const offlineText = {
     title: "Playback Error",
@@ -680,8 +762,23 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         </div>
       )}
 
-      <div ref={containerRef} className="relative w-full h-full">
+      <div 
+        ref={containerRef} 
+        className="relative w-full h-full cursor-pointer group"
+        onMouseMove={resetOSDTimer}
+        onClick={resetOSDTimer}
+        onTouchStart={resetOSDTimer}
+      >
         <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
+        
+        <PlayerOSD 
+          isVisible={showOSD && !isLoading && !error && !iosWarning}
+          channelName={channel.name}
+          channelLogo={channel.logo}
+          channelNumber={channel.id} // Or use a proper channel number if available
+          programTitle={epgData.title}
+          programProgress={epgData.progress}
+        />
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
             <button onClick={() => setShowQualityMenu(prev => !prev)} className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
