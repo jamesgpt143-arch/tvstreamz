@@ -157,8 +157,9 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
+      const epgId = channel.epgId || channel.id;
       const res = await fetch(
-        `${supabaseUrl}/functions/v1/iptv-proxy?action=epg&cmd=${encodeURIComponent(channel.id)}&ch_id=${encodeURIComponent(channel.id)}`,
+        `${supabaseUrl}/functions/v1/iptv-proxy?action=epg&cmd=${encodeURIComponent(epgId)}&ch_id=${encodeURIComponent(epgId)}`,
         {
           headers: {
             Authorization: `Bearer ${supabaseKey}`,
@@ -193,8 +194,18 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           const elapsed = now.getTime() - start;
           const progress = Math.max(0, Math.min(100, (elapsed / total) * 100));
 
+          let title = current.title || 'Live Stream';
+          try {
+            // Xtream often base64 encodes titles, but not always
+            if (/^[A-Za-z0-9+/=]+$/.test(title) && title.length > 4) {
+              title = atob(title);
+            }
+          } catch (e) {
+            console.warn('Failed to decode Xtream title', e);
+          }
+
           setEpgData({
-            title: atob(current.title) || 'Live Stream',
+            title: title,
             progress: progress
           });
         }
@@ -775,7 +786,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           isVisible={showOSD && !isLoading && !error && !iosWarning}
           channelName={channel.name}
           channelLogo={channel.logo}
-          channelNumber={channel.id} // Or use a proper channel number if available
+          channelNumber={channel.num} 
           programTitle={epgData.title}
           programProgress={epgData.progress}
         />

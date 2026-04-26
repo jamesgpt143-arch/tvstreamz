@@ -20,6 +20,8 @@ export interface DbChannel {
   proxy_order: string[] | null;
   tvapp_slug: string | null;
   proxy_type: string;
+  epg_id: string | null;
+  channel_num: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +44,8 @@ export interface ChannelInput {
   proxy_order?: string[] | null;
   tvapp_slug?: string | null;
   proxy_type?: string;
+  epg_id?: string | null;
+  channel_num?: string | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -64,6 +68,8 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   proxyOrder: dbChannel.proxy_order as any || undefined,
   tvappSlug: dbChannel.tvapp_slug || undefined,
   proxyType: dbChannel.proxy_type || 'none',
+  epgId: dbChannel.epg_id || undefined,
+  num: dbChannel.channel_num || undefined,
 });
 
 export function useChannels(includeInactive = false) {

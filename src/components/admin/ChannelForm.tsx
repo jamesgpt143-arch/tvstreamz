@@ -71,6 +71,8 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     proxy_order: (channel?.proxy_order as ProxyKey[] | null) || null,
     tvapp_slug: channel?.tvapp_slug || '',
     proxy_type: (channel as any)?.proxy_type || 'none',
+    epg_id: (channel as any)?.epg_id || '',
+    channel_num: (channel as any)?.channel_num || '',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -103,6 +105,8 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
         tvapp_slug: formData.tvapp_slug || null,
         use_proxy: formData.proxy_type !== 'none',
         proxy_type: formData.proxy_type || 'none',
+        epg_id: formData.epg_id || null,
+        channel_num: formData.channel_num || null,
       };
 
       if (isEditing && channel) {
@@ -137,6 +141,28 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="GMA 7"
             />
+          </div>
+
+          {/* Channel Number & EPG ID */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="channel_num">Channel No.</Label>
+              <Input
+                id="channel_num"
+                value={formData.channel_num || ''}
+                onChange={(e) => setFormData({ ...formData, channel_num: e.target.value })}
+                placeholder="001"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="epg_id">EPG ID / Name</Label>
+              <Input
+                id="epg_id"
+                value={formData.epg_id || ''}
+                onChange={(e) => setFormData({ ...formData, epg_id: e.target.value })}
+                placeholder="GMA.PH"
+              />
+            </div>
           </div>
 
           {/* Stream URL */}

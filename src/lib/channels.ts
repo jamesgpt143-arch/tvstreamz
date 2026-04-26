@@ -43,4 +43,6 @@ export interface Channel {
   proxyOrder?: ProxyKey[];
   tvappSlug?: string;
   proxyType?: string;
+  num?: string | number;
+  epgId?: string;
 }

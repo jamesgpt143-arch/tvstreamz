@@ -63,13 +63,18 @@ export const PlayerOSD: React.FC<PlayerOSDProps> = ({
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
           
           <div className="relative flex items-center gap-6">
-            {/* Channel Number & Logo */}
-            <div className="flex items-center gap-4 border-r border-white/10 pr-6">
-              {channelNumber && (
-                <span className="text-4xl font-black text-white/20 tabular-nums italic">
-                  {String(channelNumber).padStart(3, '0')}
+            {/* Channel Info Section */}
+            <div className="flex items-center gap-6 border-r border-white/10 pr-6">
+              <div className="flex flex-col items-start">
+                <span className="text-4xl font-black text-white/90 tabular-nums italic uppercase tracking-tighter line-clamp-1 max-w-[200px]">
+                  {channelName}
                 </span>
-              )}
+                {channelNumber && !String(channelNumber).includes('-') && (
+                  <span className="text-xs font-bold text-primary tracking-[0.3em] uppercase opacity-80">
+                    CH {channelNumber}
+                  </span>
+                )}
+              </div>
               {channelLogo && (
                 <div className="w-16 h-16 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
                   <img src={channelLogo} alt="" className="max-w-full max-h-full object-contain" />
@@ -93,9 +98,6 @@ export const PlayerOSD: React.FC<PlayerOSDProps> = ({
                     style={{ width: `${programProgress}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-white/40 tabular-nums uppercase tracking-widest">
-                  {channelName}
-                </span>
               </div>
             </div>
           </div>
