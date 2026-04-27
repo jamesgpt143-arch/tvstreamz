@@ -73,6 +73,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     proxy_type: (channel as any)?.proxy_type || 'none',
     epg_id: (channel as any)?.epg_id || '',
     channel_num: (channel as any)?.channel_num || '',
+    epg_url: (channel as any)?.epg_url || '',
   });
 
   const proxyOrder: ProxyKey[] = (formData.proxy_order as ProxyKey[]) || [...DEFAULT_PROXY_ORDER];
@@ -107,6 +108,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
         proxy_type: formData.proxy_type || 'none',
         epg_id: formData.epg_id || null,
         channel_num: formData.channel_num || null,
+        epg_url: formData.epg_url || null,
       };
 
       if (isEditing && channel) {
@@ -163,6 +165,19 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 placeholder="GMA.PH"
               />
             </div>
+          </div>
+
+          {/* External EPG URL */}
+          <div className="space-y-2">
+            <Label htmlFor="epg_url">External EPG XML URL (Optional)</Label>
+            <Input
+              id="epg_url"
+              value={formData.epg_url || ''}
+              onChange={(e) => setFormData({ ...formData, epg_url: e.target.value })}
+              placeholder="https://example.com/guide.xml"
+              className="text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground">For manual channels. Leave empty to use Portal EPG.</p>
           </div>
 
           {/* Stream URL */}

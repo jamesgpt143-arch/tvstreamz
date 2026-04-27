@@ -45,4 +45,5 @@ export interface Channel {
   proxyType?: string;
   num?: string | number;
   epgId?: string;
+  epgUrl?: string;
 }

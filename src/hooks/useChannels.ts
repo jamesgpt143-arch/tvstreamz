@@ -22,6 +22,7 @@ export interface DbChannel {
   proxy_type: string;
   epg_id: string | null;
   channel_num: string | null;
+  epg_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +47,7 @@ export interface ChannelInput {
   proxy_type?: string;
   epg_id?: string | null;
   channel_num?: string | null;
+  epg_url?: string | null;
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
@@ -70,6 +72,7 @@ export const toAppChannel = (dbChannel: DbChannel) => ({
   proxyType: dbChannel.proxy_type || 'none',
   epgId: dbChannel.epg_id || undefined,
   num: dbChannel.channel_num || undefined,
+  epgUrl: dbChannel.epg_url || undefined,
 });
 
 export function useChannels(includeInactive = false) {
