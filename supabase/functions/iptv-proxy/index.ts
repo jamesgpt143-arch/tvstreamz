@@ -279,6 +279,15 @@ serve(async (req) => {
       return proxyStream(url, streamUrl, Object.keys(customHeaders).length > 0 ? customHeaders : undefined);
     }
 
+    if (action === "fetch_epg") {
+      const epgUrl = url.searchParams.get("url");
+      if (!epgUrl) return new Response(JSON.stringify({ error: "Missing url" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      
+      const resp = await fetch(epgUrl);
+      const text = await resp.text();
+      return new Response(text, { headers: { ...corsHeaders, "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" } });
+    }
+
     const config = await getIptvConfig();
     if (!config) {
       return new Response(JSON.stringify({ error: "IPTV not configured. Set up in admin settings." }), {

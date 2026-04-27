@@ -154,8 +154,17 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   const fetchEPG = useCallback(async () => {
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       if (channel.epgUrl) {
-        const res = await fetch(channel.epgUrl);
+        const proxyUrl = `${supabaseUrl}/functions/v1/iptv-proxy?action=fetch_epg&url=${encodeURIComponent(channel.epgUrl)}`;
+        const res = await fetch(proxyUrl, {
+          headers: {
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+        });
         const xmlText = await res.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
