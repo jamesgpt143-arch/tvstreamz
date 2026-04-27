@@ -132,179 +132,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [showOSD, setShowOSD] = useState(true);
-  const [epgData, setEpgData] = useState<{ title: string; progress: number }>({
-    title: 'Loading program info...',
-    progress: 0
-  });
-  const osdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const resetOSDTimer = useCallback(() => {
-    setShowOSD(true);
-    if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
-    osdTimerRef.current = setTimeout(() => setShowOSD(false), 5000);
-  }, []);
-
-  useEffect(() => {
-    resetOSDTimer();
-    return () => {
-      if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
-    };
-  }, [channel.id, resetOSDTimer]);
-
-  const fetchEPG = useCallback(async () => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      if (channel.epgUrl) {
-        let xmlText = '';
-        try {
-          console.log('Attempting direct EPG fetch from:', channel.epgUrl);
-          const res = await fetch(channel.epgUrl);
-          if (!res.ok) throw new Error(`Direct fetch failed with status ${res.status}`);
-          xmlText = await res.text();
-        } catch (err) {
-          console.log('Direct EPG fetch failed (CORS?), falling back to proxy...', err);
-          try {
-            const proxyUrl = `${supabaseUrl}/functions/v1/iptv-proxy?action=fetch_epg&url=${encodeURIComponent(channel.epgUrl)}`;
-            const res = await fetch(proxyUrl, {
-              headers: {
-                Authorization: `Bearer ${supabaseKey}`,
-                apikey: supabaseKey,
-              },
-            });
-            if (!res.ok) throw new Error(`Supabase proxy fetch failed with status ${res.status}`);
-            xmlText = await res.text();
-          } catch (proxyErr) {
-            console.log('Supabase proxy failed (Not deployed?), falling back to public CORS proxy...', proxyErr);
-            const publicProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(channel.epgUrl)}`;
-            const res = await fetch(publicProxyUrl);
-            if (!res.ok) throw new Error(`Public proxy fetch failed with status ${res.status}`);
-            xmlText = await res.text();
-          }
-        }
-        console.log('Fetched EPG XML length:', xmlText.length);
-        
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        const programmes = xmlDoc.getElementsByTagName('programme');
-        const now = new Date();
-        const targetId = (channel.epgId || channel.id).toString().trim().toLowerCase();
-        
-        console.log('Searching for EPG ID:', targetId, 'Programmes count:', programmes.length);
-
-        for (let i = 0; i < programmes.length; i++) {
-          const p = programmes[i];
-          const pChannel = (p.getAttribute('channel') || '').trim().toLowerCase();
-          if (pChannel === targetId) {
-            const startStr = p.getAttribute('start');
-            const endStr = p.getAttribute('stop');
-            
-            if (startStr && endStr) {
-              const parseXMLTVTime = (str: string) => {
-                // Format: YYYYMMDDHHMMSS +HHMM
-                const match = str.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s?([+-]\d{4})?$/);
-                if (!match) return null;
-                const [_, y, m, d, h, min, s, offset] = match;
-                
-                // Construct ISO string for parsing
-                let iso = `${y}-${m}-${d}T${h}:${min}:${s}`;
-                if (offset) {
-                  iso += offset.substring(0, 3) + ':' + offset.substring(3);
-                } else {
-                  iso += 'Z';
-                }
-                return new Date(iso);
-              };
-
-              const start = parseXMLTVTime(startStr);
-              const end = parseXMLTVTime(endStr);
-
-              if (start && end && now >= start && now <= end) {
-                const title = p.getElementsByTagName('title')[0]?.textContent || 'Live Stream';
-                const progress = ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100;
-                console.log('Found match:', title, progress);
-                setEpgData({ title, progress: Math.max(0, Math.min(100, progress)) });
-                return;
-              }
-            }
-          }
-        }
-        console.warn('No matching programme found for time:', now.toISOString());
-        setEpgData({ title: channel.name, progress: 0 });
-        return;
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
-      const epgId = channel.epgId || channel.id;
-      const res = await fetch(
-        `${supabaseUrl}/functions/v1/iptv-proxy?action=epg&cmd=${encodeURIComponent(epgId)}&ch_id=${encodeURIComponent(epgId)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            apikey: supabaseKey,
-          },
-        }
-      );
-      
-      const data = await res.json();
-      
-      if (Array.isArray(data) && data.length > 0) {
-        // Stalker format
-        const current = data[0];
-        setEpgData({
-          title: current.name || current.title || 'Live Stream',
-          progress: current.progress || 0
-        });
-      } else if (data?.epg_listings && Array.isArray(data.epg_listings)) {
-        // Xtream format
-        const listings = data.epg_listings;
-        const now = new Date();
-        const current = listings.find((p: any) => {
-          const start = new Date(p.start);
-          const end = new Date(p.end);
-          return now >= start && now <= end;
-        }) || listings[0];
-
-        if (current) {
-          const start = new Date(current.start).getTime();
-          const end = new Date(current.end).getTime();
-          const total = end - start;
-          const elapsed = now.getTime() - start;
-          const progress = Math.max(0, Math.min(100, (elapsed / total) * 100));
-
-          let title = current.title || 'Live Stream';
-          try {
-            // Xtream often base64 encodes titles, but not always
-            if (/^[A-Za-z0-9+/=]+$/.test(title) && title.length > 4) {
-              title = atob(title);
-            }
-          } catch (e) {
-            console.warn('Failed to decode Xtream title', e);
-          }
-
-          setEpgData({
-            title: title,
-            progress: progress
-          });
-        }
-      } else {
-        setEpgData({ title: channel.name, progress: 0 });
-      }
-    } catch (e) {
-      console.warn('Failed to fetch EPG', e);
-      setEpgData({ title: channel.name, progress: 0 });
-    }
-  }, [channel]);
-
-  useEffect(() => {
-    fetchEPG();
-    const interval = setInterval(fetchEPG, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, [fetchEPG]);
 
   const offlineText = {
     title: "Playback Error",
@@ -853,10 +681,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
       <div 
         ref={containerRef} 
-        className="relative w-full h-full cursor-pointer group"
-        onMouseMove={resetOSDTimer}
-        onClick={resetOSDTimer}
-        onTouchStart={resetOSDTimer}
+        className="relative w-full h-full group"
       >
         <video 
           ref={videoRef} 
@@ -869,14 +694,6 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           }}
         />
         
-        <PlayerOSD 
-          isVisible={showOSD && !isLoading && !error && !iosWarning}
-          channelName={channel.name}
-          channelLogo={channel.logo}
-          channelNumber={channel.num} 
-          programTitle={epgData.title}
-          programProgress={epgData.progress}
-        />
         {hlsLevels.length > 1 && hlsRef.current && (
           <div className="absolute top-2 right-2 z-30">
             <button onClick={() => setShowQualityMenu(prev => !prev)} className="bg-background/80 backdrop-blur-sm border-2 border-border rounded-lg p-2 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors">

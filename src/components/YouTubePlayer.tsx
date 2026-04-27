@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Play, Pause, Loader2, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PlayerOSD } from './PlayerOSD';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -16,21 +15,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showOSD, setShowOSD] = useState(true);
-  const osdTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const resetOSDTimer = useCallback(() => {
-    setShowOSD(true);
-    if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
-    osdTimerRef.current = setTimeout(() => setShowOSD(false), 5000);
-  }, []);
-
-  useEffect(() => {
-    resetOSDTimer();
-    return () => {
-      if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
-    };
-  }, [videoId, resetOSDTimer]);
 
   const sendCommand = useCallback((func: string, args: any = []) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -145,9 +129,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
     <div 
       ref={containerRef}
       className="relative w-full h-full group bg-black overflow-hidden select-none rounded-xl"
-      onMouseMove={resetOSDTimer}
-      onClick={resetOSDTimer}
-      onTouchStart={resetOSDTimer}
     >
       <iframe
         ref={iframeRef}
@@ -231,15 +212,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
           </p>
         </div>
 
-        {/* New Premium OSD */}
-        <PlayerOSD 
-          isVisible={showOSD && !isLoading}
-          channelName={isChannel ? 'YouTube Live' : 'YouTube Video'}
-          channelLogo="/youtube-logo.png" // Placeholder or YouTube icon
-          channelNumber="YT"
-          programTitle={title}
-          programProgress={0} // YouTube API doesn't easily give progress for live embeds via postMessage without more complex API
-        />
+
       </div>
 
       {/* Interaction Hint */}
