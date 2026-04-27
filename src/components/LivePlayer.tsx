@@ -861,7 +861,16 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         onClick={resetOSDTimer}
         onTouchStart={resetOSDTimer}
       >
-        <video ref={videoRef} className="w-full h-full" autoPlay playsInline />
+        <video 
+          ref={videoRef} 
+          className="w-full h-full" 
+          autoPlay 
+          playsInline 
+          onPlaying={() => {
+            if (isLoading) setIsLoading(false);
+            if (isRefreshing) setIsRefreshing(false);
+          }}
+        />
         
         <PlayerOSD 
           isVisible={showOSD && !isLoading && !error && !iosWarning}
