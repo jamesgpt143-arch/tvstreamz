@@ -816,11 +816,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   return (
     <>
-      {isLoading && !iosWarning && !isRefreshing && (
-        <div className="absolute inset-0 flex items-center justify-center bg-card z-10 pointer-events-none">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-        </div>
-      )}
+      {/* Loading spinner removed as per user request */}
 
       {isRefreshing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/90 backdrop-blur-sm z-20">
