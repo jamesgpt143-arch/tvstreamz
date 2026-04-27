@@ -178,7 +178,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             xmlText = await res.text();
           } catch (proxyErr) {
             console.log('Supabase proxy failed (Not deployed?), falling back to public CORS proxy...', proxyErr);
-            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(channel.epgUrl)}`;
+            const publicProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(channel.epgUrl)}`;
             const res = await fetch(publicProxyUrl);
             if (!res.ok) throw new Error(`Public proxy fetch failed with status ${res.status}`);
             xmlText = await res.text();
@@ -190,13 +190,14 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         const programmes = xmlDoc.getElementsByTagName('programme');
         const now = new Date();
-        const targetId = channel.epgId || channel.id;
+        const targetId = (channel.epgId || channel.id).toString().trim().toLowerCase();
         
         console.log('Searching for EPG ID:', targetId, 'Programmes count:', programmes.length);
 
         for (let i = 0; i < programmes.length; i++) {
           const p = programmes[i];
-          if (p.getAttribute('channel') === targetId) {
+          const pChannel = (p.getAttribute('channel') || '').trim().toLowerCase();
+          if (pChannel === targetId) {
             const startStr = p.getAttribute('start');
             const endStr = p.getAttribute('stop');
             
