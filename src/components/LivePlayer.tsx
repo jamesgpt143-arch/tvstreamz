@@ -158,46 +158,79 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       if (channel.epgUrl) {
-        const proxyUrl = `${supabaseUrl}/functions/v1/iptv-proxy?action=fetch_epg&url=${encodeURIComponent(channel.epgUrl)}`;
-        const res = await fetch(proxyUrl, {
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            apikey: supabaseKey,
-          },
-        });
-        const xmlText = await res.text();
+        let xmlText = '';
+        try {
+          console.log('Attempting direct EPG fetch from:', channel.epgUrl);
+          const res = await fetch(channel.epgUrl);
+          if (!res.ok) throw new Error(`Direct fetch failed with status ${res.status}`);
+          xmlText = await res.text();
+        } catch (err) {
+          console.log('Direct EPG fetch failed (CORS?), falling back to proxy...', err);
+          try {
+            const proxyUrl = `${supabaseUrl}/functions/v1/iptv-proxy?action=fetch_epg&url=${encodeURIComponent(channel.epgUrl)}`;
+            const res = await fetch(proxyUrl, {
+              headers: {
+                Authorization: `Bearer ${supabaseKey}`,
+                apikey: supabaseKey,
+              },
+            });
+            if (!res.ok) throw new Error(`Supabase proxy fetch failed with status ${res.status}`);
+            xmlText = await res.text();
+          } catch (proxyErr) {
+            console.log('Supabase proxy failed (Not deployed?), falling back to public CORS proxy...', proxyErr);
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(channel.epgUrl)}`;
+            const res = await fetch(publicProxyUrl);
+            if (!res.ok) throw new Error(`Public proxy fetch failed with status ${res.status}`);
+            xmlText = await res.text();
+          }
+        }
+        console.log('Fetched EPG XML length:', xmlText.length);
+        
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         const programmes = xmlDoc.getElementsByTagName('programme');
         const now = new Date();
-        const targetId = channel.epgId || channel.name;
+        const targetId = channel.epgId || channel.id;
+        
+        console.log('Searching for EPG ID:', targetId, 'Programmes count:', programmes.length);
 
         for (let i = 0; i < programmes.length; i++) {
           const p = programmes[i];
           if (p.getAttribute('channel') === targetId) {
             const startStr = p.getAttribute('start');
             const endStr = p.getAttribute('stop');
+            
             if (startStr && endStr) {
-              const parseTime = (str: string) => {
-                const y = str.substring(0, 4);
-                const m = parseInt(str.substring(4, 6)) - 1;
-                const d = str.substring(6, 8);
-                const h = str.substring(8, 10);
-                const min = str.substring(10, 12);
-                return new Date(Date.UTC(parseInt(y), m, parseInt(d), parseInt(h), parseInt(min)));
+              const parseXMLTVTime = (str: string) => {
+                // Format: YYYYMMDDHHMMSS +HHMM
+                const match = str.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s?([+-]\d{4})?$/);
+                if (!match) return null;
+                const [_, y, m, d, h, min, s, offset] = match;
+                
+                // Construct ISO string for parsing
+                let iso = `${y}-${m}-${d}T${h}:${min}:${s}`;
+                if (offset) {
+                  iso += offset.substring(0, 3) + ':' + offset.substring(3);
+                } else {
+                  iso += 'Z';
+                }
+                return new Date(iso);
               };
-              const start = parseTime(startStr);
-              const end = parseTime(endStr);
 
-              if (now >= start && now <= end) {
+              const start = parseXMLTVTime(startStr);
+              const end = parseXMLTVTime(endStr);
+
+              if (start && end && now >= start && now <= end) {
                 const title = p.getElementsByTagName('title')[0]?.textContent || 'Live Stream';
                 const progress = ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100;
+                console.log('Found match:', title, progress);
                 setEpgData({ title, progress: Math.max(0, Math.min(100, progress)) });
                 return;
               }
             }
           }
         }
+        console.warn('No matching programme found for time:', now.toISOString());
         setEpgData({ title: channel.name, progress: 0 });
         return;
       }
