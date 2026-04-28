@@ -10,6 +10,7 @@ import { ChevronLeft, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart, Star } from 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { useProxyLogo } from '@/hooks/useProxyLogo';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CATEGORIES } from '@/lib/channelCategories';
@@ -32,6 +33,7 @@ const WatchLive = () => {
   const { data: dbChannels, isLoading } = useChannels();
   const { data: viewCounts } = useChannelViews();
   const { isInMyList, addToMyList, removeFromMyList, myList, isLoading: isPrefsLoading } = useUserPreferences();
+  const { proxyLogo } = useProxyLogo();
 
   // All channels from database
   const allChannels: Channel[] = useMemo(() => {
@@ -163,7 +165,7 @@ const WatchLive = () => {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={channel.logo}
+                    src={proxyLogo(channel.logo)}
                     alt={channel.name}
                     className="w-10 h-10 object-contain rounded-lg bg-secondary p-1.5"
                   />
@@ -262,7 +264,7 @@ const WatchLive = () => {
                               className="w-full flex flex-col items-center p-2 rounded-lg bg-background border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200"
                             >
                               <img
-                                src={ch.logo}
+                                src={proxyLogo(ch.logo)}
                                 alt={ch.name}
                                 className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-md bg-secondary/50 p-1"
                               />

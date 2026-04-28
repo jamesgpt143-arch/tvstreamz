@@ -68,14 +68,17 @@ const isIOS = (): boolean => {
 export const getProxiedLogoUrl = (logo?: string, proxyBase?: string) => {
   if (!logo) return '';
   if (logo.startsWith('https://')) return logo;
-  if (!proxyBase) return logo; 
+  
+  const fallbackProxy = `https://images.weserv.nl/?url=${encodeURIComponent(logo)}`;
+  
+  if (!proxyBase) return fallbackProxy; 
   
   try {
     const url = new URL(proxyBase);
     url.searchParams.set('url', logo);
     return url.toString();
   } catch {
-    return logo;
+    return fallbackProxy;
   }
 };
 
@@ -256,6 +259,11 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             ...Object.values(sbProxies),
             ...Object.values(vercelProxies)
           ].filter(p => p && typeof p === 'string'))) as string[];
+          
+          // Add public proxy as absolute fallback
+          if (!providerProxies.includes('https://corsproxy.io/?url=')) {
+            providerProxies.push('https://corsproxy.io/?url=');
+          }
         }
 
         const labelMap = new Map<string, string>();
@@ -273,6 +281,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             labelMap.set(p, key === 'primary' ? 'Vercel HLS' : (key ? `VC-${key}` : `Proxy ${idx}`));
           }
         });
+        labelMap.set('https://corsproxy.io/?url=', 'Public Proxy');
         proxyLabelMapRef.current = labelMap;
 
         if (isMounted) onProxyChange?.(isStrict ? `Using ${activeProxyType}...` : 'Detecting best connection...');
