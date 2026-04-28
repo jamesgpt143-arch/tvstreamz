@@ -141,14 +141,10 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
         onLoad={() => setIsLoading(false)}
       />
       
-      {/* OVERLAY: Blocks clicks only before starting or when paused */}
+      {/* OVERLAY: Blocks clicks to prevent interacting with YouTube iframe directly */}
       <div 
-        className={cn(
-          "absolute inset-0 z-10 bg-transparent cursor-pointer transition-all",
-          (isPlaying && hasStarted) ? "pointer-events-none" : "pointer-events-auto"
-        )}
+        className="absolute inset-0 z-10 bg-transparent cursor-pointer transition-all pointer-events-auto"
         onClick={(e) => {
-          if (isPlaying && hasStarted) return;
           e.preventDefault();
           e.stopPropagation();
           togglePlay();
