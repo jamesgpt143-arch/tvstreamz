@@ -3,13 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { ShareButton } from '@/components/ShareButton';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Radio, ExternalLink, Clock, Play } from 'lucide-react';
-
-const TVAPP_LINK_BASE = 'https://thetvapp.link';
+import { ChevronLeft, Radio, Clock } from 'lucide-react';
+import { LivePlayer } from '@/components/LivePlayer';
+import type { Channel } from '@/lib/channels';
 
 const WatchEvent = () => {
   const { '*': eventSlug } = useParams();
   const [phTime, setPhTime] = useState('');
+  const [proxyStatus, setProxyStatus] = useState<string>('');
 
   useEffect(() => {
     const updateTime = () => {
@@ -33,7 +34,16 @@ const WatchEvent = () => {
     : 'Live Event';
 
   const sport = eventSlug?.split('/')[0]?.toUpperCase() || '';
-  const sourceUrl = eventSlug ? `${TVAPP_LINK_BASE}/${eventSlug}` : null;
+  
+  const channel: Channel | null = eventSlug ? {
+    id: `event-${eventSlug.replace(/[^a-zA-Z0-9]/g, '-')}`,
+    name: title,
+    manifestUri: '', // Will be resolved by LivePlayer using tvappSlug
+    type: 'hls',
+    logo: '',
+    tvappSlug: eventSlug,
+    useProxy: true,
+  } : null;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -49,9 +59,9 @@ const WatchEvent = () => {
             </Button>
           </div>
 
-          <div className="max-w-2xl mx-auto w-full">
+          <div className="max-w-4xl mx-auto w-full">
             {/* Event Card */}
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+            <div className="bg-card border border-border rounded-2xl p-4 md:p-6 space-y-4 md:space-y-5">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -71,43 +81,33 @@ const WatchEvent = () => {
                 </div>
               </div>
 
-              {/* Title */}
-              <h1 className="text-xl font-bold">{title}</h1>
+              {/* Title & Proxy Status */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h1 className="text-lg md:text-xl font-bold">{title}</h1>
+                {proxyStatus && (
+                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">
+                    {proxyStatus}
+                  </span>
+                )}
+              </div>
 
-              {/* Player Area / Watch Button */}
-              <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border/50">
-                <div className="text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
-                    <Play className="w-8 h-8 text-primary ml-1" />
+              {/* Player Area */}
+              <div className="w-full">
+                {channel ? (
+                  <LivePlayer 
+                    channel={channel} 
+                    onProxyChange={setProxyStatus} 
+                  />
+                ) : (
+                  <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border/50">
+                    <p className="text-muted-foreground">Invalid event URL</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Stream opens in a new tab</p>
-                    <p className="text-xs text-muted-foreground">Due to source restrictions, this event plays on the provider's site</p>
-                  </div>
-                  {sourceUrl && (
-                    <Button asChild size="lg" className="gap-2">
-                      <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4" />
-                        Watch Now
-                      </a>
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mt-2">
                 <ShareButton title={`Watch ${title} - Live`} />
-                {sourceUrl && (
-                  <a
-                    href={sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                  >
-                    Open source <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
               </div>
             </div>
           </div>
