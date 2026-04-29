@@ -225,6 +225,10 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           }
         }
 
+        if (!streamUrl) {
+          throw new Error('Stream URL could not be resolved or is empty.');
+        }
+
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
