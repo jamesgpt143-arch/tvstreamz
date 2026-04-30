@@ -13,7 +13,6 @@ import {
   fetchVideos,
   getTrailerUrl,
   getStreamingUrls,
-  getDownloadUrls,
   getImageUrl,
   MovieDetails,
   Movie,
@@ -21,7 +20,7 @@ import {
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
-import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check, Download, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Browser } from '@capacitor/browser';
@@ -55,10 +54,6 @@ const Watch = () => {
   // For persistence and timer
   const [currentServer, setCurrentServer] = useState<string | undefined>(undefined);
 
-  // Download functionality
-  const [showDownloadAlert, setShowDownloadAlert] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  
   // BAGO: Gamitin natin ang Hook para sa pag-manage ng My List!
   const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
   
@@ -218,32 +213,6 @@ const Watch = () => {
     }
   };
 
-  const currentDownloadUrl = useMemo(() => {
-    if (!id || !type) return null;
-    const urls = getDownloadUrls(Number(id), type as 'movie' | 'tv', selectedSeason, selectedEpisode);
-    return urls['Server 1 (VidLink)'];
-  }, [id, type, selectedSeason, selectedEpisode]);
-
-  const handleDownloadClick = () => {
-    if (currentDownloadUrl) {
-      setDownloadUrl(currentDownloadUrl);
-      setShowDownloadAlert(true);
-    }
-  };
-
-  const confirmDownload = async () => {
-    if (downloadUrl) {
-      try {
-        // Buksan ang system browser dahil ito ay download
-        await Browser.open({ url: downloadUrl, presentationStyle: 'popover' });
-        toast.info('Opening download page in system browser...');
-      } catch (error) {
-        window.open(downloadUrl, '_blank');
-      }
-    }
-    setShowDownloadAlert(false);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -374,46 +343,10 @@ const Watch = () => {
                   Watch Trailer
                 </Button>
               )}
-              <Button
-                variant="outline"
-                onClick={handleDownloadClick}
-                className="rounded-full px-6 bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Download Alert Dialog */}
-      <AlertDialog open={showDownloadAlert} onOpenChange={setShowDownloadAlert}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-[90vw] md:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-yellow-500">
-              <AlertTriangle className="w-5 h-5" />
-              Download Warning
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              You are about to be redirected to a third-party download server. 
-              <br /><br />
-              <span className="text-white font-bold">Important:</span> These servers may contain multiple ads and pop-ups. We recommend using an ad-blocker or being cautious while browsing the download page.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col md:flex-row gap-2">
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 rounded-full">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDownload}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
-            >
-              Continue to Download
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Player Section */}
       <section className="relative z-20 -mt-8 md:-mt-12 pb-20">
@@ -424,8 +357,6 @@ const Watch = () => {
               title={details.title || details.name || ''} 
               initialServer={currentServer}
               onServerChange={setCurrentServer}
-              downloadUrl={currentDownloadUrl}
-              onDownloadClick={handleDownloadClick}
             />
           </div>
 

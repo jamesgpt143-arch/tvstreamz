@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Server, Maximize2, Download } from 'lucide-react';
+import { Server, Maximize2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -16,14 +16,12 @@ interface VideoPlayerProps {
   title: string;
   initialServer?: string;
   onServerChange?: (server: string) => void;
-  downloadUrl?: string | null;
-  onDownloadClick?: () => void;
 }
 
 // Ang Server 3 (vidsrc.cc) ang ating "No Ads" option dahil ito ay stable sa sandbox
 const SANDBOX_COMPATIBLE_SERVERS = ['Server 3'];
 
-export const VideoPlayer = ({ servers, title, initialServer, onServerChange, downloadUrl, onDownloadClick }: VideoPlayerProps) => {
+export const VideoPlayer = ({ servers, title, initialServer, onServerChange }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
   const [activeServer, setActiveServer] = useState(initialServer || serverEntries[0]?.[0] || '');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,17 +81,6 @@ export const VideoPlayer = ({ servers, title, initialServer, onServerChange, dow
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
-          {downloadUrl && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full w-9 h-9 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20 transition-all text-blue-400 hover:text-blue-300"
-              onClick={onDownloadClick}
-              title="Download"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          )}
           <ShareButton title={title} iconOnly={true} />
           <Button
             variant="outline"

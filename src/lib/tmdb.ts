@@ -205,15 +205,6 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
     : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}?autoplay=1`,
 });
 
-export const getDownloadUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
-  'Server 1 (VidLink)': type === 'movie'
-    ? `https://vidlink.pro/download/movie/${id}`
-    : `https://vidlink.pro/download/tv/${id}/${season}/${episode}`,
-  'Server 2 (Vidsrc)': type === 'movie'
-    ? `https://vidsrc.me/download/movie/${id}`
-    : `https://vidsrc.me/download/tv/${id}/${season}/${episode}`,
-});
-
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
   const response = await fetch(`${API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
   return response.json();
