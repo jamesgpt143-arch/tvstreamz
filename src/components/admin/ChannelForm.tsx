@@ -191,7 +191,19 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
                 if (formData.stream_type === 'youtube') {
                   url = convertToYouTubeEmbed(url);
                 }
-                setFormData({ ...formData, stream_url: url });
+                
+                // Auto-detect domains that require proxy
+                const proxyRequiredDomains = ['amagi.tv', 'magatv', 'now3.amagi', 'linear-abp', 'rakuten.tv'];
+                const needsProxy = proxyRequiredDomains.some(domain => url.toLowerCase().includes(domain));
+                
+                if (needsProxy && formData.proxy_type === 'none') {
+                  toast.info('Restricted domain detected. Automatically enabling Cloudflare proxy.', {
+                    description: 'This stream usually requires a proxy to play in the browser.',
+                  });
+                  setFormData({ ...formData, stream_url: url, proxy_type: 'cloudflare', use_proxy: true });
+                } else {
+                  setFormData({ ...formData, stream_url: url });
+                }
               }}
               placeholder={formData.stream_type === 'youtube' 
                 ? "Paste any YouTube URL (auto-converts to embed)" 

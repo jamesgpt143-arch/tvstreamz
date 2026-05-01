@@ -499,6 +499,12 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 enableWorker: true, 
                 lowLatencyMode: true, 
                 startLevel: -1,
+                fragLoadingMaxRetry: 3,
+                manifestLoadingMaxRetry: 3,
+                levelLoadingMaxRetry: 3,
+                backBufferLength: 60,
+                // Make subtitle errors non-fatal
+                ignoreDevicePixelRatio: true,
                 xhrSetup: (xhr, url) => {
                   if (proxyUrl) {
                     const proxyOrigin = new URL(proxyUrl).origin;
@@ -539,6 +545,14 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
 
               hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal && isMounted) {
+                  // Handle non-video track errors (like subtitles) gracefully
+                  if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT) {
+                    if (data.frag && data.frag.type !== 'main' && data.frag.type !== 'video') {
+                      console.warn('[LivePlayer] Non-fatal fragment error:', data.details, data.frag.type);
+                      return;
+                    }
+                  }
+
                   if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) setStoredProxy(channel.id, '');
 
                   currentProxyIndex++;
