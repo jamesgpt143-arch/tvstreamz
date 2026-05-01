@@ -73,21 +73,26 @@ export default {
         upstreamHeaders.set('Range', rangeHeader);
       }
 
-      // GEOBLOCK BYPASS: Inject Philippines IP Headers
-      const phIPs = [
+      // GEOBLOCK BYPASS: Inject Philippines/India IP Headers
+      const geoIPs = [
+        // Philippines
         '112.204.1.10', '120.28.45.1', '49.145.23.5', 
-        '180.191.102.3', '203.177.42.8', '210.213.122.5'
+        '180.191.102.3', '203.177.42.8', '210.213.122.5',
+        // India
+        '103.21.164.1', '103.232.124.1', '103.241.224.1',
+        '104.211.231.1', '106.51.72.1', '115.248.114.1'
       ];
-      const randomPHIP = phIPs[Math.floor(Math.random() * phIPs.length)];
+      const randomIP = geoIPs[Math.floor(Math.random() * geoIPs.length)];
       
-      upstreamHeaders.set('X-Forwarded-For', randomPHIP);
-      upstreamHeaders.set('X-Real-IP', randomPHIP);
-      upstreamHeaders.set('True-Client-IP', randomPHIP);
-      upstreamHeaders.set('X-Visitor-IP', randomPHIP);
-      upstreamHeaders.set('X-Originating-IP', randomPHIP);
+      upstreamHeaders.set('X-Forwarded-For', randomIP);
+      upstreamHeaders.set('X-Real-IP', randomIP);
+      upstreamHeaders.set('True-Client-IP', randomIP);
+      upstreamHeaders.set('X-Visitor-IP', randomIP);
+      upstreamHeaders.set('X-Originating-IP', randomIP);
       
       // Some CDNs check these for location
-      upstreamHeaders.set('CF-IPCountry', 'PH');
+      const isIndia = targetUrl.toLowerCase().includes('india');
+      upstreamHeaders.set('CF-IPCountry', isIndia ? 'IN' : 'PH');
 
       // Fetch the resource - use manual redirect to preserve custom headers
       // Force GET to avoid 405 Method Not Allowed from strict CDNs on HEAD requests
