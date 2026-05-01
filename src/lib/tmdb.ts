@@ -203,6 +203,9 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
   'Server 5': type === 'movie'
     ? `https://zxcstream.xyz/embed/movie/${id}?autoplay=1`
     : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}?autoplay=1`,
+  'Server 6': type === 'movie'
+    ? `https://vidapi.xyz/embed/movie/${id}`
+    : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
 });
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
