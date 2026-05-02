@@ -79,6 +79,7 @@ export const Navbar = () => {
     { path: '/', label: 'Home', icon: Home },
     { path: '/movies', label: 'Movies', icon: Film },
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
+    { path: '/anime', label: 'Anime', icon: Sparkles },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
   ];
 

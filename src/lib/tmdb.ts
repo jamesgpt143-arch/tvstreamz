@@ -306,3 +306,28 @@ export const discoverContent = async (
   const data = await response.json();
   return data.results;
 };
+
+/**
+ * Searches TMDB for a title and returns the most relevant ID and media type.
+ * Used for mapping external anime titles to TMDB for streaming.
+ */
+export const findTMDBIdByTitle = async (title: string): Promise<{ id: number; type: 'movie' | 'tv' } | null> => {
+  // We search for both movie and tv. Usually anime series are 'tv'.
+  const response = await fetch(`${API_BASE_URL}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(title)}`);
+  const data = await response.json();
+  
+  // Filter for movies and tv shows, sorted by popularity
+  const results = data.results
+    .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+    .sort((a: any, b: any) => b.popularity - a.popularity);
+
+  if (results.length > 0) {
+    const bestMatch = results[0];
+    return {
+      id: bestMatch.id,
+      type: bestMatch.media_type as 'movie' | 'tv'
+    };
+  }
+
+  return null;
+};

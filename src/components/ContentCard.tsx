@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Star, Play } from 'lucide-react';
 import { Movie, TVShow, getImageUrl } from '@/lib/tmdb';
+import { AnimeItem } from '@/lib/anime-db';
 
 interface ContentCardProps {
-  item: Movie | TVShow;
-  type?: 'movie' | 'tv';
+  item: Movie | TVShow | AnimeItem;
+  type?: 'movie' | 'tv' | 'anime';
 }
 
 const getRatingColor = (rating: number) => {
@@ -15,19 +16,23 @@ const getRatingColor = (rating: number) => {
 
 export const ContentCard = ({ item, type }: ContentCardProps) => {
   const title = 'title' in item ? item.title : item.name;
-  const date = 'release_date' in item ? item.release_date : item.first_air_date;
-  const mediaType = type || item.media_type || 'movie';
-  const year = date ? new Date(date).getFullYear() : '';
-  const rating = item.vote_average;
+  const date = 'release_date' in item ? item.release_date : ('first_air_date' in item ? item.first_air_date : undefined);
+  const mediaType = type || (item as any).media_type || 'movie';
+  const year = date ? new Date(date).getFullYear() : (type === 'anime' ? '' : '');
+  const rating = 'vote_average' in item ? item.vote_average : ('ranking' in item ? (10 - (item.ranking / 1000)) : 0); // Mock rating for anime
+
+  const posterUrl = type === 'anime' 
+    ? (item as AnimeItem).image 
+    : getImageUrl((item as Movie | TVShow).poster_path, 'w500');
 
   return (
     <Link
-      to={`/watch/${mediaType}/${item.id}`}
+      to={`/watch/${mediaType}/${(item as any).id || (item as any)._id}`}
       className="group relative block rounded-[2rem] overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-zinc-900 border border-white/5 active:scale-95"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         <img
-          src={getImageUrl(item.poster_path, 'w500')}
+          src={posterUrl}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1"
           loading="lazy"
@@ -67,7 +72,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
           <span className="text-[10px] text-zinc-400 font-bold">{year}</span>
           <div className="w-1 h-1 rounded-full bg-zinc-700" />
           <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-zinc-400 uppercase font-black tracking-widest">
-            {mediaType === 'movie' ? 'Movie' : 'TV Series'}
+            {mediaType === 'movie' ? 'Movie' : (mediaType === 'tv' ? 'TV Series' : 'Anime')}
           </span>
         </div>
       </div>

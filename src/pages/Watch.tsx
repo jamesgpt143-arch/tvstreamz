@@ -16,7 +16,9 @@ import {
   getImageUrl,
   MovieDetails,
   Movie,
+  findTMDBIdByTitle,
 } from '@/lib/tmdb';
+import { getAnimeById } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -40,7 +42,7 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 
 const Watch = () => {
   const navigate = useNavigate();
-  const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
+  const { type, id } = useParams<{ type: 'movie' | 'tv' | 'anime'; id: string }>();
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,7 +60,7 @@ const Watch = () => {
   const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
   
   // BAGO: Awtomatiko itong mag-a-update at hindi na kailangan ng `useState` at `useEffect`
-  const inMyList = details ? isInMyList(Number(id), type as 'movie' | 'tv') : false;
+  const inMyList = details ? isInMyList(Number(details.id), (type === 'anime' ? 'tv' : type) as 'movie' | 'tv') : false;
   
   useEffect(() => {
     if (id && type) {
@@ -85,26 +87,54 @@ const Watch = () => {
       trackPageView(`/watch/${type}/${id}`);
       
       try {
-        const data = type === 'movie' 
-          ? await fetchMovieDetails(Number(id))
-          : await fetchTVDetails(Number(id));
-        setDetails(data);
+        let contentData: MovieDetails | null = null;
+        let effectiveType = type;
+        let effectiveId = id;
+
+        if (type === 'anime') {
+          // Resolve Anime from RapidAPI
+          const animeData = await getAnimeById(id!);
+          // Search TMDB to get the ID for streaming
+          const tmdbMatch = await findTMDBIdByTitle(animeData.title);
+          
+          if (tmdbMatch) {
+            effectiveType = tmdbMatch.type;
+            effectiveId = tmdbMatch.id.toString();
+            contentData = effectiveType === 'movie' 
+              ? await fetchMovieDetails(tmdbMatch.id)
+              : await fetchTVDetails(tmdbMatch.id);
+            
+            // Overwrite with anime-specific metadata if needed
+            contentData.title = animeData.title;
+            contentData.overview = animeData.synopsis || contentData.overview;
+          } else {
+            toast.error("Could not find streaming sources for this anime.");
+          }
+        } else {
+          contentData = type === 'movie' 
+            ? await fetchMovieDetails(Number(id))
+            : await fetchTVDetails(Number(id));
+        }
+
+        if (!contentData) throw new Error("Content not found");
+        
+        setDetails(contentData);
         
         // Track content view for analytics
-        trackContentView(id, type, data.title || data.name || '');
+        trackContentView(effectiveId!, effectiveType!, contentData.title || contentData.name || '');
         
         // Fetch trailer
-        const videos = await fetchVideos(Number(id), type as 'movie' | 'tv');
+        const videos = await fetchVideos(contentData.id, effectiveType as 'movie' | 'tv');
         const trailer = getTrailerUrl(videos);
         setTrailerUrl(trailer);
         
         // Track watch history
         addToWatchHistory({
-          id: data.id,
-          type: type as 'movie' | 'tv',
-          title: data.title || data.name || '',
-          poster_path: data.poster_path,
-          genre_ids: data.genres?.map(g => g.id) || [],
+          id: contentData.id,
+          type: effectiveType as 'movie' | 'tv',
+          title: contentData.title || contentData.name || '',
+          poster_path: contentData.poster_path,
+          genre_ids: contentData.genres?.map(g => g.id) || [],
         });
 
         // Initialize progress only if it doesn't exist
@@ -284,8 +314,7 @@ const Watch = () => {
                 if (window.history.length > 2) {
                   navigate(-1);
                 } else {
-                  const isAnime = details?.genres?.some(g => g.id === 16);
-                  navigate(type === 'movie' ? '/movies' : (isAnime ? '/anime' : '/tv-shows'));
+                  navigate(type === 'anime' ? '/anime' : (type === 'movie' ? '/movies' : '/tv-shows'));
                 }
               }}
             >
@@ -305,7 +334,7 @@ const Watch = () => {
               {year && <span className="text-zinc-300 drop-shadow-md">{year}</span>}
               {runtime > 0 && <span className="text-zinc-300 drop-shadow-md">{runtime} min</span>}
               <span className="px-3 py-1 rounded bg-primary/20 text-primary text-[10px] uppercase font-black tracking-widest border border-primary/20">
-                {type === 'movie' ? 'Movie' : 'TV Series'}
+                {type === 'anime' ? 'Anime' : (type === 'movie' ? 'Movie' : 'TV Series')}
               </span>
             </div>
 
