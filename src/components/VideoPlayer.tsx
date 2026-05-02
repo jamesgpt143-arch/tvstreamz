@@ -18,8 +18,8 @@ interface VideoPlayerProps {
   onServerChange?: (server: string) => void;
 }
 
-// Ang Server 3 (vidsrc.cc) ang ating "No Ads" option dahil ito ay stable sa sandbox
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 3'];
+// Ang mga servers na ito ay stable sa sandbox kaya tinatag natin silang "Ad-Free"
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 3', 'Anime SUB (Jap)', 'Anime DUB (Eng)', 'Server 9 (Anime)'];
 
 export const VideoPlayer = ({ servers, title, initialServer, onServerChange }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
