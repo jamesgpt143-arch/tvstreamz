@@ -311,3 +311,20 @@ export const discoverContent = async (
   const data = await response.json();
   return data.results;
 };
+
+// ==========================================
+// FIX PARA SA VERCEL BUILD ERROR
+// ==========================================
+export const findTMDBIdByTitle = async (title: string, type: 'movie' | 'tv' = 'movie'): Promise<number | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/search/${type}?api_key=${API_KEY}&query=${encodeURIComponent(title)}`);
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      return data.results[0].id;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error finding TMDB ID by title:', error);
+    return null;
+  }
+};
