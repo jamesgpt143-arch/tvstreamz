@@ -272,10 +272,10 @@ const Watch = () => {
   const date = details.release_date || details.first_air_date;
   const year = date ? new Date(date).getFullYear() : '';
   const runtime = details.runtime || (details.episode_run_time?.[0] ?? 0);
-  const servers = type === 'movie'
+  const isTV = type === 'tv' || (type === 'anime' && details?.seasons && details.seasons.length > 0);
+  const servers = (type === 'movie' || (type === 'anime' && !isTV))
     ? getStreamingUrls(details.id, 'movie')
     : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode);
-  const isTV = type === 'tv';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
