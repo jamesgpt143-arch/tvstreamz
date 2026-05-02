@@ -319,19 +319,54 @@ export const discoverContent = async (
   return data.results;
 };
 
-// ==========================================
-// FIX PARA SA VERCEL BUILD ERROR
-// ==========================================
-export const findTMDBIdByTitle = async (title: string, type: 'movie' | 'tv' = 'movie'): Promise<number | null> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/search/${type}?api_key=${API_KEY}&query=${encodeURIComponent(title)}`);
-    const data = await response.json();
-    if (data.results && data.results.length > 0) {
-      return data.results[0].id;
+/**
+ * Searches TMDB for a title and returns the most relevant ID and media type.
+ * Used for mapping external anime titles to TMDB for streaming.
+ */
+export const findTMDBIdByTitle = async (title: string): Promise<{ id: number; type: 'movie' | 'tv' } | null> => {
+  if (!title) return null;
+  
+  // Clean title: remove special characters and extra spaces
+  const cleanTitle = title.replace(/[【】\[\]]/g, '').trim();
+  
+  const search = async (query: string, searchType: 'multi' | 'tv' | 'movie' = 'multi') => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/search/${searchType}?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.results || [];
+    } catch (e) {
+      console.error(`Search error for ${query} (${searchType}):`, e);
+      return [];
     }
-    return null;
-  } catch (error) {
-    console.error('Error finding TMDB ID by title:', error);
-    return null;
+  };
+
+  // Try multiple strategies
+  const strategies = [
+    { query: cleanTitle, type: 'multi' },
+    { query: title, type: 'multi' },
+    { query: cleanTitle, type: 'tv' },
+    { query: cleanTitle.split(':')[0], type: 'tv' },
+  ];
+
+  for (const strategy of strategies) {
+    const results = await search(strategy.query, strategy.type as any);
+    const filtered = results
+      .filter((item: any) => {
+        const itemType = strategy.type === 'multi' ? item.media_type : strategy.type;
+        return itemType === 'movie' || itemType === 'tv';
+      })
+      .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0));
+
+    if (filtered.length > 0) {
+      const bestMatch = filtered[0];
+      const resultType = strategy.type === 'multi' ? bestMatch.media_type : strategy.type;
+      return {
+        id: bestMatch.id,
+        type: resultType as 'movie' | 'tv'
+      };
+    }
   }
+
+  return null;
 };
