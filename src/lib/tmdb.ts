@@ -187,31 +187,26 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
   return data.results;
 };
 
-// ==========================================
-// MGA BAGONG STREAMING SERVERS NATIN
-// ==========================================
 export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
-  'Server 1 (VidSrc)': type === 'movie' 
-    ? `https://vidsrc.me/embed/movie?tmdb=${id}` 
-    : `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
-    
-  'Server 2 (Multi-Audio)': type === 'movie' 
-    ? `https://vidlink.pro/movie/${id}?autoplay=false&multiLang=true` 
-    : `https://vidlink.pro/tv/${id}/${season}/${episode}?autoplay=false&multiLang=true`,
-    
-  'Server 3 (Anime/Sub)': type === 'movie'
-    ? `https://player.smashy.stream/movie?tmdb=${id}`
-    : `https://player.smashy.stream/anime?tmdb=${id}&s=${season}&ep=${episode}`,
-    
-  'Server 4 (VidAPI)': type === 'movie'
+  'Server 1': type === 'movie' 
+    ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
+    : `https://vidsrc-embed.ru/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
+  'Server 2': type === 'movie' 
+    ? `https://vidlink.pro/movie/${id}?autoplay=true` 
+    : `https://vidlink.pro/tv/${id}/${season}/${episode}?autoplay=true`,
+  'Server 3': type === 'movie' 
+    ? `https://vidsrc.cc/v2/embed/movie/${id}?autoplay=1&mute=1` 
+    : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
+  'Server 4': type === 'movie'
+    ? `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`
+    : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}&autoplay=1`,
+  'Server 5': type === 'movie'
+    ? `https://zxcstream.xyz/embed/movie/${id}?autoplay=1`
+    : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}?autoplay=1`,
+  'Server 6': type === 'movie'
     ? `https://vidapi.xyz/embed/movie/${id}`
     : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
-    
-  'Server 5 (Embed.su)': type === 'movie'
-    ? `https://embed.su/embed/movie/${id}`
-    : `https://embed.su/embed/tv/${id}/${season}/${episode}`,
 });
-// ==========================================
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
   const response = await fetch(`${API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
