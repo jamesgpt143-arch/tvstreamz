@@ -311,11 +311,7 @@ const Watch = () => {
               size="sm"
               className="mb-2 -ml-2 text-zinc-400 hover:text-white hover:bg-white/10 transition-colors gap-2 rounded-full"
               onClick={() => {
-                if (window.history.length > 2) {
-                  navigate(-1);
-                } else {
-                  navigate(type === 'anime' ? '/anime' : (type === 'movie' ? '/movies' : '/tv-shows'));
-                }
+                navigate(type === 'anime' ? '/anime' : (type === 'movie' ? '/movies' : '/tv-shows'));
               }}
             >
               <ChevronLeft className="w-4 h-4" />
