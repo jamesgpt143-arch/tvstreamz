@@ -24,7 +24,7 @@ const Anime = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLatestLoading, setIsLatestLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
   
   // Filter States
   const [search, setSearch] = useState('');
@@ -72,15 +72,15 @@ const Anime = () => {
     try {
       const response = await fetchAnimeList(
         p, 
-        20, 
+        24, 
         debouncedSearch, 
-        selectedGenre === 'all' ? '' : selectedGenre,
+        selectedGenre,
         sortBy,
         sortOrder
       );
       
       setItems(isNew ? response.data : [...items, ...response.data]);
-      setTotalPages(response.meta.totalPage);
+      setHasNextPage(response.pagination.has_next_page);
     } catch (error: any) {
       console.error('Failed to fetch anime:', error);
       setError(error.message || "Failed to fetch anime catalog.");
@@ -95,7 +95,7 @@ const Anime = () => {
   }, [debouncedSearch, sortBy, sortOrder, selectedGenre]);
 
   const loadMore = () => {
-    if (page < totalPages) {
+    if (hasNextPage && !isLoading) {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchAnime(nextPage);
@@ -162,7 +162,8 @@ const Anime = () => {
                   <SelectValue placeholder="Sort By" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="ranking">Ranking</SelectItem>
+                  <SelectItem value="rank">Ranking</SelectItem>
+                  <SelectItem value="popularity">Popularity</SelectItem>
                   <SelectItem value="title">Alphabetical</SelectItem>
                 </SelectContent>
               </Select>
@@ -189,7 +190,7 @@ const Anime = () => {
                 <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md max-h-80">
                   <SelectItem value="all">All Genres</SelectItem>
                   {genres.map(g => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                    <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -227,7 +228,7 @@ const Anime = () => {
                 </div>
                 <p className="text-sm font-black uppercase tracking-[0.3em] text-zinc-500 animate-pulse">Syncing catalog...</p>
               </div>
-            ) : page < totalPages ? (
+            ) : hasNextPage ? (
               <Button 
                 variant="outline" 
                 onClick={loadMore} 
@@ -235,13 +236,13 @@ const Anime = () => {
               >
                 Load More <Filter className="w-3 h-3 ml-2 group-hover:rotate-180 transition-transform duration-500" />
               </Button>
-            ) : items.length === 0 ? (
+            ) : items.length === 0 && !isLoading ? (
               <div className="text-center py-20 bg-card/20 rounded-[3rem] border border-dashed border-white/10 w-full max-w-2xl mx-auto">
                 <Tv className="w-16 h-16 text-zinc-700 mx-auto mb-6" />
                 <p className="text-2xl font-bold mb-4">No anime found matching your filters.</p>
                 <Button variant="link" onClick={() => {
                   setSearch('');
-                  setSortBy('ranking');
+                  setSortBy('rank');
                   setSortOrder('asc');
                   setSelectedGenre('all');
                 }} className="text-orange-500 font-bold uppercase tracking-widest">Reset all filters</Button>

@@ -1,69 +1,89 @@
-const RAPIDAPI_KEY = 'e723dc4049msh26a38bbeb7362c8p155220jsnaba54e3cd788';
-const RAPIDAPI_HOST = 'anime-db.p.rapidapi.com';
-const BASE_URL = 'https://anime-db.p.rapidapi.com';
+const BASE_URL = 'https://api.jikan.moe/v4';
 
 export interface AnimeItem {
-  _id: string;
+  mal_id: number;
+  _id: string; // Mapping for compatibility
   title: string;
   image: string;
-  link: string;
-  status: string;
-  type: string;
-  thumb: string;
-  genres: string[];
-  ranking: number;
-  episodes: number;
-}
-
-export interface AnimeDetails extends AnimeItem {
+  images: {
+    webp: {
+      image_url: string;
+      large_image_url: string;
+    }
+  };
   synopsis: string;
-  alternativeTitles: string[];
-  hasEpisode: boolean;
-  hasRanking: boolean;
+  type: string;
+  status: string;
+  score: number;
+  genres: { name: string }[];
+  rank: number;
+  episodes: number;
 }
 
 export interface AnimeResponse {
   data: AnimeItem[];
-  meta: {
-    page: number;
-    size: number;
-    totalData: number;
-    totalPage: number;
+  pagination: {
+    last_visible_page: number;
+    has_next_page: boolean;
+    current_page: number;
   };
 }
 
-const fetchFromAnimeDB = async (endpoint: string, params: Record<string, string | number> = {}) => {
+const fetchFromJikan = async (endpoint: string, params: Record<string, string | number> = {}) => {
   const url = new URL(`${BASE_URL}${endpoint}`);
-  Object.keys(params).forEach(key => url.searchParams.append(key, params[key].toString()));
-
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'x-rapidapi-key': RAPIDAPI_KEY,
-      'x-rapidapi-host': RAPIDAPI_HOST,
-      'Content-Type': 'application/json',
-    },
+  Object.keys(params).forEach(key => {
+    if (params[key]) url.searchParams.append(key, params[key].toString());
   });
 
+  const response = await fetch(url.toString());
+
   if (!response.ok) {
-    throw new Error(`Anime DB API Error: ${response.statusText}`);
+    if (response.status === 429) {
+      throw new Error("Too many requests. Please wait a second.");
+    }
+    throw new Error(`Jikan API Error: ${response.statusText}`);
   }
 
   return response.json();
 };
 
-export const fetchAnimeList = async (page = 1, size = 20, search = '', genres = '', sortBy = 'ranking', sortOrder = 'asc'): Promise<AnimeResponse> => {
-  const params: Record<string, string | number> = { page, size, sortBy, sortOrder };
-  if (search) params.search = search;
-  if (genres) params.genres = genres;
+export const fetchAnimeList = async (page = 1, size = 25, search = '', genres = '', sortBy = 'rank', sortOrder = 'asc'): Promise<AnimeResponse> => {
+  // Jikan's search endpoint: /anime
+  const params: Record<string, string | number> = { 
+    page, 
+    limit: size,
+    order_by: sortBy === 'ranking' ? 'rank' : sortBy,
+    sort: sortOrder 
+  };
   
-  return fetchFromAnimeDB('/anime', params);
+  if (search) params.q = search;
+  if (genres && genres !== 'all') params.genres = genres;
+  
+  const result = await fetchFromJikan('/anime', params);
+  
+  // Map Jikan data to our app's internal format for compatibility
+  return {
+    data: result.data.map((item: any) => ({
+      ...item,
+      _id: item.mal_id.toString(),
+      image: item.images.webp.large_image_url || item.images.webp.image_url,
+    })),
+    pagination: result.pagination
+  };
 };
 
-export const getAnimeById = async (id: string): Promise<AnimeDetails> => {
-  return fetchFromAnimeDB(`/anime/by-id/${id}`);
+export const getAnimeById = async (id: string): Promise<any> => {
+  const result = await fetchFromJikan(`/anime/${id}`);
+  const item = result.data;
+  return {
+    ...item,
+    _id: item.mal_id.toString(),
+    image: item.images.webp.large_image_url || item.images.webp.image_url,
+    alternativeTitles: item.titles?.map((t: any) => t.title) || []
+  };
 };
 
-export const getAnimeGenres = async (): Promise<string[]> => {
-  return fetchFromAnimeDB('/anime/genres');
+export const getAnimeGenres = async (): Promise<any[]> => {
+  const result = await fetchFromJikan('/genres/anime');
+  return result.data.map((g: any) => ({ id: g.mal_id, name: g.name }));
 };
