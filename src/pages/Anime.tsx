@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
 import { fetchAnimeList, AnimeItem, getAnimeGenres } from '@/lib/anime-db';
+import { fetchNewAnimeEpisodes, Movie, TVShow } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
 import { Loader2, Filter, Search, Star, Tv, SortAsc, SortDesc } from 'lucide-react';
 import { usePagePopup } from '@/hooks/usePagePopup';
@@ -18,8 +19,11 @@ const Anime = () => {
   usePagePopup('anime');
 
   const [items, setItems] = useState<AnimeItem[]>([]);
+  const [latestReleases, setLatestReleases] = useState<(Movie | TVShow)[]>([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLatestLoading, setIsLatestLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   
   // Filter States
@@ -40,6 +44,19 @@ const Anime = () => {
       }
     };
     loadGenres();
+
+    const loadLatest = async () => {
+      setIsLatestLoading(true);
+      try {
+        const data = await fetchNewAnimeEpisodes(1);
+        setLatestReleases(data.slice(0, 12));
+      } catch (error) {
+        console.error('Failed to fetch latest anime:', error);
+      } finally {
+        setIsLatestLoading(false);
+      }
+    };
+    loadLatest();
   }, []);
 
   useEffect(() => {
@@ -51,6 +68,7 @@ const Anime = () => {
 
   const fetchAnime = async (p: number, isNew = false) => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetchAnimeList(
         p, 
@@ -63,8 +81,9 @@ const Anime = () => {
       
       setItems(isNew ? response.data : [...items, ...response.data]);
       setTotalPages(response.meta.totalPage);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch anime:', error);
+      setError(error.message || "Failed to fetch anime catalog.");
     } finally {
       setIsLoading(false);
     }
@@ -111,6 +130,28 @@ const Anime = () => {
             </div>
           </div>
 
+          {/* Latest Releases Section */}
+          {latestReleases.length > 0 && (
+            <div className="mb-16">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3">
+                  <span className="w-2 h-8 bg-orange-500 rounded-full" />
+                  Latest Releases
+                </h2>
+                <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+                  Updated Today
+                </div>
+              </div>
+              <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar snap-x">
+                {latestReleases.map((item) => (
+                  <div key={item.id} className="min-w-[160px] md:min-w-[200px] snap-start">
+                    <ContentCard item={item} type="tv" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Premium Filter Bar */}
           <div className="flex flex-wrap items-center gap-4 mb-12 p-4 bg-card/20 backdrop-blur-xl border border-white/5 rounded-[2rem] shadow-2xl overflow-x-auto no-scrollbar">
             {/* Sort */}
@@ -156,11 +197,25 @@ const Anime = () => {
           </div>
 
           {/* Items Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8">
-            {items.map((item) => (
-              <ContentCard key={item._id} item={item} type="anime" />
-            ))}
-          </div>
+          {error ? (
+            <div className="text-center py-20 bg-destructive/10 rounded-[3rem] border border-destructive/20 w-full max-w-2xl mx-auto">
+              <Tv className="w-16 h-16 text-destructive mx-auto mb-6" />
+              <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
+              <p className="text-muted-foreground mb-6 px-8">{error}</p>
+              <Button 
+                onClick={() => fetchAnime(1, true)}
+                className="bg-orange-500 hover:bg-orange-600 text-black font-black uppercase tracking-widest"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8">
+              {items.map((item) => (
+                <ContentCard key={item._id} item={item} type="anime" />
+              ))}
+            </div>
+          )}
 
           {/* Loading / Load More */}
           <div className="flex justify-center mt-20">
