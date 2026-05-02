@@ -92,12 +92,29 @@ const Watch = () => {
         let effectiveId = id;
 
         if (type === 'anime') {
-          // Resolve Anime from RapidAPI
+          console.log(`[Watch] Resolving anime ID: ${id}`);
+          // Resolve Anime from Jikan
           const animeData = await getAnimeById(id!);
+          console.log(`[Watch] Anime title from Jikan: ${animeData.title}`);
+          
           // Search TMDB to get the ID for streaming
-          const tmdbMatch = await findTMDBIdByTitle(animeData.title);
+          let tmdbMatch = await findTMDBIdByTitle(animeData.title);
+          
+          // Try alternative titles if first search fails
+          if (!tmdbMatch && animeData.alternativeTitles?.length > 0) {
+            console.log(`[Watch] Primary title search failed, trying alternatives...`);
+            for (const altTitle of animeData.alternativeTitles) {
+              if (!altTitle) continue;
+              tmdbMatch = await findTMDBIdByTitle(altTitle);
+              if (tmdbMatch) {
+                console.log(`[Watch] Found match using alternative title: ${altTitle}`);
+                break;
+              }
+            }
+          }
           
           if (tmdbMatch) {
+            console.log(`[Watch] Found TMDB match: ${tmdbMatch.id} (${tmdbMatch.type})`);
             effectiveType = tmdbMatch.type;
             effectiveId = tmdbMatch.id.toString();
             contentData = effectiveType === 'movie' 
@@ -108,6 +125,7 @@ const Watch = () => {
             contentData.title = animeData.title;
             contentData.overview = animeData.synopsis || contentData.overview;
           } else {
+            console.warn(`[Watch] Could not find TMDB match for: ${animeData.title}`);
             toast.error("Could not find streaming sources for this anime.");
           }
         } else {
@@ -138,24 +156,24 @@ const Watch = () => {
         });
 
         // Initialize progress only if it doesn't exist
-        const existingProgress = getWatchProgress(data.id, type as 'movie' | 'tv');
+        const existingProgress = getWatchProgress(contentData.id, effectiveType as 'movie' | 'tv');
         if (!existingProgress) {
-          const runtime = data.runtime || (data.episode_run_time?.[0] ?? 90);
+          const runtime = contentData.runtime || (contentData.episode_run_time?.[0] ?? 90);
           updateWatchProgress({
-            id: data.id,
-            type: type as 'movie' | 'tv',
-            title: data.title || data.name || '',
-            poster_path: data.poster_path,
-            backdrop_path: data.backdrop_path,
+            id: contentData.id,
+            type: effectiveType as 'movie' | 'tv',
+            title: contentData.title || contentData.name || '',
+            poster_path: contentData.poster_path,
+            backdrop_path: contentData.backdrop_path,
             progress: 5,
             currentTime: 0,
             duration: runtime * 60,
-            season: type === 'tv' ? 1 : undefined,
-            episode: type === 'tv' ? 1 : undefined,
+            season: effectiveType === 'tv' ? 1 : undefined,
+            episode: effectiveType === 'tv' ? 1 : undefined,
           });
         }
 
-        const trending = await fetchTrending(type as 'movie' | 'tv', 'week');
+        const trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
         setSimilar(trending.filter((item) => item.id !== Number(id)));
       } catch (error) {
         console.error('Failed to load details:', error);
