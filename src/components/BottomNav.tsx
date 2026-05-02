@@ -5,6 +5,7 @@ const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/movies', label: 'Movies', icon: Film },
   { path: '/tv-shows', label: 'TV', icon: MonitorPlay },
+  { path: '/anime', label: 'Anime', icon: Sparkles },
   { path: '/live-tv', label: 'Live', icon: Tv },
   { path: '/playlist-player', label: 'Playlist', icon: ListMusic },
 ];
