@@ -187,26 +187,38 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
   return data.results;
 };
 
-export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) => ({
-  'Server 1': type === 'movie' 
-    ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
-    : `https://vidsrc-embed.ru/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
-  'Server 2': type === 'movie' 
-    ? `https://vidlink.pro/movie/${id}?autoplay=true` 
-    : `https://vidlink.pro/tv/${id}/${season}/${episode}?autoplay=true`,
-  'Server 3': type === 'movie' 
-    ? `https://vidsrc.cc/v2/embed/movie/${id}?autoplay=1&mute=1` 
-    : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
-  'Server 4': type === 'movie'
-    ? `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`
-    : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}&autoplay=1`,
-  'Server 5': type === 'movie'
-    ? `https://zxcstream.xyz/embed/movie/${id}?autoplay=1`
-    : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}?autoplay=1`,
-  'Server 6': type === 'movie'
-    ? `https://vidapi.xyz/embed/movie/${id}`
-    : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
-});
+export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string) => {
+  const baseUrls: Record<string, string> = {
+    'Server 1': type === 'movie' 
+      ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
+      : `https://vidsrc-embed.ru/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
+    'Server 2': type === 'movie' 
+      ? `https://vidlink.pro/movie/${id}?autoplay=true` 
+      : `https://vidlink.pro/tv/${id}/${season}/${episode}?autoplay=true`,
+    'Server 3': type === 'movie' 
+      ? `https://vidsrc.cc/v2/embed/movie/${id}?autoplay=1&mute=1` 
+      : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoplay=1&mute=1`,
+    'Server 4': type === 'movie'
+      ? `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`
+      : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}&autoplay=1`,
+    'Server 5': type === 'movie'
+      ? `https://zxcstream.xyz/embed/movie/${id}?autoplay=1`
+      : `https://zxcstream.xyz/embed/tv/${id}/${season}/${episode}?autoplay=1`,
+    'Server 6': type === 'movie'
+      ? `https://vidapi.xyz/embed/movie/${id}`
+      : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
+  };
+
+  // Add Anime Specialized Servers if MAL ID is provided
+  if (malId) {
+    const ep = episode || 1;
+    baseUrls['Anime SUB (Jap)'] = `https://vidsrc.xyz/embed/anime/${malId}/${ep}/0`;
+    baseUrls['Anime DUB (Eng)'] = `https://vidsrc.xyz/embed/anime/${malId}/${ep}/1`;
+    baseUrls['Server 9 (Anime)'] = `https://vidsrc.to/embed/anime/${malId}/${ep}`;
+  }
+
+  return baseUrls;
+};
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ episodes: Episode[] }> => {
   const response = await fetch(`${API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);

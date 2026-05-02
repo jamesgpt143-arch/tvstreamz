@@ -274,8 +274,8 @@ const Watch = () => {
   const runtime = details.runtime || (details.episode_run_time?.[0] ?? 0);
   const isTV = type === 'tv' || (type === 'anime' && details?.seasons && details.seasons.length > 0);
   const servers = (type === 'movie' || (type === 'anime' && !isTV))
-    ? getStreamingUrls(details.id, 'movie')
-    : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode);
+    ? getStreamingUrls(details.id, 'movie', undefined, undefined, type === 'anime' ? id : undefined)
+    : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode, type === 'anime' ? id : undefined);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
