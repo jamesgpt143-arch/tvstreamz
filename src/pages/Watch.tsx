@@ -18,7 +18,7 @@ import {
   Movie,
   findTMDBIdByTitle,
 } from '@/lib/tmdb';
-import { getAnimeById, fetchAnimeList } from '@/lib/anime-db';
+import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -156,7 +156,14 @@ const Watch = () => {
 
         if (!contentData) throw new Error("Content not found");
         
-        setResolvedMalId(finalMalId);
+        // vidsrc.icu expects AniList ID instead of MAL ID
+        let anilistId = undefined;
+        if (finalMalId) {
+           anilistId = await getAnilistIdFromMalId(finalMalId);
+           console.log(`[Watch] Resolved AniList ID: ${anilistId}`);
+        }
+        
+        setResolvedMalId(anilistId || undefined);
         setDetails(contentData);
         
         // Track content view for analytics

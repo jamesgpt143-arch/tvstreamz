@@ -87,3 +87,37 @@ export const getAnimeGenres = async (): Promise<any[]> => {
   const result = await fetchFromJikan('/genres/anime');
   return result.data.map((g: any) => ({ id: g.mal_id, name: g.name }));
 };
+
+export const getAnilistIdFromMalId = async (malId: number | string): Promise<string | null> => {
+  const query = `
+    query ($idMal: Int) {
+      Media(idMal: $idMal, type: ANIME) {
+        id
+      }
+    }
+  `;
+  
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: { idMal: Number(malId) }
+      })
+    });
+    
+    if (!response.ok) {
+       return null;
+    }
+    
+    const data = await response.json();
+    return data?.data?.Media?.id?.toString() || null;
+  } catch (error) {
+    console.error('Error fetching AniList ID:', error);
+    return null;
+  }
+};
