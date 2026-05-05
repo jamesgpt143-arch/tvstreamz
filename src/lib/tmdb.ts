@@ -209,6 +209,12 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
       : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
   };
 
+  // Add Anime Specialized Servers if MAL ID is provided
+  if (malId) {
+    const ep = episode || 1;
+    baseUrls['Anime SUB (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/0`;
+    baseUrls['Anime DUB (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/1`;
+  }
 
   return baseUrls;
 };

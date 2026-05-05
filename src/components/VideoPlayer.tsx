@@ -19,7 +19,7 @@ interface VideoPlayerProps {
 }
 
 // Ang mga servers na ito ay stable sa sandbox kaya tinatag natin silang "Ad-Free"
-const SANDBOX_COMPATIBLE_SERVERS = ['Server 3'];
+const SANDBOX_COMPATIBLE_SERVERS = ['Server 3', 'Anime SUB (ICU)', 'Anime DUB (ICU)'];
 
 export const VideoPlayer = ({ servers, title, initialServer, onServerChange }: VideoPlayerProps) => {
   const serverEntries = Object.entries(servers);
