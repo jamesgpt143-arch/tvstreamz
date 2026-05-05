@@ -252,9 +252,16 @@ export const CommunityChat = () => {
 
                     <div className="group relative max-w-[85%]">
                       {msg.reply_to_username && (
-                        <div className="text-[9px] mb-1 flex items-center gap-1 text-primary opacity-70 italic">
-                          <CornerDownRight className="w-3 h-3" />
-                          Replying to @{msg.reply_to_username}
+                        <div className="text-[9px] mb-1 flex flex-col gap-1 text-primary opacity-80">
+                          <div className="flex items-center gap-1 italic">
+                            <CornerDownRight className="w-3 h-3" />
+                            Replying to @{msg.reply_to_username}
+                          </div>
+                          {msg.parent_id && messages.find(m => m.id === msg.parent_id) && (
+                            <div className="bg-primary/10 p-1.5 rounded-md border border-primary/10 text-foreground/80 line-clamp-2 italic shadow-sm">
+                              "{messages.find(m => m.id === msg.parent_id)?.message}"
+                            </div>
+                          )}
                         </div>
                       )}
                       <div 
@@ -314,17 +321,22 @@ export const CommunityChat = () => {
             ) : (
               <form onSubmit={handleSendMessage} className="space-y-2">
                 {replyingTo && (
-                  <div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg border border-primary/20 text-[10px] animate-in slide-in-from-bottom-1">
-                    <div className="flex items-center gap-1 text-primary font-bold">
-                      <Reply className="w-3 h-3" /> Replying to @{replyingTo.username}
+                  <div className="flex flex-col bg-primary/10 p-2 rounded-lg border border-primary/20 animate-in slide-in-from-bottom-1 gap-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1 text-primary font-bold">
+                        <Reply className="w-3 h-3" /> Replying to @{replyingTo.username}
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => setReplyingTo(null)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setReplyingTo(null)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="text-xs text-muted-foreground bg-background/50 p-1.5 rounded border border-border/50 line-clamp-1">
+                      {replyingTo.message}
+                    </div>
                   </div>
                 )}
                 <div className="flex gap-2">
