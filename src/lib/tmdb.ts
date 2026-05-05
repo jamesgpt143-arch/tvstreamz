@@ -187,7 +187,7 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
   return data.results;
 };
 
-export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string) => {
+export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string, isDub?: boolean) => {
   const baseUrls: Record<string, string> = {
     'Server 1': type === 'movie' 
       ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
@@ -209,11 +209,11 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
       : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
   };
 
-  // Add Anime Specialized Servers if MAL ID is provided
+  // Add Anime Specialized Server if AniList ID (malId variable) is provided
   if (malId) {
     const ep = episode || 1;
-    baseUrls['Anime SUB (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/0`;
-    baseUrls['Anime DUB (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/1`;
+    const dubParam = isDub ? '1' : '0';
+    baseUrls['Anime (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/${dubParam}`;
   }
 
   return baseUrls;

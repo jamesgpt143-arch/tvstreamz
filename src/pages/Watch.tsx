@@ -26,6 +26,7 @@ import { ChevronLeft, Star, Calendar, Clock, Loader2, Play, Plus, Check, AlertTr
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Browser } from '@capacitor/browser';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,9 @@ const Watch = () => {
   
   // For persistence and timer
   const [currentServer, setCurrentServer] = useState<string | undefined>(undefined);
+  
+  // For Anime SUB/DUB toggle
+  const [isDub, setIsDub] = useState(false);
   
   // For resolving Anime servers when navigating from Search
   const [resolvedMalId, setResolvedMalId] = useState<string | undefined>(undefined);
@@ -320,8 +324,8 @@ const Watch = () => {
   const runtime = details.runtime || (details.episode_run_time?.[0] ?? 0);
   const isTV = type === 'tv' || (type === 'anime' && details?.seasons && details.seasons.length > 0);
   const servers = (type === 'movie' || (type === 'anime' && !isTV))
-    ? getStreamingUrls(details.id, 'movie', undefined, undefined, type === 'anime' ? id : undefined)
-    : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode, type === 'anime' ? id : undefined);
+    ? getStreamingUrls(details.id, 'movie', undefined, undefined, resolvedMalId, isDub)
+    : getStreamingUrls(details.id, 'tv', selectedSeason, selectedEpisode, resolvedMalId, isDub);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -430,6 +434,23 @@ const Watch = () => {
               onServerChange={setCurrentServer}
             />
           </div>
+
+          {resolvedMalId && (
+            <div className="mt-4 flex items-center justify-end">
+              <div className="bg-zinc-900/40 backdrop-blur-xl rounded-xl px-4 py-3 border border-white/5 flex items-center gap-3">
+                <span className="text-sm font-semibold text-zinc-300">Audio:</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold px-2 py-1 rounded transition-colors ${!isDub ? 'bg-primary text-primary-foreground' : 'bg-zinc-800 text-zinc-400'}`}>SUB</span>
+                  <Switch
+                    checked={isDub}
+                    onCheckedChange={setIsDub}
+                    className="data-[state=checked]:bg-primary"
+                  />
+                  <span className={`text-xs font-bold px-2 py-1 rounded transition-colors ${isDub ? 'bg-primary text-primary-foreground' : 'bg-zinc-800 text-zinc-400'}`}>DUB</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isTV && details.seasons && (
             <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl mt-8">
