@@ -18,7 +18,7 @@ import {
   Movie,
   findTMDBIdByTitle,
 } from '@/lib/tmdb';
-import { getAnimeById } from '@/lib/anime-db';
+import { getAnimeById, fetchAnimeList } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -55,6 +55,9 @@ const Watch = () => {
   
   // For persistence and timer
   const [currentServer, setCurrentServer] = useState<string | undefined>(undefined);
+  
+  // For resolving Anime servers when navigating from Search
+  const [resolvedMalId, setResolvedMalId] = useState<string | undefined>(undefined);
 
   // BAGO: Gamitin natin ang Hook para sa pag-manage ng My List!
   const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
@@ -90,6 +93,7 @@ const Watch = () => {
         let contentData: MovieDetails | null = null;
         let effectiveType = type;
         let effectiveId = id;
+        let finalMalId = type === 'anime' ? id : undefined;
 
         if (type === 'anime') {
           console.log(`[Watch] Resolving anime ID: ${id}`);
@@ -132,10 +136,27 @@ const Watch = () => {
           contentData = type === 'movie' 
             ? await fetchMovieDetails(Number(id))
             : await fetchTVDetails(Number(id));
+            
+          // If navigating from Search to a TV/Movie that is actually an anime, get its MAL ID
+          const isJapaneseAnimation = (contentData as any).original_language === 'ja' && contentData.genres?.some(g => g.id === 16);
+          if (isJapaneseAnimation) {
+            try {
+              const animeTitle = contentData.name || contentData.title || '';
+              const jikanResult = await fetchAnimeList(1, 3, animeTitle);
+              if (jikanResult.data && jikanResult.data.length > 0) {
+                // Just use the first result's mal_id for streaming
+                finalMalId = jikanResult.data[0].mal_id.toString();
+                console.log(`[Watch] Resolved MAL ID for TMDB content: ${finalMalId}`);
+              }
+            } catch (e) {
+              console.error('Failed to resolve MAL ID for Search result:', e);
+            }
+          }
         }
 
         if (!contentData) throw new Error("Content not found");
         
+        setResolvedMalId(finalMalId);
         setDetails(contentData);
         
         // Track content view for analytics
