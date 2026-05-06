@@ -122,6 +122,40 @@ export const getAnilistIdFromMalId = async (malId: number | string): Promise<str
   }
 };
 
+export const getAnimeAiredEpisodes = async (malId: number | string): Promise<number | null> => {
+  const query = `
+    query ($idMal: Int) {
+      Media(idMal: $idMal, type: ANIME) {
+        nextAiringEpisode {
+          episode
+        }
+        episodes
+      }
+    }
+  `;
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { idMal: Number(malId) } })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const media = data?.data?.Media;
+    if (!media) return null;
+    
+    if (media.nextAiringEpisode) {
+      // If next airing episode is e.g. 6, then 5 episodes have aired.
+      return Math.max(1, media.nextAiringEpisode.episode - 1);
+    }
+    return media.episodes || null;
+  } catch (error) {
+    console.error('Error fetching aired episodes:', error);
+    return null;
+  }
+};
+
+
 export const getMalIdFromTitle = async (title: string): Promise<string | null> => {
   const query = `
     query ($search: String) {

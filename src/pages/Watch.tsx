@@ -6,8 +6,7 @@ import { TrailerModal } from '@/components/TrailerModal';
 import { ContentRow } from '@/components/ContentRow';
 import { EpisodePicker } from '@/components/EpisodePicker';
 
-import {
-  fetchMovieDetails,
+import { fetchMovieDetails,
   fetchTVDetails,
   fetchTrending,
   fetchVideos,
@@ -17,8 +16,9 @@ import {
   MovieDetails,
   Movie,
   findTMDBIdByTitle,
+  fetchAnimeTV,
 } from '@/lib/tmdb';
-import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle } from '@/lib/anime-db';
+import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle, getAnimeAiredEpisodes } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -106,7 +106,13 @@ const Watch = () => {
           // Resolve Anime from Jikan
           const animeData = await getAnimeById(id!);
           console.log(`[Watch] Anime title from Jikan: ${animeData.title}`);
-          setAnimeEpisodesCount(animeData.episodes || 24); // default to 24 if unknown
+          
+          let airedEpisodes = animeData.episodes;
+          if (animeData.status === 'Currently Airing' || !airedEpisodes) {
+            const anilistAired = await getAnimeAiredEpisodes(id!);
+            if (anilistAired) airedEpisodes = anilistAired;
+          }
+          setAnimeEpisodesCount(airedEpisodes || 12); // default to 12 if unknown
 
           
           // Search TMDB to get the ID for streaming
@@ -208,8 +214,13 @@ const Watch = () => {
           });
         }
 
-        const trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
-        setSimilar(trending.filter((item) => item.id !== Number(id)));
+        let trending;
+        if (type === 'anime') {
+          trending = await fetchAnimeTV(1);
+        } else {
+          trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
+        }
+        setSimilar(trending.filter((item: any) => item.id !== Number(id)));
       } catch (error) {
         console.error('Failed to load details:', error);
       } finally {
