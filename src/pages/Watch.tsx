@@ -62,6 +62,8 @@ const Watch = () => {
   
   // For resolving Anime servers when navigating from Search
   const [resolvedMalId, setResolvedMalId] = useState<string | undefined>(undefined);
+  const [animeEpisodesCount, setAnimeEpisodesCount] = useState<number | null>(null);
+
 
   // BAGO: Gamitin natin ang Hook para sa pag-manage ng My List!
   const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
@@ -104,6 +106,8 @@ const Watch = () => {
           // Resolve Anime from Jikan
           const animeData = await getAnimeById(id!);
           console.log(`[Watch] Anime title from Jikan: ${animeData.title}`);
+          setAnimeEpisodesCount(animeData.episodes || 24); // default to 24 if unknown
+
           
           // Search TMDB to get the ID for streaming
           let tmdbMatch = await findTMDBIdByTitle(animeData.title);
@@ -451,7 +455,39 @@ const Watch = () => {
             </div>
           )}
           
-          {isTV && details.seasons && (
+          {type === 'anime' ? (
+            <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl mt-8">
+              <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
+                <span className="w-2 h-8 bg-primary rounded-full" />
+                Select Episode
+              </h2>
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {Array.from({ length: animeEpisodesCount || 12 }).map((_, i) => {
+                  const epNum = i + 1;
+                  const isActive = selectedEpisode === epNum;
+                  return (
+                    <button
+                      key={epNum}
+                      onClick={() => handleEpisodeSelect(1, epNum)}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all border ${
+                        isActive
+                          ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105'
+                          : 'bg-zinc-800/50 border-white/5 hover:bg-zinc-700/50 hover:border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {epNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+              `}</style>
+            </div>
+          ) : isTV && details.seasons && (
             <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl mt-8">
               <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
                 <span className="w-2 h-8 bg-primary rounded-full" />
