@@ -150,7 +150,7 @@ const Anime = () => {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="pb-20 md:pb-12 pt-16 md:pt-0">
+      <main className="pb-20 md:pb-12 pt-20 md:pt-24">
         
         {/* Cinematic Hero Banner */}
         <AnimeHeroBanner />

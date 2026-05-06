@@ -101,7 +101,7 @@ export const AnimeHeroBanner = () => {
             )}
           </div>
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white drop-shadow-2xl leading-[1.1] tracking-tight">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white drop-shadow-2xl leading-[1.1] tracking-tight">
             {currentItem.title}
           </h1>
 
