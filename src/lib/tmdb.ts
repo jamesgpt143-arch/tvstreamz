@@ -187,7 +187,7 @@ export const fetchUpcoming = async (): Promise<Movie[]> => {
   return data.results;
 };
 
-export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string, isDub?: boolean) => {
+export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string) => {
   const baseUrls: Record<string, string> = {
     'Server 1': type === 'movie' 
       ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
@@ -212,8 +212,10 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
   // Add Anime Specialized Server if MAL ID (malId variable) is provided
   if (malId) {
     const ep = episode || 1;
-    const language = isDub ? 'dub' : 'sub';
-    baseUrls['Anime (MegaPlay)'] = `https://megaplay.buzz/stream/mal/${malId}/${ep}/${language}`;
+    // We only return the Anime Server for anime content, defaulting to 'sub'
+    return {
+      'Anime Server': `https://megaplay.buzz/stream/mal/${malId}/${ep}/sub`
+    };
   }
 
   return baseUrls;
