@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
-import { fetchAnimeList, AnimeItem, getAnimeGenres } from '@/lib/anime-db';
+import { fetchAnimeList, AnimeItem, getAnimeGenres, searchAnimeDropdown, AnimeDropdownResult } from '@/lib/anime-db';
 import { fetchNewAnimeEpisodes, Movie, TVShow } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
-import { Loader2, Filter, Search, Star, Tv, SortAsc, SortDesc } from 'lucide-react';
+import { Loader2, Filter, Search, Star, Tv, SortAsc, SortDesc, TvIcon } from 'lucide-react';
 import { usePagePopup } from '@/hooks/usePagePopup';
+import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 import {
   Select,
   SelectContent,
@@ -17,6 +19,7 @@ import { Input } from "@/components/ui/input";
 
 const Anime = () => {
   usePagePopup('anime');
+  const navigate = useNavigate();
 
   const [items, setItems] = useState<AnimeItem[]>([]);
   const [latestReleases, setLatestReleases] = useState<(Movie | TVShow)[]>([]);
@@ -33,6 +36,22 @@ const Anime = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [genres, setGenres] = useState<string[]>([]);
+  
+  // Dropdown States
+  const [dropdownResults, setDropdownResults] = useState<AnimeDropdownResult[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDropdownLoading, setIsDropdownLoading] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -59,12 +78,35 @@ const Anime = () => {
     loadLatest();
   }, []);
 
+  // Dropdown trigger
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500);
+    const timer = setTimeout(async () => {
+      if (search.trim().length >= 2) {
+        setIsDropdownLoading(true);
+        setIsDropdownOpen(true);
+        try {
+          const results = await searchAnimeDropdown(search);
+          setDropdownResults(results);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setIsDropdownLoading(false);
+        }
+      } else {
+        setDropdownResults([]);
+        setIsDropdownOpen(false);
+      }
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Handle Enter key to trigger main grid search
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setIsDropdownOpen(false);
+      setDebouncedSearch(search);
+    }
+  };
 
   const fetchAnime = async (p: number, isNew = false) => {
     setIsLoading(true);
@@ -119,14 +161,63 @@ const Anime = () => {
               </p>
             </div>
 
-            <div className="relative w-full md:w-96 group">
+            <div ref={searchContainerRef} className="relative w-full md:w-96 group z-50">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-orange-500 transition-colors" />
               <Input 
-                placeholder="Search anime titles..." 
+                placeholder="Search anime titles... (Press Enter)" 
                 className="pl-12 h-14 bg-card/50 border-white/5 rounded-2xl focus:ring-orange-500/20 focus:border-orange-500/50 transition-all text-lg font-medium shadow-2xl"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => { if (search.trim().length >= 2) setIsDropdownOpen(true); }}
               />
+              {isDropdownLoading && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              
+              {/* Dropdown Suggestions */}
+              {isDropdownOpen && dropdownResults.length > 0 && (
+                <div className="absolute top-full mt-2 left-0 right-0 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl">
+                  {dropdownResults.map((item) => (
+                    <button
+                      key={item.mal_id}
+                      onClick={() => navigate(`/watch/anime/${item.mal_id}`)}
+                      className="w-full flex items-center gap-4 p-3 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0"
+                    >
+                      <div className="w-12 h-16 rounded overflow-hidden flex-shrink-0 bg-muted">
+                        {item.image ? (
+                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"><TvIcon className="w-5 h-5 text-zinc-600" /></div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white truncate">{item.title}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">
+                          {item.format && <span className="text-orange-500">{item.format}</span>}
+                          {item.year && <span>• {item.year}</span>}
+                          {item.score && (
+                            <span className="flex items-center gap-0.5">
+                              • <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" /> {(item.score / 10).toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setDebouncedSearch(search);
+                    }}
+                    className="w-full p-3 text-center text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 hover:bg-white/5 transition-colors bg-white/[0.02]"
+                  >
+                    View All Results
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

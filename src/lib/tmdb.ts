@@ -184,10 +184,7 @@ export const fetchNowPlaying = async (): Promise<Movie[]> => {
 export const fetchUpcoming = async (): Promise<Movie[]> => {
   const response = await fetch(`${API_BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
   const data = await response.json();
-  return data.results;
-};
-
-export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string) => {
+export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string, isDub?: boolean) => {
   const baseUrls: Record<string, string> = {
     'Server 1': type === 'movie' 
       ? `https://vidsrc-embed.ru/embed/movie/${id}?autoplay=1&mute=1` 
@@ -212,9 +209,10 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
   // Add Anime Specialized Server if MAL ID (malId variable) is provided
   if (malId) {
     const ep = episode || 1;
-    // We only return the Anime Server for anime content, defaulting to 'sub'
+    const language = isDub ? 'dub' : 'sub';
+    // We only return the Anime Server for anime content
     return {
-      'Anime Server': `https://megaplay.buzz/stream/mal/${malId}/${ep}/sub`
+      'Anime Server': `https://megaplay.buzz/stream/mal/${malId}/${ep}/${language}`
     };
   }
 

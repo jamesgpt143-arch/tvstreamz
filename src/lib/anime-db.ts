@@ -153,3 +153,62 @@ export const getMalIdFromTitle = async (title: string): Promise<string | null> =
     return null;
   }
 };
+
+export interface AnimeDropdownResult {
+  mal_id: number;
+  title: string;
+  image: string;
+  year?: number;
+  score?: number;
+  format?: string;
+}
+
+export const searchAnimeDropdown = async (query: string): Promise<AnimeDropdownResult[]> => {
+  const graphqlQuery = `
+    query ($search: String) {
+      Page(page: 1, perPage: 5) {
+        media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+          idMal
+          title { romaji english }
+          coverImage { medium }
+          averageScore
+          format
+          startDate { year }
+        }
+      }
+    }
+  `;
+  
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query: graphqlQuery,
+        variables: { search: query }
+      })
+    });
+    
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    const media = data?.data?.Page?.media || [];
+    
+    return media
+      .filter((m: any) => m.idMal)
+      .map((m: any) => ({
+        mal_id: m.idMal,
+        title: m.title.english || m.title.romaji,
+        image: m.coverImage.medium,
+        year: m.startDate?.year,
+        score: m.averageScore,
+        format: m.format,
+      }));
+  } catch (error) {
+    console.error('Error fetching anime dropdown:', error);
+    return [];
+  }
+};
