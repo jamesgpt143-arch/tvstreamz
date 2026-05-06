@@ -445,7 +445,18 @@ export const fetchAnimeSchedule = async (day: string): Promise<AnimeItem[]> => {
   try {
     // Jikan API expects days in lowercase: monday, tuesday, etc.
     const result = await fetchFromJikan('/schedules', { filter: day.toLowerCase(), limit: 24 });
-    return result.data.map((item: any) => ({
+    
+    // Deduplicate by mal_id because Jikan sometimes returns the same anime multiple times
+    const uniqueIds = new Set();
+    const uniqueData = result.data.filter((item: any) => {
+      if (!uniqueIds.has(item.mal_id)) {
+        uniqueIds.add(item.mal_id);
+        return true;
+      }
+      return false;
+    });
+
+    return uniqueData.map((item: any) => ({
       ...item,
       _id: item.mal_id.toString(),
       image: item.images.webp.large_image_url || item.images.webp.image_url,
