@@ -160,14 +160,8 @@ const Watch = () => {
 
         if (!contentData) throw new Error("Content not found");
         
-        // vidsrc.icu expects AniList ID instead of MAL ID
-        let anilistId = undefined;
-        if (finalMalId) {
-           anilistId = await getAnilistIdFromMalId(finalMalId);
-           console.log(`[Watch] Resolved AniList ID: ${anilistId}`);
-        }
-        
-        setResolvedMalId(anilistId || undefined);
+        // MegaPlay supports MAL ID natively
+        setResolvedMalId(finalMalId || undefined);
         setDetails(contentData);
         
         // Track content view for analytics

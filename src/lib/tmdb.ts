@@ -209,11 +209,11 @@ export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: numb
       : `https://vidapi.xyz/embed/tv/${id}/${season}/${episode}`,
   };
 
-  // Add Anime Specialized Server if AniList ID (malId variable) is provided
+  // Add Anime Specialized Server if MAL ID (malId variable) is provided
   if (malId) {
     const ep = episode || 1;
-    const dubParam = isDub ? '1' : '0';
-    baseUrls['Anime (ICU)'] = `https://vidsrc.icu/embed/anime/${malId}/${ep}/${dubParam}`;
+    const language = isDub ? 'dub' : 'sub';
+    baseUrls['Anime (MegaPlay)'] = `https://megaplay.buzz/stream/mal/${malId}/${ep}/${language}`;
   }
 
   return baseUrls;
