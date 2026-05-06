@@ -378,3 +378,82 @@ export const fetchAnimeRecommendations = async (malId: number | string): Promise
   }
 };
 
+export interface AnimeHeroItem {
+  id: string;
+  mal_id: number;
+  title: string;
+  description: string;
+  bannerImage: string;
+  coverImage: string;
+  trailerId: string | null;
+  genres: string[];
+  score: number;
+  year: number;
+}
+
+export const fetchTrendingAnimeBanner = async (): Promise<AnimeHeroItem[]> => {
+  const query = `
+    query {
+      Page(page: 1, perPage: 15) {
+        media(sort: TRENDING_DESC, type: ANIME, format: TV) {
+          idMal
+          title { english romaji }
+          bannerImage
+          coverImage { large }
+          description
+          trailer { id site }
+          genres
+          averageScore
+          startDate { year }
+        }
+      }
+    }
+  `;
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    const mediaList = data?.data?.Page?.media || [];
+    
+    // Filter out items without bannerImage and map to our interface
+    return mediaList
+      .filter((m: any) => m.bannerImage && m.idMal)
+      .slice(0, 5) // Take top 5
+      .map((m: any) => ({
+        id: m.idMal.toString(),
+        mal_id: m.idMal,
+        title: m.title.english || m.title.romaji,
+        description: (m.description || '').replace(/<[^>]*>?/gm, ''), // strip HTML
+        bannerImage: m.bannerImage,
+        coverImage: m.coverImage?.large,
+        trailerId: m.trailer?.site === 'youtube' ? m.trailer.id : null,
+        genres: m.genres || [],
+        score: m.averageScore ? m.averageScore / 10 : 0,
+        year: m.startDate?.year || new Date().getFullYear(),
+      }));
+  } catch (error) {
+    console.error('Error fetching trending anime banner:', error);
+    return [];
+  }
+};
+
+export const fetchAnimeSchedule = async (day: string): Promise<AnimeItem[]> => {
+  try {
+    // Jikan API expects days in lowercase: monday, tuesday, etc.
+    const result = await fetchFromJikan('/schedules', { filter: day.toLowerCase(), limit: 24 });
+    return result.data.map((item: any) => ({
+      ...item,
+      _id: item.mal_id.toString(),
+      image: item.images.webp.large_image_url || item.images.webp.image_url,
+    }));
+  } catch (error) {
+    console.error(`Error fetching schedule for ${day}:`, error);
+    return [];
+  }
+};
+
+

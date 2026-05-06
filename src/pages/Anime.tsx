@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
+import { AnimeHeroBanner } from '@/components/anime/AnimeHeroBanner';
+import { AnimeSchedule } from '@/components/anime/AnimeSchedule';
 import { fetchAnimeList, AnimeItem, getAnimeGenres, searchAnimeDropdown, AnimeDropdownResult, fetchLatestAnimeUpdates } from '@/lib/anime-db';
 import { Movie, TVShow } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
@@ -32,8 +34,8 @@ const Anime = () => {
   // Filter States
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [sortBy, setSortBy] = useState('ranking');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState('popularity');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [genres, setGenres] = useState<string[]>([]);
   
@@ -148,16 +150,23 @@ const Anime = () => {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="pt-24 pb-20 md:pb-12">
-        <div className="container mx-auto px-4">
+      <main className="pb-20 md:pb-12 pt-16 md:pt-0">
+        
+        {/* Cinematic Hero Banner */}
+        <AnimeHeroBanner />
+
+        {/* Weekly Release Schedule */}
+        <AnimeSchedule />
+
+        <div className="container mx-auto px-4 mt-8">
           
-          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-12 border-t border-white/5">
             <div>
-              <h1 className="text-4xl md:text-6xl font-black mb-2 tracking-tighter bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent">
-                EXPLORE <span className="text-orange-500">ANIME</span>
+              <h1 className="text-3xl md:text-5xl font-black mb-2 tracking-tighter bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent">
+                EXPLORE <span className="text-orange-500">CATALOG</span>
               </h1>
               <p className="text-muted-foreground font-medium tracking-wide flex items-center gap-2">
-                <Tv className="w-4 h-4 text-orange-500" /> Discover the best of Japanese animation
+                <Filter className="w-4 h-4 text-orange-500" /> Browse and filter thousands of anime
               </p>
             </div>
 
@@ -333,8 +342,8 @@ const Anime = () => {
                 <p className="text-2xl font-bold mb-4">No anime found matching your filters.</p>
                 <Button variant="link" onClick={() => {
                   setSearch('');
-                  setSortBy('rank');
-                  setSortOrder('asc');
+                  setSortBy('popularity');
+                  setSortOrder('desc');
                   setSelectedGenre('all');
                 }} className="text-orange-500 font-bold uppercase tracking-widest">Reset all filters</Button>
               </div>
