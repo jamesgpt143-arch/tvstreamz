@@ -35,7 +35,7 @@ const Anime = () => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [genres, setGenres] = useState<string[]>([]);
   
@@ -343,7 +343,7 @@ const Anime = () => {
                 <Button variant="link" onClick={() => {
                   setSearch('');
                   setSortBy('popularity');
-                  setSortOrder('desc');
+                  setSortOrder('asc');
                   setSelectedGenre('all');
                 }} className="text-orange-500 font-bold uppercase tracking-widest">Reset all filters</Button>
               </div>
