@@ -276,3 +276,105 @@ export const fetchLatestAnimeUpdates = async (page = 1): Promise<AnimeItem[]> =>
     return [];
   }
 };
+
+export const fetchAnimeRecommendations = async (malId: number | string): Promise<AnimeItem[]> => {
+  const query = `
+    query ($idMal: Int) {
+      Media(idMal: $idMal, type: ANIME) {
+        recommendations(sort: RATING_DESC, page: 1, perPage: 10) {
+          nodes {
+            mediaRecommendation {
+              idMal
+              title { romaji english }
+              coverImage { large }
+              format
+              startDate { year }
+              averageScore
+            }
+          }
+        }
+        relations {
+          edges {
+            node {
+              idMal
+              title { romaji english }
+              coverImage { large }
+              format
+              startDate { year }
+              averageScore
+            }
+            relationType
+          }
+        }
+      }
+    }
+  `;
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { idMal: Number(malId) } })
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    const media = data?.data?.Media;
+    if (!media) return [];
+    
+    const results: AnimeItem[] = [];
+    const addedIds = new Set<number>();
+    
+    // Add relations first (prequels, sequels, spin-offs)
+    if (media.relations?.edges) {
+      for (const edge of media.relations.edges) {
+        const related = edge.node;
+        if (related && related.idMal && !addedIds.has(related.idMal)) {
+          addedIds.add(related.idMal);
+          results.push({
+            mal_id: related.idMal,
+            _id: related.idMal.toString(),
+            title: related.title.english || related.title.romaji,
+            image: related.coverImage?.large,
+            images: { webp: { image_url: related.coverImage?.large, large_image_url: related.coverImage?.large } },
+            synopsis: '',
+            type: related.format || 'TV',
+            status: '',
+            score: related.averageScore ? related.averageScore / 10 : 0,
+            genres: [],
+            rank: 0,
+            episodes: 0
+          });
+        }
+      }
+    }
+    
+    // Then add recommendations
+    if (media.recommendations?.nodes) {
+      for (const node of media.recommendations.nodes) {
+        const rec = node.mediaRecommendation;
+        if (rec && rec.idMal && !addedIds.has(rec.idMal)) {
+          addedIds.add(rec.idMal);
+          results.push({
+            mal_id: rec.idMal,
+            _id: rec.idMal.toString(),
+            title: rec.title.english || rec.title.romaji,
+            image: rec.coverImage?.large,
+            images: { webp: { image_url: rec.coverImage?.large, large_image_url: rec.coverImage?.large } },
+            synopsis: '',
+            type: rec.format || 'TV',
+            status: '',
+            score: rec.averageScore ? rec.averageScore / 10 : 0,
+            genres: [],
+            rank: 0,
+            episodes: 0
+          });
+        }
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error fetching anime recommendations:', error);
+    return [];
+  }
+};
+

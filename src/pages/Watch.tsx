@@ -16,9 +16,8 @@ import { fetchMovieDetails,
   MovieDetails,
   Movie,
   findTMDBIdByTitle,
-  fetchAnimeTV,
 } from '@/lib/tmdb';
-import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle, getAnimeAiredEpisodes } from '@/lib/anime-db';
+import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle, getAnimeAiredEpisodes, fetchAnimeRecommendations } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -216,11 +215,15 @@ const Watch = () => {
 
         let trending;
         if (type === 'anime') {
-          trending = await fetchAnimeTV(1);
+          trending = await fetchAnimeRecommendations(id!);
+          if (!trending || trending.length === 0) {
+            const fallbackData = await fetchAnimeList(1, 15, '', '', 'popularity', 'desc');
+            trending = fallbackData.data;
+          }
         } else {
           trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
         }
-        setSimilar(trending.filter((item: any) => item.id !== Number(id)));
+        setSimilar(trending.filter((item: any) => item.id !== Number(id) && item.mal_id !== Number(id)));
       } catch (error) {
         console.error('Failed to load details:', error);
       } finally {

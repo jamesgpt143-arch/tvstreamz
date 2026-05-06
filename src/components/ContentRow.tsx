@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ContentCard } from './ContentCard';
 import { Movie, TVShow } from '@/lib/tmdb';
 
+import { AnimeItem } from '@/lib/anime-db';
+
 interface ContentRowProps {
   title: string;
-  items: (Movie | TVShow)[];
-  type?: 'movie' | 'tv';
+  items: (Movie | TVShow | AnimeItem)[];
+  type?: 'movie' | 'tv' | 'anime';
   isTrending?: boolean;
 }
 
@@ -63,7 +65,7 @@ export const ContentRow = ({ title, items, type, isTrending }: ContentRowProps) 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {items.map((item, index) => (
-            <div key={item.id} className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[220px] relative group/card">
+            <div key={(item as any).id || (item as any).mal_id || (item as any)._id || index} className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[220px] relative group/card">
               {isTrending && (
                 <div className="absolute -left-10 bottom-4 text-[120px] font-black text-white/10 leading-none select-none pointer-events-none group-hover/card:text-primary/20 transition-colors duration-500 italic">
                   {index + 1}
