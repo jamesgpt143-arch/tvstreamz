@@ -57,15 +57,15 @@ export const AnimeHeroBanner = () => {
     : currentItem.description;
 
   return (
-    <div className="relative w-full h-[60vh] md:h-[85vh] overflow-hidden bg-black group">
+    <div className="relative w-full h-[60vh] md:h-[75vh] overflow-hidden bg-black group">
       {/* Background Image / Video Layer */}
       <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
         {currentItem.trailerId && !videoError ? (
-          <div className="relative w-full h-full scale-125 md:scale-110 pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
             <iframe
               src={`https://www.youtube.com/embed/${currentItem.trailerId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&rel=0&loop=1&playlist=${currentItem.trailerId}&modestbranding=1&playsinline=1`}
               title="Anime Trailer"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-[100vw] h-[56.25vw] min-h-[60vh] min-w-[106.66vh] md:min-h-[75vh] md:min-w-[133.33vh] scale-[1.1]"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               onError={() => setVideoError(true)}
             />
