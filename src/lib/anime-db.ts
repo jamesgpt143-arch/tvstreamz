@@ -212,3 +212,33 @@ export const searchAnimeDropdown = async (query: string): Promise<AnimeDropdownR
     return [];
   }
 };
+
+export const fetchLatestAnimeUpdates = async (page = 1): Promise<AnimeItem[]> => {
+  try {
+    const response = await fetch(`https://anikotoapi.site/recent-anime?page=${page}&per_page=12`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.data || []).map((item: any) => ({
+      mal_id: parseInt(item.mal_id) || 0,
+      _id: item.mal_id || item.id?.toString(),
+      title: item.title,
+      image: item.poster,
+      images: {
+        webp: {
+          image_url: item.poster,
+          large_image_url: item.poster,
+        }
+      },
+      synopsis: item.description || '',
+      type: 'TV',
+      status: item.status,
+      score: parseFloat(item.score) || 0,
+      genres: [],
+      rank: 0,
+      episodes: parseInt(item.episodes) || 0,
+    }));
+  } catch (error) {
+    console.error('Error fetching latest anime updates:', error);
+    return [];
+  }
+};

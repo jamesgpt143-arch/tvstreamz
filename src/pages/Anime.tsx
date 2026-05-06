@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
-import { fetchAnimeList, AnimeItem, getAnimeGenres, searchAnimeDropdown, AnimeDropdownResult } from '@/lib/anime-db';
-import { fetchNewAnimeEpisodes, Movie, TVShow } from '@/lib/tmdb';
+import { fetchAnimeList, AnimeItem, getAnimeGenres, searchAnimeDropdown, AnimeDropdownResult, fetchLatestAnimeUpdates } from '@/lib/anime-db';
+import { Movie, TVShow } from '@/lib/tmdb';
 import { Button } from '@/components/ui/button';
 import { Loader2, Filter, Search, Star, Tv, SortAsc, SortDesc, TvIcon } from 'lucide-react';
 import { usePagePopup } from '@/hooks/usePagePopup';
@@ -22,7 +22,7 @@ const Anime = () => {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<AnimeItem[]>([]);
-  const [latestReleases, setLatestReleases] = useState<(Movie | TVShow)[]>([]);
+  const [latestReleases, setLatestReleases] = useState<AnimeItem[]>([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isLatestLoading, setIsLatestLoading] = useState(true);
@@ -67,7 +67,7 @@ const Anime = () => {
     const loadLatest = async () => {
       setIsLatestLoading(true);
       try {
-        const data = await fetchNewAnimeEpisodes(1);
+        const data = await fetchLatestAnimeUpdates(1);
         setLatestReleases(data.slice(0, 12));
       } catch (error) {
         console.error('Failed to fetch latest anime:', error);
@@ -235,8 +235,8 @@ const Anime = () => {
               </div>
               <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar snap-x">
                 {latestReleases.map((item) => (
-                  <div key={item.id} className="min-w-[160px] md:min-w-[200px] snap-start">
-                    <ContentCard item={item} type="tv" />
+                  <div key={item._id || item.mal_id} className="min-w-[160px] md:min-w-[200px] snap-start">
+                    <ContentCard item={item} type="anime" />
                   </div>
                 ))}
               </div>
