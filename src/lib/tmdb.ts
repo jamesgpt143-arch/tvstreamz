@@ -184,6 +184,9 @@ export const fetchNowPlaying = async (): Promise<Movie[]> => {
 export const fetchUpcoming = async (): Promise<Movie[]> => {
   const response = await fetch(`${API_BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
   const data = await response.json();
+  return data.results;
+};
+
 export const getStreamingUrls = (id: number, type: 'movie' | 'tv', season?: number, episode?: number, malId?: string, isDub?: boolean) => {
   const baseUrls: Record<string, string> = {
     'Server 1': type === 'movie' 
