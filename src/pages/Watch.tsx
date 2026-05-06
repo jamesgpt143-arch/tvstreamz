@@ -18,7 +18,7 @@ import {
   Movie,
   findTMDBIdByTitle,
 } from '@/lib/tmdb';
-import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId } from '@/lib/anime-db';
+import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
 import { updateWatchProgress, getWatchProgress } from '@/lib/continueWatching';
 import { trackPageView, trackContentView } from '@/lib/analytics';
@@ -139,16 +139,21 @@ const Watch = () => {
             : await fetchTVDetails(Number(id));
             
           // If navigating from Search to a TV/Movie that is actually an anime, get its MAL ID
-          const isJapaneseAnimation = (contentData as any).original_language === 'ja' && contentData.genres?.some(g => g.id === 16);
+          const isJapaneseAnimation = (contentData as any).original_language === 'ja' && contentData.genres?.some((g: any) => g.id === 16);
           if (isJapaneseAnimation) {
             try {
               const animeTitle = contentData.name || contentData.title || '';
-              const jikanResult = await fetchAnimeList(1, 3, animeTitle);
-              if (jikanResult.data && jikanResult.data.length > 0) {
-                // Just use the first result's mal_id for streaming
-                finalMalId = jikanResult.data[0].mal_id.toString();
-                console.log(`[Watch] Resolved MAL ID for TMDB content: ${finalMalId}`);
+              // Try AniList first (fast, reliable, high rate limit)
+              finalMalId = await getMalIdFromTitle(animeTitle) || undefined;
+              
+              if (!finalMalId) {
+                // Fallback to Jikan if AniList fails
+                const jikanResult = await fetchAnimeList(1, 3, animeTitle);
+                if (jikanResult.data && jikanResult.data.length > 0) {
+                  finalMalId = jikanResult.data[0].mal_id.toString();
+                }
               }
+              console.log(`[Watch] Resolved MAL ID for TMDB content: ${finalMalId}`);
             } catch (e) {
               console.error('Failed to resolve MAL ID for Search result:', e);
             }

@@ -121,3 +121,35 @@ export const getAnilistIdFromMalId = async (malId: number | string): Promise<str
     return null;
   }
 };
+
+export const getMalIdFromTitle = async (title: string): Promise<string | null> => {
+  const query = `
+    query ($search: String) {
+      Media(search: $search, type: ANIME) {
+        idMal
+      }
+    }
+  `;
+  
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: { search: title }
+      })
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data?.data?.Media?.idMal?.toString() || null;
+  } catch (error) {
+    console.error('Error fetching MAL ID from title:', error);
+    return null;
+  }
+};
