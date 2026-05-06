@@ -8,7 +8,7 @@ export const AnimeHeroBanner = () => {
   const [items, setItems] = useState<AnimeHeroItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const navigate = useNavigate();
 

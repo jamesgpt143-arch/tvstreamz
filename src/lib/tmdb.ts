@@ -358,7 +358,19 @@ export const findTMDBIdByTitle = async (title: string): Promise<{ id: number; ty
         const itemType = strategy.type === 'multi' ? item.media_type : strategy.type;
         return itemType === 'movie' || itemType === 'tv';
       })
-      .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0));
+      .sort((a: any, b: any) => {
+        const aName = (a.name || a.title || '').toLowerCase();
+        const bName = (b.name || b.title || '').toLowerCase();
+        const queryLower = strategy.query.toLowerCase();
+        
+        const aExact = aName === queryLower;
+        const bExact = bName === queryLower;
+        
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        
+        return (b.popularity || 0) - (a.popularity || 0);
+      });
 
     if (filtered.length > 0) {
       const bestMatch = filtered[0];
