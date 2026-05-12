@@ -51,29 +51,39 @@ export interface ChannelInput {
 }
 
 // Convert DB channel to app channel format (for LivePlayer compatibility)
-export const toAppChannel = (dbChannel: DbChannel) => ({
-  id: dbChannel.id,
-  name: dbChannel.name,
-  manifestUri: dbChannel.stream_url,
-  type: dbChannel.stream_type,
-  logo: dbChannel.logo_url || '',
-  clearKey: dbChannel.license_type === 'clearkey' && dbChannel.drm_key_id && dbChannel.drm_key 
-    ? { [dbChannel.drm_key_id]: dbChannel.drm_key } 
-    : undefined,
-  widevineUrl: dbChannel.license_type === 'widevine' && dbChannel.license_url 
-    ? dbChannel.license_url 
-    : undefined,
-  embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
-  userAgent: dbChannel.user_agent || undefined,
-  referrer: dbChannel.referrer || undefined,
-  useProxy: dbChannel.use_proxy,
-  proxyOrder: dbChannel.proxy_order as any || undefined,
-  tvappSlug: dbChannel.tvapp_slug || undefined,
-  proxyType: dbChannel.proxy_type || 'none',
-  epgId: dbChannel.epg_id || undefined,
-  num: dbChannel.channel_num || undefined,
-  epgUrl: dbChannel.epg_url || undefined,
-});
+export const toAppChannel = (dbChannel: DbChannel) => {
+  // SAFETY CHECK: I-check kung ang URL ay dumaan na sa proxy
+  const isAlreadyProxied = 
+    dbChannel.stream_url.includes('deno.net') || 
+    dbChannel.stream_url.includes('workers.dev') || 
+    dbChannel.stream_url.includes('corsproxy.io') ||
+    dbChannel.stream_url.includes('?url=');
+
+  return {
+    id: dbChannel.id,
+    name: dbChannel.name,
+    manifestUri: dbChannel.stream_url,
+    type: dbChannel.stream_type,
+    logo: dbChannel.logo_url || '',
+    clearKey: dbChannel.license_type === 'clearkey' && dbChannel.drm_key_id && dbChannel.drm_key 
+      ? { [dbChannel.drm_key_id]: dbChannel.drm_key } 
+      : undefined,
+    widevineUrl: dbChannel.license_type === 'widevine' && dbChannel.license_url 
+      ? dbChannel.license_url 
+      : undefined,
+    embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
+    userAgent: dbChannel.user_agent || undefined,
+    referrer: dbChannel.referrer || undefined,
+    // Kung proxy na ang URL, i-force natin na HUWAG nang gumamit ng extra proxy layer
+    useProxy: isAlreadyProxied ? false : dbChannel.use_proxy,
+    proxyOrder: dbChannel.proxy_order as any || undefined,
+    tvappSlug: dbChannel.tvapp_slug || undefined,
+    proxyType: isAlreadyProxied ? 'none' : (dbChannel.proxy_type || 'none'),
+    epgId: dbChannel.epg_id || undefined,
+    num: dbChannel.channel_num || undefined,
+    epgUrl: dbChannel.epg_url || undefined,
+  };
+};
 
 export function useChannels(includeInactive = false) {
   return useQuery({
