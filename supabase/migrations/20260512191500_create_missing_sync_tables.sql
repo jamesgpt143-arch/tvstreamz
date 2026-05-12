@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.user_watch_history (
     poster_path TEXT,
     backdrop_path TEXT,
     progress NUMERIC DEFAULT 0,
-    current_time NUMERIC DEFAULT 0,
+    "current_time" NUMERIC DEFAULT 0,
     duration NUMERIC DEFAULT 0,
     season INTEGER,
     episode INTEGER,
