@@ -1,188 +1,84 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+export type ProxyKey = 'primary' | 'backup' | 'backup2' | 'backup3' | 'backup4' | 'backup5' | 'backup6' | 
+  'supabase_proxy_url' | 'supabase_proxy_url_backup' | 'supabase_proxy_url_backup2' | 'supabase_proxy_url_backup3' | 'supabase_proxy_url_backup4' | 'supabase_proxy_url_backup5' | 'supabase_proxy_url_backup6' |
+  'vercel_proxy_url' | 'vercel_proxy_url_backup' | 'vercel_proxy_url_backup2' | 'vercel_proxy_url_backup3' | 'vercel_proxy_url_backup4' | 'vercel_proxy_url_backup5' | 'vercel_proxy_url_backup6';
 
-export interface DbChannel {
+export const PROXY_LABELS: Record<string, string> = {
+  primary: 'Primary',
+  backup: 'Backup 1',
+  backup2: 'Backup 2',
+  backup3: 'Backup 3',
+  backup4: 'Backup 4',
+  backup5: 'Backup 5',
+  backup6: 'Backup 6',
+  supabase_proxy_url: 'SB Primary',
+  supabase_proxy_url_backup: 'SB Backup 1',
+  supabase_proxy_url_backup2: 'SB Backup 2',
+  supabase_proxy_url_backup3: 'SB Backup 3',
+  supabase_proxy_url_backup4: 'SB Backup 4',
+  supabase_proxy_url_backup5: 'SB Backup 5',
+  supabase_proxy_url_backup6: 'SB Backup 6',
+  vercel_proxy_url: 'VC Primary',
+  vercel_proxy_url_backup: 'VC Backup 1',
+  vercel_proxy_url_backup2: 'VC Backup 2',
+  vercel_proxy_url_backup3: 'VC Backup 3',
+  vercel_proxy_url_backup4: 'VC Backup 4',
+  vercel_proxy_url_backup5: 'VC Backup 5',
+  vercel_proxy_url_backup6: 'VC Backup 6',
+};
+
+export const DEFAULT_PROXY_ORDER: ProxyKey[] = ['primary', 'backup', 'backup2', 'backup3', 'backup4', 'backup5', 'backup6'];
+
+export interface Channel {
   id: string;
   name: string;
-  logo_url: string | null;
-  stream_url: string;
-  stream_type: 'mpd' | 'hls' | 'youtube';
-  drm_key_id: string | null;
-  drm_key: string | null;
-  license_type: 'clearkey' | 'widevine' | null;
-  license_url: string | null;
-  category: string | null;
-  is_active: boolean;
-  sort_order: number | null;
-  user_agent: string | null;
-  referrer: string | null;
-  use_proxy: boolean;
-  proxy_order: string[] | null;
-  tvapp_slug: string | null;
-  proxy_type: string;
-  epg_id: string | null;
-  channel_num: string | null;
-  epg_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ChannelInput {
-  name: string;
-  logo_url?: string | null;
-  stream_url: string;
-  stream_type: 'mpd' | 'hls' | 'youtube';
-  drm_key_id?: string | null;
-  drm_key?: string | null;
-  license_type?: 'clearkey' | 'widevine' | null;
-  license_url?: string | null;
-  category?: string | null;
-  is_active?: boolean;
-  sort_order?: number | null;
-  user_agent?: string | null;
-  referrer?: string | null;
-  use_proxy?: boolean;
-  proxy_order?: string[] | null;
-  tvapp_slug?: string | null;
-  proxy_type?: string;
-  epg_id?: string | null;
-  channel_num?: string | null;
-  epg_url?: string | null;
+  manifestUri: string;
+  type: 'mpd' | 'hls' | 'youtube' | 'plain';
+  logo: string;
+  clearKey?: Record<string, string>;
+  widevineUrl?: string;
+  embedUrl?: string;
+  userAgent?: string;
+  referrer?: string;
+  useProxy?: boolean;
+  proxyOrder?: ProxyKey[];
+  tvappSlug?: string;
+  proxyType?: string;
+  num?: string | number;
+  epgId?: string;
+  epgUrl?: string;
 }
 
 /**
- * Convert DB channel to app channel format
- * May kasama itong 'Safety Check' para sa Deno Proxy
+ * Kinukuha nito ang tamang URL para sa player.
+ * May "Smart Check" para hindi mag-doble ang proxy kung ang URL ay proxied na.
  */
-export const toAppChannel = (dbChannel: DbChannel) => {
-  // 1. SAFETY CHECK: Tingnan kung ang URL ay manually proxied na sa database
+export const getProxyUrl = (url: string, provider: string, settings?: any) => {
+  if (!url) return '';
+
+  // 1. Made-detect nito kung ang nilagay mo sa Database ay Deno link na o may ?url= na.
   const isAlreadyProxied = 
-    dbChannel.stream_url.includes('deno.net') || 
-    dbChannel.stream_url.includes('workers.dev') || 
-    dbChannel.stream_url.includes('corsproxy.io') ||
-    dbChannel.stream_url.includes('?url=');
+    url.includes('deno.net') || 
+    url.includes('workers.dev') || 
+    url.includes('corsproxy.io') ||
+    url.includes('?url=');
 
-  return {
-    id: dbChannel.id,
-    name: dbChannel.name,
-    manifestUri: dbChannel.stream_url,
-    type: dbChannel.stream_type,
-    logo: dbChannel.logo_url || '',
-    clearKey: dbChannel.license_type === 'clearkey' && dbChannel.drm_key_id && dbChannel.drm_key 
-      ? { [dbChannel.drm_key_id]: dbChannel.drm_key } 
-      : undefined,
-    widevineUrl: dbChannel.license_type === 'widevine' && dbChannel.license_url 
-      ? dbChannel.license_url 
-      : undefined,
-    embedUrl: dbChannel.stream_type === 'youtube' ? dbChannel.stream_url : undefined,
-    userAgent: dbChannel.user_agent || undefined,
-    referrer: dbChannel.referrer || undefined,
-    
-    // 2. LOGIC: Kung proxied na sa DB URL, i-force ang useProxy sa FALSE 
-    // para hindi na dagdagan ng player ng isa pang proxy sa unahan.
-    useProxy: isAlreadyProxied ? false : dbChannel.use_proxy,
-    
-    proxyOrder: dbChannel.proxy_order as any || undefined,
-    tvappSlug: dbChannel.tvapp_slug || undefined,
-    
-    // 3. LOGIC: I-force ang proxyType sa 'none' kung proxied na ang URL.
-    proxyType: isAlreadyProxied ? 'none' : (dbChannel.proxy_type || 'none'),
-    
-    epgId: dbChannel.epg_id || undefined,
-    num: dbChannel.channel_num || undefined,
-    epgUrl: dbChannel.epg_url || undefined,
-  };
+  // 2. Kung proxied na, ibalik ang original URL lang (iiwasan ang proxy chain).
+  if (isAlreadyProxied) {
+    return url;
+  }
+
+  // 3. Kung 'none' o 'Direct' ang provider, walang idadagdag na prefix.
+  if (!provider || provider === 'none' || provider === 'Direct') {
+    return url;
+  }
+
+  // 4. Hanapin ang prefix mula sa settings base sa napiling provider key.
+  const proxyPrefix = settings?.[provider];
+  
+  if (!proxyPrefix) {
+    return url;
+  }
+
+  // Ginagamit ang encodeURIComponent para hindi maputol ang AuthInfo characters gaya ng &, =, %.
+  return `${proxyPrefix}${encodeURIComponent(url)}`;
 };
-
-export function useChannels(includeInactive = false) {
-  return useQuery({
-    queryKey: ['channels', includeInactive],
-    queryFn: async () => {
-      let query = supabase
-        .from('channels')
-        .select('*')
-        .order('sort_order', { ascending: true, nullsFirst: false })
-        .order('name', { ascending: true });
-
-      if (!includeInactive) {
-        query = query.eq('is_active', true);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as DbChannel[];
-    },
-  });
-}
-
-export function useChannel(id: string) {
-  return useQuery({
-    queryKey: ['channel', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
-    },
-    enabled: !!id,
-  });
-}
-
-export function useCreateChannel() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (channel: ChannelInput) => {
-      const { data, error } = await supabase
-        .from('channels')
-        .insert(channel)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
-    },
-  });
-}
-
-export function useUpdateChannel() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, ...channel }: Partial<ChannelInput> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('channels')
-        .update(channel)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
-    },
-  });
-}
-
-export function useDeleteChannel() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('channels')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
-    },
-  });
-}
