@@ -21,6 +21,10 @@ const MAX_REDIRECTS = 5;
 
 // ─── Helpers ───
 
+interface ProxiedResponse extends Response {
+  finalUrl?: string;
+}
+
 function buildUpstreamHeaders(
   req: Request,
   params: URLSearchParams
@@ -46,6 +50,28 @@ function buildUpstreamHeaders(
   // Forward Range header from client (for video segment byte-range requests)
   const range = req.headers.get("Range");
   if (range) headers["Range"] = range;
+
+  // GEOBLOCK BYPASS: Inject Philippines/India IP Headers to bypass regional restrictions
+  const geoIPs = [
+    // Philippines
+    "112.204.1.10", "120.28.45.1", "49.145.23.5", 
+    "180.191.102.3", "203.177.42.8", "210.213.122.5",
+    // India
+    "103.21.164.1", "103.232.124.1", "103.241.224.1",
+    "104.211.231.1", "106.51.72.1", "115.248.114.1"
+  ];
+  const randomIP = geoIPs[Math.floor(Math.random() * geoIPs.length)];
+  
+  headers["X-Forwarded-For"] = randomIP;
+  headers["X-Real-IP"] = randomIP;
+  headers["True-Client-IP"] = randomIP;
+  headers["X-Visitor-IP"] = randomIP;
+  headers["X-Originating-IP"] = randomIP;
+  
+  // Route to PH by default unless URL specifies india
+  const targetUrl = params.get("url") || "";
+  const isIndia = targetUrl.toLowerCase().includes("india");
+  headers["CF-IPCountry"] = isIndia ? "IN" : "PH";
 
   return headers;
 }
@@ -81,12 +107,13 @@ async function fetchWithRedirects(
         : new URL(location, current).toString();
       continue;
     }
-    // FIX: I-save ang final URL para alam natin kung saan napunta (para sa baseUrl)
-    Object.defineProperty(resp, "url", { value: current });
-    return resp;
+    // FIX: Save the final URL as a custom property to avoid TypeError from read-only .url redefine
+    const proxied = resp as ProxiedResponse;
+    proxied.finalUrl = current;
+    return proxied;
   }
-  const finalResp = await fetch(current, { method, headers });
-  Object.defineProperty(finalResp, "url", { value: current });
+  const finalResp = await fetch(current, { method, headers }) as ProxiedResponse;
+  finalResp.finalUrl = current;
   return finalResp;
 }
 
@@ -148,8 +175,11 @@ function rewriteDASH(
   rewritten = rewritten.replace(
     /<BaseURL>([^<]+)<\/BaseURL>/g,
     (_m, innerUrl) => {
-      const full = resolveUrl(baseUrl, innerUrl);
-      return `<BaseURL>${proxyBase}${encodeURIComponent(full)}${extra}</BaseURL>`;
+      const unescapedUrl = innerUrl.replace(/&amp;/g, "&");
+      const full = resolveUrl(baseUrl, unescapedUrl);
+      const encoded = encodeURIComponent(full);
+      const finalVal = `${proxyBase}${encoded}${extra}`.replace(/&/g, "&amp;");
+      return `<BaseURL>${finalVal}</BaseURL>`;
     }
   );
 
@@ -161,11 +191,13 @@ function rewriteDASH(
       // Don't rewrite if it looks like an internal DASH ID or property
       if (val.startsWith("$") || val.length < 2) return match;
       
-      const full = resolveUrl(baseUrl, val);
+      const unescapedVal = val.replace(/&amp;/g, "&");
+      const full = resolveUrl(baseUrl, unescapedVal);
       // For DASH templates (containing $), we encode the URL but preserve $ signs
       // so the DASH player (like Shaka) can still perform variable substitution properly.
       const encoded = encodeURIComponent(full).replace(/%24/g, "$");
-      return `${attr}="${proxyBase}${encoded}${extra}"`;
+      const finalVal = `${proxyBase}${encoded}${extra}`.replace(/&/g, "&amp;");
+      return `${attr}="${finalVal}"`;
     }
   );
 
@@ -246,7 +278,7 @@ serve(async (req) => {
       
       // CRITICAL: Ensure baseUrl is derived from the FINAL redirected upstream URL
       // This prevents relative segments from pointing back to the Supabase domain.
-      const finalUpstreamUrl = response.url || targetUrl;
+      const finalUpstreamUrl = (response as ProxiedResponse).finalUrl || response.url || targetUrl;
       const baseUrl = finalUpstreamUrl.substring(0, finalUpstreamUrl.lastIndexOf("/") + 1);
       
       const proxyBase = `${url.origin}${url.pathname}?url=`;
