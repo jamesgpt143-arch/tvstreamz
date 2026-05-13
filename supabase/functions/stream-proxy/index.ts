@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("origin") || "*";
@@ -206,7 +206,7 @@ function rewriteDASH(
 
 // ─── Main Handler ───
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
