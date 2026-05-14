@@ -162,3 +162,6 @@ BEGIN
         CREATE POLICY "Admins can delete any requests" ON public.user_requests FOR DELETE USING (public.has_role(auth.uid(), 'admin'));
     END IF;
 END $$;
+
+-- Enable Realtime publication for community_messages so chats load instantly without refreshing
+alter publication supabase_realtime add table community_messages;

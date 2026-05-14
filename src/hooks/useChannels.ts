@@ -86,6 +86,8 @@ export const toAppChannel = (dbChannel: DbChannel) => {
 };
 
 export function useChannels(includeInactive = false) {
+  const cacheKey = `tvstreamz_channels_cache_${includeInactive}`;
+
   return useQuery({
     queryKey: ['channels', includeInactive],
     queryFn: async () => {
@@ -100,9 +102,27 @@ export function useChannels(includeInactive = false) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached) as DbChannel[];
+        throw error;
+      }
+
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch {}
+
       return data as DbChannel[];
     },
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem(`tvstreamz_channels_cache_${includeInactive}`);
+        if (cached) return JSON.parse(cached) as DbChannel[];
+      } catch {}
+      return undefined;
+    },
+    staleTime: 1000 * 60 * 15, // 15 minutes stale time
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours retention
   });
 }
 
