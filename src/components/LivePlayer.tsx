@@ -472,10 +472,12 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             
             player.configure({ 
               preferredAudioLanguage: 'en',
+              preferredTextLanguage: 'en',
               drm: { servers: { 'com.widevine.alpha': channel.widevineUrl } }, 
               abr: { enabled: true },
               offline: { usePersistentLicense: false }
             });
+            player.setTextTrackVisibility(true);
             ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
             
             configureShakaProxy(player, proxyUrl);
@@ -536,6 +538,18 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                   setIsRefreshing(false);
                   const levels = hls.levels.map((l, i) => ({ height: l.height, index: i })).filter(l => l.height > 0).sort((a, b) => b.height - a.height);
                   setHlsLevels(levels.filter((l, i, arr) => i === 0 || l.height !== arr[i - 1].height));
+                  
+                  // Auto-select English subtitles if available
+                  const subTracks = hls.subtitleTracks;
+                  const enIndex = subTracks.findIndex(t => 
+                    t.lang?.toLowerCase().startsWith('en') || 
+                    t.name?.toLowerCase().includes('english')
+                  );
+                  if (enIndex !== -1) {
+                    hls.subtitleTrack = enIndex;
+                    hls.subtitleDisplay = true;
+                  }
+
                   videoRef.current?.play().catch(() => {});
                 }
               });
@@ -595,9 +609,11 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           
           player.configure({ 
             preferredAudioLanguage: 'en',
+            preferredTextLanguage: 'en',
             drm: { clearKeys: channel.clearKey || {}, servers: channel.widevineUrl ? { 'com.widevine.alpha': channel.widevineUrl } : {} },
             offline: { usePersistentLicense: false }
           });
+          player.setTextTrackVisibility(true);
           ui.configure({ overflowMenuButtons: ['quality', 'language', 'captions', 'picture_in_picture', 'cast'], addBigPlayButton: true });
           
           configureShakaProxy(player, proxyUrl);
