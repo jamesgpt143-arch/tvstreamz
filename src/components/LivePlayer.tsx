@@ -553,10 +553,10 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                     }
                   }
 
-                  if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) setStoredProxy(channel.id, '');
+                  if ((isAuto || isStrict) && proxyUrl && proxyUrl === getStoredProxy(channel.id)) setStoredProxy(channel.id, '');
 
                   currentProxyIndex++;
-                  if (currentProxyIndex < candidates.length) {
+                  if ((isAuto || isStrict) && currentProxyIndex < candidates.length) {
                     const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
                     hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, channel.referrer));
@@ -609,19 +609,21 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) setStoredProxy(channel.id, '');
 
             let dashRecovered = false;
-            let startIndex = candidates.indexOf(proxyUrl || 'direct');
-            if (startIndex === -1) startIndex = 0;
+            if (isAuto || isStrict) {
+              let startIndex = candidates.indexOf(proxyUrl || 'direct');
+              if (startIndex === -1) startIndex = 0;
 
-            for (let i = startIndex + 1; i < candidates.length; i++) {
-              const fallbackProxy = candidates[i];
-              const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
-              configureShakaProxy(player, finalFallback);
-              try {
-                await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer) : streamUrl);
-                if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
-                dashRecovered = true;
-                break;
-              } catch (retryErr) {}
+              for (let i = startIndex + 1; i < candidates.length; i++) {
+                const fallbackProxy = candidates[i];
+                const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
+                configureShakaProxy(player, finalFallback);
+                try {
+                  await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer) : streamUrl);
+                  if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
+                  dashRecovered = true;
+                  break;
+                } catch (retryErr) {}
+              }
             }
             if (!dashRecovered && isMounted) {
               if (!triggerAutoRefresh()) {
