@@ -190,7 +190,7 @@ const WatchLive = () => {
 
               {/* Player */}
               <LivePlayer 
-                channel={{...channel, useProxy: true}} // Sapilitang i-on ang Auto-Proxy
+                channel={channel}
               />
 
               {/* Share Button & Optional Metadata */}
