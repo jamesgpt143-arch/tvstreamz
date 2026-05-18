@@ -18,6 +18,27 @@ function getCorsHeaders(req: Request) {
 const DEFAULT_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const MAX_REDIRECTS = 5;
+const STREAM_SECRET = Deno.env.get("STREAM_PROXY_SECRET") || "";
+
+// ─── Token signing/verification ───
+async function hmacHex(message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(STREAM_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
+}
 
 // ─── Helpers ───
 
@@ -132,74 +153,81 @@ function resolveUrl(base: string, relative: string): string {
   }
 }
 
-function rewriteHLS(
-  text: string,
-  baseUrl: string,
-  proxyBase: string,
-  extra: string
-): string {
-  return text
-    .split("\n")
-    .map((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return line;
-
-      // URI= in EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA etc.
-      if (trimmed.includes('URI="')) {
-        return trimmed.replace(/URI="([^"]+)"/g, (_m, uri) => {
-          const full = resolveUrl(baseUrl, uri);
-          return `URI="${proxyBase}${encodeURIComponent(full)}${extra}"`;
-        });
-      }
-
-      // Non-comment = segment or sub-playlist URL
-      if (!trimmed.startsWith("#")) {
-        const full = resolveUrl(baseUrl, trimmed);
-        return proxyBase + encodeURIComponent(full) + extra;
-      }
-
-      return line;
-    })
-    .join("\n");
+async function signSuffix(url: string, exp: string | null): Promise<string> {
+  if (!STREAM_SECRET || !exp) return "";
+  const sig = await hmacHex(`${url}|${exp}`);
+  return `&exp=${exp}&sig=${sig}`;
 }
 
-function rewriteDASH(
+async function rewriteHLS(
   text: string,
   baseUrl: string,
   proxyBase: string,
-  extra: string
-): string {
+  extra: string,
+  exp: string | null
+): Promise<string> {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { out.push(line); continue; }
+
+    if (trimmed.includes('URI="')) {
+      let replaced = trimmed;
+      const matches = [...trimmed.matchAll(/URI="([^"]+)"/g)];
+      for (const m of matches) {
+        const full = resolveUrl(baseUrl, m[1]);
+        const tok = await signSuffix(full, exp);
+        replaced = replaced.replace(m[0], `URI="${proxyBase}${encodeURIComponent(full)}${extra}${tok}"`);
+      }
+      out.push(replaced);
+      continue;
+    }
+
+    if (!trimmed.startsWith("#")) {
+      const full = resolveUrl(baseUrl, trimmed);
+      const tok = await signSuffix(full, exp);
+      out.push(proxyBase + encodeURIComponent(full) + extra + tok);
+      continue;
+    }
+
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+async function rewriteDASH(
+  text: string,
+  baseUrl: string,
+  proxyBase: string,
+  extra: string,
+  exp: string | null
+): Promise<string> {
   let rewritten = text;
 
-  // 1. Rewrite <BaseURL> tags
-  rewritten = rewritten.replace(
-    /<BaseURL>([^<]+)<\/BaseURL>/g,
-    (_m, innerUrl) => {
-      const unescapedUrl = innerUrl.replace(/&amp;/g, "&");
-      const full = resolveUrl(baseUrl, unescapedUrl);
-      const encoded = encodeURIComponent(full);
-      const finalVal = `${proxyBase}${encoded}${extra}`.replace(/&/g, "&amp;");
-      return `<BaseURL>${finalVal}</BaseURL>`;
-    }
-  );
+  // Collect BaseURL replacements
+  const baseUrlMatches = [...rewritten.matchAll(/<BaseURL>([^<]+)<\/BaseURL>/g)];
+  for (const m of baseUrlMatches) {
+    const unescapedUrl = m[1].replace(/&amp;/g, "&");
+    const full = resolveUrl(baseUrl, unescapedUrl);
+    const tok = await signSuffix(full, exp);
+    const encoded = encodeURIComponent(full);
+    const finalVal = `${proxyBase}${encoded}${extra}${tok}`.replace(/&/g, "&amp;");
+    rewritten = rewritten.replace(m[0], `<BaseURL>${finalVal}</BaseURL>`);
+  }
 
-  // 2. Rewrite common XML attributes containing paths (media, initialization, sourceURL, index, etc.)
-  // We use a broader regex to catch attributes commonly used in DASH manifests
-  rewritten = rewritten.replace(
-    /(media|initialization|sourceURL|index|href)="([^"]+)"/g,
-    (match, attr, val) => {
-      // Don't rewrite if it looks like an internal DASH ID or property
-      if (val.startsWith("$") || val.length < 2) return match;
-      
-      const unescapedVal = val.replace(/&amp;/g, "&");
-      const full = resolveUrl(baseUrl, unescapedVal);
-      // For DASH templates (containing $), we encode the URL but preserve $ signs
-      // so the DASH player (like Shaka) can still perform variable substitution properly.
-      const encoded = encodeURIComponent(full).replace(/%24/g, "$");
-      const finalVal = `${proxyBase}${encoded}${extra}`.replace(/&/g, "&amp;");
-      return `${attr}="${finalVal}"`;
-    }
-  );
+  const attrMatches = [...rewritten.matchAll(/(media|initialization|sourceURL|index|href)="([^"]+)"/g)];
+  for (const m of attrMatches) {
+    const attr = m[1];
+    const val = m[2];
+    if (val.startsWith("$") || val.length < 2) continue;
+    const unescapedVal = val.replace(/&amp;/g, "&");
+    const full = resolveUrl(baseUrl, unescapedVal);
+    const tok = await signSuffix(full, exp);
+    const encoded = encodeURIComponent(full).replace(/%24/g, "$");
+    const finalVal = `${proxyBase}${encoded}${extra}${tok}`.replace(/&/g, "&amp;");
+    rewritten = rewritten.replace(m[0], `${attr}="${finalVal}"`);
+  }
 
   return rewritten;
 }
@@ -236,6 +264,32 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ─── Token verification (when STREAM_PROXY_SECRET is configured) ───
+    const exp = params.get("exp");
+    const sig = params.get("sig");
+    if (STREAM_SECRET) {
+      if (!exp || !sig) {
+        return new Response(JSON.stringify({ error: "Missing token (exp/sig)" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const expNum = parseInt(exp, 10);
+      if (!Number.isFinite(expNum) || expNum < Math.floor(Date.now() / 1000)) {
+        return new Response(JSON.stringify({ error: "Token expired" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const expectedSig = await hmacHex(`${targetUrl}|${exp}`);
+      if (!timingSafeEqual(sig, expectedSig)) {
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const upstreamHeaders = buildUpstreamHeaders(req, params);
@@ -285,8 +339,8 @@ Deno.serve(async (req) => {
       const extra = extraParams(params);
 
       const rewritten = isHLS
-        ? rewriteHLS(text, baseUrl, proxyBase, extra)
-        : rewriteDASH(text, baseUrl, proxyBase, extra);
+        ? await rewriteHLS(text, baseUrl, proxyBase, extra, exp)
+        : await rewriteDASH(text, baseUrl, proxyBase, extra, exp);
 
       return new Response(rewritten, {
         status: response.status,
