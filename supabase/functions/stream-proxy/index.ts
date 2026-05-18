@@ -266,6 +266,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Token verification (when STREAM_PROXY_SECRET is configured) ───
+    const exp = params.get("exp");
+    const sig = params.get("sig");
+    if (STREAM_SECRET) {
+      if (!exp || !sig) {
+        return new Response(JSON.stringify({ error: "Missing token (exp/sig)" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const expNum = parseInt(exp, 10);
+      if (!Number.isFinite(expNum) || expNum < Math.floor(Date.now() / 1000)) {
+        return new Response(JSON.stringify({ error: "Token expired" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const expectedSig = await hmacHex(`${targetUrl}|${exp}`);
+      if (!timingSafeEqual(sig, expectedSig)) {
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const upstreamHeaders = buildUpstreamHeaders(req, params);
 
     // ─── HEAD: Metadata check ───
