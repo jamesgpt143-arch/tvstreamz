@@ -339,8 +339,8 @@ Deno.serve(async (req) => {
       const extra = extraParams(params);
 
       const rewritten = isHLS
-        ? rewriteHLS(text, baseUrl, proxyBase, extra)
-        : rewriteDASH(text, baseUrl, proxyBase, extra);
+        ? await rewriteHLS(text, baseUrl, proxyBase, extra, exp)
+        : await rewriteDASH(text, baseUrl, proxyBase, extra, exp);
 
       return new Response(rewritten, {
         status: response.status,
