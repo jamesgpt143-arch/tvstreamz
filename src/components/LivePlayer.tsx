@@ -114,6 +114,7 @@ const getYouTubeId = (url: string) => {
 interface LivePlayerProps {
   channel: Channel;
   onProxyChange?: (label: string) => void;
+  onStatusChange?: (online: boolean) => void;
 }
 
 const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
@@ -276,7 +277,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               .map(key => (preferredProxies as any)[key])
               .filter(p => p && typeof p === 'string');
           } else {
-            preferredUrls = Object.values(preferredProxies).filter(p => p && typeof p === 'string');
+            preferredUrls = (Object.values(preferredProxies) as string[]).filter(p => p && typeof p === 'string');
           }
           providerProxies = [...preferredUrls];
         } else {
@@ -583,7 +584,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 if (data.fatal && isMounted) {
                   // Handle non-video track errors (like subtitles) gracefully
                   if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT) {
-                    if (data.frag && data.frag.type !== 'main' && data.frag.type !== 'video') {
+                    if (data.frag && (data.frag.type as string) !== 'main' && (data.frag.type as string) !== 'video') {
                       console.warn('[LivePlayer] Non-fatal fragment error:', data.details, data.frag.type);
                       return;
                     }

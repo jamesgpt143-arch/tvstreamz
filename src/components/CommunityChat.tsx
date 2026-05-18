@@ -113,7 +113,7 @@ export const CommunityChat = () => {
     if (error) {
       console.error('Error fetching messages:', error);
     } else {
-      setMessages(data || []);
+      setMessages((data as any) || []);
       setTimeout(scrollToBottom, 100);
     }
     setIsLoading(false);

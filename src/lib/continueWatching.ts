@@ -43,8 +43,8 @@ const syncFromCloud = async () => {
     if (error) throw error;
 
     if (data) {
-      const cloudHistory: WatchProgress[] = data.map((item) => ({
-        id: item.content_id,
+      const cloudHistory: WatchProgress[] = data.map((item: any) => ({
+        id: Number(item.content_id),
         type: item.content_type as 'movie' | 'tv',
         title: item.title,
         poster_path: item.poster_path,
@@ -76,7 +76,7 @@ const syncToCloud = (progress: WatchProgress) => {
     try {
       const payload = {
         user_id: currentUserId,
-        content_id: progress.id,
+        content_id: String(progress.id),
         content_type: progress.type,
         title: progress.title,
         poster_path: progress.poster_path,
@@ -93,7 +93,7 @@ const syncToCloud = (progress: WatchProgress) => {
       // Gumamit ng UPSERT (Insert or Update kung mayroon na)
       const { error } = await supabase
         .from('user_watch_history')
-        .upsert(payload, { onConflict: 'user_id, content_id, content_type' });
+        .upsert(payload as any, { onConflict: 'user_id, content_id, content_type' });
 
       if (error) throw error;
     } catch (error) {
