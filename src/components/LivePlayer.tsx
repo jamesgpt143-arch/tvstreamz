@@ -52,11 +52,13 @@ const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary
   }
 };
 
-const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string): string => {
+const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string, exp?: string, sig?: string): string => {
   const url = new URL(proxyBase);
   url.searchParams.set('url', manifestUrl);
   if (userAgent) url.searchParams.set('ua', userAgent);
   if (referrer) url.searchParams.set('referer', referrer);
+  if (exp) url.searchParams.set('exp', exp);
+  if (sig) url.searchParams.set('sig', sig);
   return url.toString();
 };
 
