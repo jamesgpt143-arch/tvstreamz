@@ -17,9 +17,12 @@ export type Database = {
       channels: {
         Row: {
           category: string | null
+          channel_num: string | null
           created_at: string
           drm_key: string | null
           drm_key_id: string | null
+          epg_id: string | null
+          epg_url: string | null
           id: string
           is_active: boolean
           license_type: string | null
@@ -42,9 +45,12 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          channel_num?: string | null
           created_at?: string
           drm_key?: string | null
           drm_key_id?: string | null
+          epg_id?: string | null
+          epg_url?: string | null
           id?: string
           is_active?: boolean
           license_type?: string | null
@@ -67,9 +73,12 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          channel_num?: string | null
           created_at?: string
           drm_key?: string | null
           drm_key_id?: string | null
+          epg_id?: string | null
+          epg_url?: string | null
           id?: string
           is_active?: boolean
           license_type?: string | null
@@ -91,6 +100,44 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: []
+      }
+      community_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          parent_id: string | null
+          reply_to_username: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          parent_id?: string | null
+          reply_to_username?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          parent_id?: string | null
+          reply_to_username?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "community_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_channels: {
         Row: {
@@ -293,6 +340,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_my_list: {
+        Row: {
+          added_at: string
+          content_id: string
+          content_type: string
+          id: string
+          poster_path: string | null
+          title: string
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          added_at?: string
+          content_id: string
+          content_type: string
+          id?: string
+          poster_path?: string | null
+          title: string
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          added_at?: string
+          content_id?: string
+          content_type?: string
+          id?: string
+          poster_path?: string | null
+          title?: string
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           id: string
@@ -364,6 +444,54 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_watch_history: {
+        Row: {
+          backdrop_path: string | null
+          content_id: string
+          content_type: string
+          current_time: number | null
+          duration: number | null
+          episode: number | null
+          last_server: string | null
+          poster_path: string | null
+          progress: number | null
+          season: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backdrop_path?: string | null
+          content_id: string
+          content_type: string
+          current_time?: number | null
+          duration?: number | null
+          episode?: number | null
+          last_server?: string | null
+          poster_path?: string | null
+          progress?: number | null
+          season?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backdrop_path?: string | null
+          content_id?: string
+          content_type?: string
+          current_time?: number | null
+          duration?: number | null
+          episode?: number | null
+          last_server?: string | null
+          poster_path?: string | null
+          progress?: number | null
+          season?: number | null
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
