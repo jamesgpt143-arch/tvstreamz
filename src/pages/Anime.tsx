@@ -37,7 +37,7 @@ const Anime = () => {
   const [sortBy, setSortBy] = useState('popularity');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
-  const [genres, setGenres] = useState<string[]>([]);
+  const [genres, setGenres] = useState<any[]>([]);
   
   // Dropdown States
   const [dropdownResults, setDropdownResults] = useState<AnimeDropdownResult[]>([]);

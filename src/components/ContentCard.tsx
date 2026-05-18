@@ -19,7 +19,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
   const date = 'release_date' in item ? item.release_date : ('first_air_date' in item ? item.first_air_date : undefined);
   const mediaType = type || (item as any).media_type || 'movie';
   const year = date ? new Date(date).getFullYear() : (type === 'anime' ? '' : '');
-  const rating = 'vote_average' in item ? item.vote_average : ('ranking' in item ? (10 - (item.ranking / 1000)) : 0); // Mock rating for anime
+  const rating = 'vote_average' in item ? item.vote_average : ('ranking' in item ? (10 - ((item as any).ranking / 1000)) : 0); // Mock rating for anime
 
   const posterUrl = type === 'anime' 
     ? (item as AnimeItem).image 

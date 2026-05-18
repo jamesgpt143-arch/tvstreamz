@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, X } from 'lucide-react';
-import { getContinueWatching, removeFromContinueWatching, ContinueWatchingItem } from '@/lib/continueWatching';
+import { getContinueWatching, removeFromContinueWatching, type WatchProgress as ContinueWatchingItem } from '@/lib/continueWatching';
 import { getImageUrl } from '@/lib/tmdb';
 import { Button } from './ui/button';
 
