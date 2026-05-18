@@ -231,6 +231,26 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           throw new Error('Stream URL could not be resolved or is empty.');
         }
 
+        // Token-based proxy security: fetch signed exp/sig for this stream URL
+        let tokenExp: string | undefined;
+        let tokenSig: string | undefined;
+        try {
+          const tokenRes = await fetch('https://bkcetkqsqxxxockgmqcs.supabase.co/functions/v1/generate-stream-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: streamUrl }),
+          });
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            if (tokenData?.exp) tokenExp = String(tokenData.exp);
+            if (tokenData?.sig) tokenSig = String(tokenData.sig);
+          } else {
+            console.warn('[StreamToken] Non-OK response', tokenRes.status);
+          }
+        } catch (e) {
+          console.warn('[StreamToken] Failed to fetch token', e);
+        }
+
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
