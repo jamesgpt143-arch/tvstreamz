@@ -52,11 +52,13 @@ const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary
   }
 };
 
-const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string): string => {
+const buildProxiedUrl = (proxyBase: string, manifestUrl: string, userAgent?: string, referrer?: string, exp?: string, sig?: string): string => {
   const url = new URL(proxyBase);
   url.searchParams.set('url', manifestUrl);
   if (userAgent) url.searchParams.set('ua', userAgent);
   if (referrer) url.searchParams.set('referer', referrer);
+  if (exp) url.searchParams.set('exp', exp);
+  if (sig) url.searchParams.set('sig', sig);
   return url.toString();
 };
 
@@ -229,6 +231,26 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           throw new Error('Stream URL could not be resolved or is empty.');
         }
 
+        // Token-based proxy security: fetch signed exp/sig for this stream URL
+        let tokenExp: string | undefined;
+        let tokenSig: string | undefined;
+        try {
+          const tokenRes = await fetch('https://bkcetkqsqxxxockgmqcs.supabase.co/functions/v1/generate-stream-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: streamUrl }),
+          });
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            if (tokenData?.exp) tokenExp = String(tokenData.exp);
+            if (tokenData?.sig) tokenSig = String(tokenData.sig);
+          } else {
+            console.warn('[StreamToken] Non-OK response', tokenRes.status);
+          }
+        } catch (e) {
+          console.warn('[StreamToken] Failed to fetch token', e);
+        }
+
         const defaultUA = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 6 Build/SD1A.210817.036)";
         const targetUA = channel.userAgent || defaultUA;
 
@@ -302,18 +324,18 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             };
 
             try {
-              const testUrl = proxy === 'direct' ? streamUrl : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+              const testUrl = proxy === 'direct' ? streamUrl : buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig);
               let res: Response;
               try {
                 res = await tryFetch(testUrl);
                 if (!res.ok && proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig);
                   const retryRes = await tryFetch(cleanUrl);
                   if (retryRes.ok) res = retryRes;
                 }
               } catch (fetchErr) {
                 if (proxy !== 'direct') {
-                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer);
+                  const cleanUrl = buildProxiedUrl(proxy!, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig);
                   res = await tryFetch(cleanUrl);
                 } else {
                   throw fetchErr;
@@ -439,10 +461,10 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
               }
               relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
               const fullOriginalUrl = manifestBase + relativePath;
-              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, channel.referrer);
+              request.uris[0] = buildProxiedUrl(proxyToUse, fullOriginalUrl, targetUA, channel.referrer, tokenExp, tokenSig);
               return;
             }
-            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer);
+            request.uris[0] = buildProxiedUrl(proxyToUse, url, targetUA, channel.referrer, tokenExp, tokenSig);
           });
         };
 
@@ -483,7 +505,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
             configureShakaProxy(player, proxyUrl);
 
             try {
-              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+              await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl);
               if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
             } catch (err) {
               if (isMounted) {
@@ -521,15 +543,15 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                        relativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
                        const manifestBase = streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1);
                        const fullOriginalUrl = manifestBase + relativePath;
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, fullOriginalUrl, targetUA, channel.referrer, tokenExp, tokenSig), true);
                     } else if (url.startsWith('http')) {
-                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, channel.referrer), true);
+                       xhr.open('GET', buildProxiedUrl(proxyUrl, url, targetUA, channel.referrer, tokenExp, tokenSig), true);
                     }
                   }
                 }
               });
               hlsRef.current = hls;
-              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+              hls.loadSource(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl);
               hls.attachMedia(videoRef.current);
               
               hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -573,7 +595,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                   if ((isAuto || isStrict) && currentProxyIndex < candidates.length) {
                     const nextProxy = candidates[currentProxyIndex];
                     onProxyChange?.(proxyLabelMapRef.current.get(nextProxy) || `Proxy ${currentProxyIndex + 1}`);
-                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, channel.referrer));
+                    hls.loadSource(buildProxiedUrl(nextProxy === 'direct' ? '' : nextProxy, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig));
                     return;
                   }
                   
@@ -585,7 +607,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 }
               });
             } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
+              videoRef.current.src = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl;
               videoRef.current.addEventListener('loadedmetadata', () => {
                 if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
               });
@@ -619,7 +641,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
           configureShakaProxy(player, proxyUrl);
 
           try {
-            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl);
+            await player.load(proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl);
             if (isMounted) { setIsLoading(false); setIsRefreshing(false); videoRef.current?.play().catch(() => {}); }
           } catch (err) {
             if (proxyUrl && proxyUrl === getStoredProxy(channel.id)) setStoredProxy(channel.id, '');
@@ -634,7 +656,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
                 const finalFallback = fallbackProxy === 'direct' ? '' : fallbackProxy;
                 configureShakaProxy(player, finalFallback);
                 try {
-                  await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer) : streamUrl);
+                  await player.load(finalFallback ? buildProxiedUrl(finalFallback, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl);
                   if (isMounted) { setIsLoading(false); setIsRefreshing(false); onProxyChange?.(proxyLabelMapRef.current.get(fallbackProxy) || `Proxy ${i + 1}`); videoRef.current?.play().catch(() => {}); }
                   dashRecovered = true;
                   break;
@@ -653,7 +675,7 @@ const PlayerCore = ({ channel, onProxyChange }: LivePlayerProps) => {
         else if (activeType === 'plain') {
           if (videoRef.current) {
             videoRef.current.controls = true;
-            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer) : streamUrl;
+            const finalUrl = proxyUrl ? buildProxiedUrl(proxyUrl, streamUrl, targetUA, channel.referrer, tokenExp, tokenSig) : streamUrl;
             videoRef.current.src = finalUrl;
             videoRef.current.addEventListener('loadedmetadata', () => {
               if (isMounted) {
