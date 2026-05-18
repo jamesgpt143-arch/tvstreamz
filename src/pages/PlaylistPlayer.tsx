@@ -96,7 +96,7 @@ const PlaylistPlayer = () => {
       
       // Auto-sync: If no local URL but logged in, try to get the most recent from account
       if (!lastUrl && user) {
-        const { data: playlists } = await supabase
+        const { data: playlists } = await (supabase as any)
           .from('user_playlists')
           .select('url')
           .order('created_at', { ascending: false })
@@ -117,14 +117,14 @@ const PlaylistPlayer = () => {
   const fetchSavedData = async (userId: string) => {
     setIsLoadingSync(true);
     try {
-      const { data: playlists } = await supabase
+      const { data: playlists } = await (supabase as any)
         .from('user_playlists')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (playlists) setSavedPlaylists(playlists);
 
-      const { data: favs } = await supabase
+      const { data: favs } = await (supabase as any)
         .from('playlist_favorites')
         .select('url');
       
