@@ -289,7 +289,7 @@ const PlaylistPlayer = () => {
     if (!customName || !saveTargetUrl) return toast.error("Please fill in all fields");
     
     try {
-      const { error } = await supabase.from('user_playlists').insert({
+      const { error } = await (supabase as any).from('user_playlists').insert({
         user_id: user.id,
         name: customName,
         url: saveTargetUrl
@@ -306,7 +306,7 @@ const PlaylistPlayer = () => {
 
   const deletePlaylist = async (id: string) => {
     try {
-      const { error } = await supabase.from('user_playlists').delete().eq('id', id);
+      const { error } = await (supabase as any).from('user_playlists').delete().eq('id', id);
       if (error) throw error;
       setSavedPlaylists(prev => prev.filter(p => p.id !== id));
       toast.success("Playlist removed");
@@ -321,13 +321,13 @@ const PlaylistPlayer = () => {
     const isFav = favorites.has(ch.manifestUri);
     try {
       if (isFav) {
-        await supabase.from('playlist_favorites').delete().eq('url', ch.manifestUri);
+        await (supabase as any).from('playlist_favorites').delete().eq('url', ch.manifestUri);
         const newFavs = new Set(favorites);
         newFavs.delete(ch.manifestUri);
         setFavorites(newFavs);
         toast.success("Removed from favorites");
       } else {
-        await supabase.from('playlist_favorites').insert({
+        await (supabase as any).from('playlist_favorites').insert({
           user_id: user.id,
           name: ch.name || "Unknown",
           url: ch.manifestUri,
