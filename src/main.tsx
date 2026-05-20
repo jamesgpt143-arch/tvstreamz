@@ -22,17 +22,32 @@ const initCapacitor = async () => {
 initCapacitor();
 
 // ==========================================
-// KILL SWITCH PARA SA LUMANG PWA/SERVICE WORKER
+// KILL SWITCH PARA SA LUMANG PWA/SERVICE WORKER AT CACHE
 // ==========================================
 if ('serviceWorker' in navigator) {
+  // 1. Patayin ang Service Worker
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
       registration.unregister();
-      console.log('Old Service Worker removed. Forcing fresh update.');
+      console.log('Old Service Worker removed.');
     }
   }).catch((err) => {
     console.error('Service Worker unregistration failed: ', err);
   });
+
+  // 2. Burahin ang lahat ng naka-save na lumang files sa storage
+  if ('caches' in window) {
+    caches.keys().then((keyList) => {
+      return Promise.all(
+        keyList.map((key) => {
+          console.log('Clearing cache: ', key);
+          return caches.delete(key);
+        })
+      );
+    }).then(() => {
+      console.log('All caches cleared. Forcing fresh update.');
+    });
+  }
 }
 // ==========================================
 
