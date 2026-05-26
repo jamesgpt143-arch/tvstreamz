@@ -121,6 +121,11 @@ export function useChannels(includeInactive = false) {
       } catch {}
       return undefined;
     },
+    initialDataUpdatedAt: () => {
+      // If we have local storage data, mark it as completely stale (epoch 0)
+      // so it immediately refetches in the background to get fresh data
+      return localStorage.getItem(`tvstreamz_channels_cache_${includeInactive}`) ? 0 : undefined;
+    },
     staleTime: 1000 * 60 * 15, // 15 minutes stale time
     gcTime: 1000 * 60 * 60 * 24, // 24 hours retention
   });
@@ -156,6 +161,8 @@ export function useCreateChannel() {
       return data as DbChannel;
     },
     onSuccess: () => {
+      localStorage.removeItem('tvstreamz_channels_cache_true');
+      localStorage.removeItem('tvstreamz_channels_cache_false');
       queryClient.invalidateQueries({ queryKey: ['channels'] });
     },
   });
@@ -176,6 +183,8 @@ export function useUpdateChannel() {
       return data as DbChannel;
     },
     onSuccess: () => {
+      localStorage.removeItem('tvstreamz_channels_cache_true');
+      localStorage.removeItem('tvstreamz_channels_cache_false');
       queryClient.invalidateQueries({ queryKey: ['channels'] });
     },
   });
@@ -193,6 +202,8 @@ export function useDeleteChannel() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localStorage.removeItem('tvstreamz_channels_cache_true');
+      localStorage.removeItem('tvstreamz_channels_cache_false');
       queryClient.invalidateQueries({ queryKey: ['channels'] });
     },
   });
