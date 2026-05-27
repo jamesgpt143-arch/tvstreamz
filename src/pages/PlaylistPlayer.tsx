@@ -84,59 +84,34 @@ const PlaylistPlayer = () => {
     fetchLogoProxy();
   }, []);
 
+  const loadLocalData = () => {
+    const localPlaylists = localStorage.getItem("tvstreamz_local_playlists");
+    if (localPlaylists) {
+      try {
+        setSavedPlaylists(JSON.parse(localPlaylists));
+      } catch (e) {}
+    }
+    const localFavs = localStorage.getItem("tvstreamz_local_favorites");
+    if (localFavs) {
+      try {
+        setFavorites(new Set(JSON.parse(localFavs)));
+      } catch (e) {}
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-      if (user) {
-        fetchSavedData(user.id);
-      }
-      
-      let lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
-      
-      // Auto-sync: If no local URL but logged in, try to get the most recent from account
-      if (!lastUrl && user) {
-        const { data: playlists } = await (supabase as any)
-          .from('user_playlists')
-          .select('url')
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
-        if (playlists && playlists.length > 0) {
-          lastUrl = playlists[0].url;
-        }
-      }
-
-      if (lastUrl) {
-        fetchFromUrl(lastUrl, true);
-      }
     };
     checkAuth();
-  }, []);
-
-  const fetchSavedData = async (userId: string) => {
-    setIsLoadingSync(true);
-    try {
-      const { data: playlists } = await (supabase as any)
-        .from('user_playlists')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (playlists) setSavedPlaylists(playlists);
-
-      const { data: favs } = await (supabase as any)
-        .from('playlist_favorites')
-        .select('url');
-      
-      if (favs) {
-        setFavorites(new Set(favs.map(f => f.url)));
-      }
-    } catch (err) {
-      console.error("Error fetching sync data:", err);
-    } finally {
-      setIsLoadingSync(false);
+    loadLocalData();
+    
+    const lastUrl = localStorage.getItem("tvstreamz_last_m3u_url");
+    if (lastUrl) {
+      fetchFromUrl(lastUrl, true);
     }
-  };
+  }, []);
 
   const handleChannelSelect = async (ch: M3UChannel) => {
     setActiveChannel(null);
@@ -278,7 +253,6 @@ const PlaylistPlayer = () => {
   };
 
   const openSaveDialog = () => {
-    if (!user) return toast.error("Please login to save playlists");
     if (!playlistUrl) return toast.error("Enter a URL to save first");
     setSaveTargetUrl(playlistUrl);
     setCustomName(playlistUrl.split('/').pop()?.split('?')[0] || "My Playlist");
@@ -289,26 +263,29 @@ const PlaylistPlayer = () => {
     if (!customName || !saveTargetUrl) return toast.error("Please fill in all fields");
     
     try {
-      const { error } = await (supabase as any).from('user_playlists').insert({
-        user_id: user.id,
+      const newPlaylist: SavedPlaylist = {
+        id: Date.now().toString(),
         name: customName,
         url: saveTargetUrl
-      });
+      };
       
-      if (error) throw error;
-      toast.success("Playlist saved!");
-      fetchSavedData(user.id);
+      const updatedPlaylists = [newPlaylist, ...savedPlaylists];
+      setSavedPlaylists(updatedPlaylists);
+      localStorage.setItem("tvstreamz_local_playlists", JSON.stringify(updatedPlaylists));
+      
+      toast.success("Playlist saved to browser!");
       setIsSaveModalOpen(false);
-    } catch (err) {
-      toast.error("Failed to save playlist");
+    } catch (err: any) {
+      console.error("Save playlist error:", err);
+      toast.error(`Failed to save playlist: ${err?.message || "Unknown error"}`);
     }
   };
 
   const deletePlaylist = async (id: string) => {
     try {
-      const { error } = await (supabase as any).from('user_playlists').delete().eq('id', id);
-      if (error) throw error;
-      setSavedPlaylists(prev => prev.filter(p => p.id !== id));
+      const updatedPlaylists = savedPlaylists.filter(p => p.id !== id);
+      setSavedPlaylists(updatedPlaylists);
+      localStorage.setItem("tvstreamz_local_playlists", JSON.stringify(updatedPlaylists));
       toast.success("Playlist removed");
     } catch (err) {
       toast.error("Failed to delete playlist");
@@ -316,29 +293,18 @@ const PlaylistPlayer = () => {
   };
 
   const toggleFavorite = async (ch: M3UChannel) => {
-    if (!user) return toast.error("Please login to use favorites");
-    
     const isFav = favorites.has(ch.manifestUri);
     try {
+      const newFavs = new Set(favorites);
       if (isFav) {
-        await (supabase as any).from('playlist_favorites').delete().eq('url', ch.manifestUri);
-        const newFavs = new Set(favorites);
         newFavs.delete(ch.manifestUri);
-        setFavorites(newFavs);
         toast.success("Removed from favorites");
       } else {
-        await (supabase as any).from('playlist_favorites').insert({
-          user_id: user.id,
-          name: ch.name || "Unknown",
-          url: ch.manifestUri,
-          logo: ch.logo,
-          group_name: ch.group
-        });
-        const newFavs = new Set(favorites);
         newFavs.add(ch.manifestUri);
-        setFavorites(newFavs);
         toast.success("Added to favorites");
       }
+      setFavorites(newFavs);
+      localStorage.setItem("tvstreamz_local_favorites", JSON.stringify(Array.from(newFavs)));
     } catch (err) {
       toast.error("Action failed");
     }
@@ -662,7 +628,7 @@ const PlaylistPlayer = () => {
                  Cancel
               </Button>
               <Button onClick={savePlaylist} className="rounded-2xl font-black uppercase tracking-widest text-xs h-12 flex-1 shadow-lg shadow-primary/20">
-                 Save to Account
+                 Save to Browser
               </Button>
            </DialogFooter>
         </DialogContent>
