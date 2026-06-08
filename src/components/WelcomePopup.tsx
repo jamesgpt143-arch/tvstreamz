@@ -46,30 +46,18 @@ export const WelcomePopup = () => {
           const popupData = { ...defaultData, ...(settings.value as unknown as WelcomePopupData) };
           setData(popupData);
           
-          // Only show if enabled and user hasn't seen it this session
+          // Only show if enabled (appears every time homepage is opened)
           if (popupData.enabled) {
-            const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
-            if (!hasSeenPopup) {
-              setIsOpen(true);
-              sessionStorage.setItem('hasSeenWelcomePopup', 'true');
-            }
+            setIsOpen(true);
           }
         } else {
-          // Fallback to default - show if not seen
-          const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
-          if (!hasSeenPopup) {
-            setIsOpen(true);
-            sessionStorage.setItem('hasSeenWelcomePopup', 'true');
-          }
+          // Fallback to default - show every time
+          setIsOpen(true);
         }
       } catch (error) {
         console.error('Error fetching welcome popup settings:', error);
         // Fallback to default
-        const hasSeenPopup = sessionStorage.getItem('hasSeenWelcomePopup');
-        if (!hasSeenPopup) {
-          setIsOpen(true);
-          sessionStorage.setItem('hasSeenWelcomePopup', 'true');
-        }
+        setIsOpen(true);
       } finally {
         setIsLoading(false);
       }
