@@ -267,7 +267,7 @@ const Player = () => {
           <div className="flex-1 flex flex-col gap-4">
             
             {/* Player Header (Now Playing, Auto Next, Sub/Dub) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/60 border border-white/5 p-4 rounded-2xl backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-zinc-900/60 border border-white/5 p-4 rounded-2xl backdrop-blur-sm">
               <div>
                 <h1 className="text-xl md:text-2xl font-black">
                   {type === 'movie' ? title : `Episode ${selectedEpisode}`}
@@ -277,8 +277,33 @@ const Player = () => {
                 )}
               </div>
               
-              <div className="flex flex-wrap items-center gap-4">
-
+              <div className="flex flex-wrap items-center gap-3">
+                {Object.keys(servers || {}).length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:block">Server:</span>
+                    <div className="w-[140px] sm:w-[180px]">
+                      <Select value={currentServer || Object.keys(servers || {})[0]} onValueChange={setCurrentServer}>
+                        <SelectTrigger className="w-full bg-black/50 border-white/10 text-white h-9 text-xs sm:text-sm">
+                          <SelectValue placeholder="Choose server" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                          {Object.entries(servers || {}).map(([name]) => (
+                            <SelectItem key={name} value={name} className="text-xs sm:text-sm">
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span className="font-medium">{name}</span>
+                                {name === 'Server 3' && (
+                                  <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    Ad-Free
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
                 
                 {resolvedMalId && (
                   <div className="flex items-center gap-1 bg-black/40 rounded-lg p-1">
@@ -298,37 +323,6 @@ const Player = () => {
                 )}
               </div>
             </div>
-
-            {/* Server Selection */}
-            {true && (
-              <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-zinc-900/60 border border-white/5 rounded-2xl p-4 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-4 bg-primary rounded-full"></div>
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">Select Server</span>
-                </div>
-                <div className="w-full sm:w-[250px]">
-                  <Select value={currentServer || Object.keys(servers || {})[0]} onValueChange={setCurrentServer}>
-                    <SelectTrigger className="w-full bg-black/50 border-white/10 text-white h-10">
-                      <SelectValue placeholder="Choose server" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                      {Object.entries(servers || {}).map(([name]) => (
-                        <SelectItem key={name} value={name} className="text-sm">
-                          <div className="flex items-center justify-between w-full gap-2">
-                            <span className="font-medium">{name}</span>
-                            {name === 'Server 3' && (
-                              <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                                Ad-Free
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
 
             {/* Video Player */}
             <VideoPlayer 
