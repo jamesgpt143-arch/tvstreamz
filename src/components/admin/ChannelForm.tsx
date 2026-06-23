@@ -62,7 +62,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
     drm_key_id: channel?.drm_key_id || '',
     drm_key: channel?.drm_key || '',
     license_url: channel?.license_url || '',
-    category: channel?.category || 'Other',
+    category: channel?.category || 'Cignal',
     is_active: channel?.is_active ?? true,
     sort_order: channel?.sort_order ?? 0,
     user_agent: channel?.user_agent || '',
@@ -244,7 +244,7 @@ export function ChannelForm({ channel, onClose }: ChannelFormProps) {
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
             <Select
-              value={formData.category || 'Other'}
+              value={formData.category || 'Cignal'}
               onValueChange={(value) => setFormData({ ...formData, category: value })}
             >
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
