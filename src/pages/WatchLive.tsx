@@ -264,13 +264,13 @@ const WatchLive = () => {
                             <div key={ch.id} className="relative group">
                               <button
                                 onClick={() => handleChannelSwitch(ch.id)}
-                                className="w-full flex items-center gap-4 p-2.5 rounded-xl bg-background dark:bg-card/40 hover:bg-card hover:shadow-md hover:-translate-y-0.5 border border-border/50 dark:border-border/30 hover:border-primary/40 transition-all duration-300 overflow-hidden"
+                                className="w-full flex items-center p-3 rounded-2xl bg-gradient-to-br from-white/5 to-transparent hover:from-primary/30 hover:via-white/10 hover:to-secondary/30 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_20px_rgba(0,0,0,0.2)] border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-1 overflow-hidden group relative"
                               >
                                 {/* Active Indicator / Glow on hover */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                                <div className="relative shrink-0">
-                                  <div className="w-14 h-14 rounded-xl bg-muted/50 dark:bg-background/60 shadow-sm border border-border/50 dark:border-border/40 flex items-center justify-center p-2 overflow-hidden relative">
+                                <div className="relative shrink-0 z-10">
+                                  <div className="w-14 h-14 rounded-xl bg-black/40 shadow-inner border border-white/10 flex items-center justify-center p-2 overflow-hidden relative">
                                     <img
                                       src={proxyLogo(ch.logo)}
                                       alt={ch.name}
@@ -284,14 +284,10 @@ const WatchLive = () => {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-col items-start pr-10 flex-1 min-w-0">
-                                  <p className="font-semibold text-sm text-foreground/80 group-hover:text-foreground transition-colors text-left truncate w-full">
+                                <div className="flex flex-col items-center justify-center flex-1 min-w-0 px-2 pr-8 z-10">
+                                  <p className="font-black text-[15px] uppercase tracking-wide text-foreground/90 group-hover:text-white transition-colors text-center truncate w-full drop-shadow-sm">
                                     {ch.name}
                                   </p>
-                                  <div className="flex items-center gap-1.5 mt-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500/80 animate-pulse" />
-                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Live Now</span>
-                                  </div>
                                 </div>
                               </button>
                               <button
