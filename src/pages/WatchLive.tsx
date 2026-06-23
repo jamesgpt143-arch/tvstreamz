@@ -264,28 +264,20 @@ const WatchLive = () => {
                             <div key={ch.id} className="relative group">
                               <button
                                 onClick={() => handleChannelSwitch(ch.id)}
-                                className="w-full flex items-center p-3 rounded-2xl bg-gradient-to-br from-white/5 to-transparent hover:from-primary/30 hover:via-white/10 hover:to-secondary/30 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_20px_rgba(0,0,0,0.2)] border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-1 overflow-hidden group relative"
+                                className="w-full flex items-center p-3 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_10px_rgba(0,0,0,0.1)] border border-white/10 transition-all duration-300 overflow-hidden relative"
                               >
-                                {/* Active Indicator / Glow on hover */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
                                 <div className="relative shrink-0 z-10">
                                   <div className="w-14 h-14 rounded-xl bg-black/40 shadow-inner border border-white/10 flex items-center justify-center p-2 overflow-hidden relative">
                                     <img
                                       src={proxyLogo(ch.logo)}
                                       alt={ch.name}
-                                      className="w-full h-full object-contain drop-shadow-sm transition-transform duration-500 group-hover:scale-110"
+                                      className="w-full h-full object-contain drop-shadow-sm"
                                     />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300">
-                                        <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
                                   </div>
                                 </div>
 
                                 <div className="flex flex-col items-center justify-center flex-1 min-w-0 px-2 pr-8 z-10">
-                                  <p className="font-black text-[15px] uppercase tracking-wide text-foreground/90 group-hover:text-white transition-colors text-center truncate w-full drop-shadow-sm">
+                                  <p className="font-black text-[15px] uppercase tracking-wide text-foreground/90 text-center truncate w-full drop-shadow-sm">
                                     {ch.name}
                                   </p>
                                 </div>
