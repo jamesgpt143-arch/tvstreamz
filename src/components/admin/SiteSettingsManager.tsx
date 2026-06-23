@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,16 +27,14 @@ export function SiteSettingsManager() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("site_settings").select("*");
-      if (error) throw error;
+      const res = await fetch("/api/settings");
+      if (!res.ok) throw new Error("Failed to fetch settings");
+      const data = await res.json();
 
-      data.forEach((setting) => {
-        const val = setting.value as any;
-        if (setting.key === "maintenance_mode") setMaintenance(val || { enabled: false, message: "" });
-        if (setting.key === "seo_settings") setSeo(val || { title: "", description: "", keywords: "", og_image: "" });
-        if (setting.key === "announcement_settings") setAnnouncement(val || { is_active: false, message: "", bgColor: "#8b5cf6", textColor: "#ffffff", link: "" });
-        if (setting.key === "chat_settings") setChatSettings(val || { enabled: true });
-      });
+      setMaintenance(data.maintenance_mode || { enabled: false, message: "" });
+      setSeo(data.seo_settings || { title: "", description: "", keywords: "", og_image: "" });
+      setAnnouncement(data.announcement_settings || { is_active: false, message: "", bgColor: "#8b5cf6", textColor: "#ffffff", link: "" });
+      setChatSettings(data.chat_settings || { enabled: true });
     } catch (error: any) {
       toast({ title: "Error fetching settings", description: error.message, variant: "destructive" });
     } finally {
@@ -47,11 +45,13 @@ export function SiteSettingsManager() {
   const handleSave = async (key: string, value: any) => {
     setSaving(key);
     try {
-      const { error } = await supabase
-        .from("site_settings")
-        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, value }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error("Failed to save settings");
       toast({ title: "Settings saved", description: `${key} updated successfully.` });
     } catch (error: any) {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });

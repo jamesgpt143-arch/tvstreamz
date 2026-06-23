@@ -34,7 +34,7 @@ export const ContentRow = ({ title, items, type, isTrending }: ContentRowProps) 
         <div className="flex items-end justify-between mb-8">
           <div className="space-y-1">
              <div className="h-1 w-12 bg-primary rounded-full mb-2" />
-             <h2 className="text-2xl md:text-3xl font-black uppercase tracking-[0.2em] text-white">
+             <h2 className="text-2xl md:text-3xl font-black uppercase tracking-[0.2em] text-foreground">
                {title}
              </h2>
           </div>
@@ -65,9 +65,9 @@ export const ContentRow = ({ title, items, type, isTrending }: ContentRowProps) 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {items.map((item, index) => (
-            <div key={(item as any).id || (item as any).mal_id || (item as any)._id || index} className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[220px] relative group/card">
+            <div key={(item as any).id || (item as any).mal_id || (item as any)._id || index} className="flex-shrink-0 w-[115px] min-[380px]:w-[120px] sm:w-[160px] md:w-[200px] relative group/card">
               {isTrending && (
-                <div className="absolute -left-10 bottom-4 text-[120px] font-black text-white/10 leading-none select-none pointer-events-none group-hover/card:text-primary/20 transition-colors duration-500 italic">
+                <div className="absolute -left-10 bottom-4 text-[120px] font-black text-foreground/10 leading-none select-none pointer-events-none group-hover/card:text-primary/20 transition-colors duration-500 italic">
                   {index + 1}
                 </div>
               )}

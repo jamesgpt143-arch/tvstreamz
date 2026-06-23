@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,20 +56,16 @@ const CustomChannels = () => {
     setLoading(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin");
-        setIsAdmin(!!(roles && roles.length > 0));
+      const resAuth = await fetch('/api/auth');
+      if (resAuth.ok) {
+        const dataAuth = await resAuth.json();
+        setUser(dataAuth.isAdmin ? { id: 'admin' } : null);
+        setIsAdmin(dataAuth.isAdmin);
       }
 
-      const { data, error } = await supabase
-        .from('custom_channels')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
+      const res = await fetch('/api/custom_channels');
+      if (res.ok) {
+        const data = await res.json();
         setChannels(data as CustomChannel[]);
       }
     } catch (err) {
@@ -120,44 +116,30 @@ const CustomChannels = () => {
       user_id: user.id
     };
 
-    if (formData.id) {
-      // UPDATE EXISTING CHANNEL (Walang notification kapag nag-edit lang)
-      const { error } = await supabase.from('custom_channels').update(payload).eq('id', formData.id);
-      if (error) toast.error("Error updating channel");
-      else toast.success("Channel updated!");
-    } else {
-      // INSERT NEW CHANNEL
-      const { error } = await supabase.from('custom_channels').insert([payload]);
-      if (error) {
-        toast.error("Error adding channel");
-      } else {
-        toast.success("Channel added!");
+    try {
+      const res = await fetch('/api/custom_channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, id: formData.id })
+      });
+      if (res.ok) {
+        toast.success(formData.id ? "Channel updated!" : "Channel added!");
         
-        // ==========================================
-        // AUTOMATIC NOTIFICATION LOGIC
-        // ==========================================
-        try {
-          // 1. Kunin ang Username ng nag-upload
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('user_id', user.id)
-            .single();
-            
-          const uploaderName = profile?.username || 'Isang user';
-
-          // 2. Mag-send ng notification sa lahat
-          await supabase.from('notifications').insert({
-            title: "📺 Bagong Custom Channel!",
-            message: `Nag-add si ${uploaderName} ng bagong stream: "${formData.name}". Silipin na kung gumagana!`,
-            link_text: "Watch Now",
-            link_url: "/custom-channels"
+        if (!formData.id) {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: "📺 Bagong Custom Channel!",
+              message: `May nag-add ng bagong stream: "${formData.name}". Silipin na kung gumagana!`,
+            })
           });
-        } catch (err) {
-          console.error("Failed to push notification:", err);
         }
-        // ==========================================
+      } else {
+        toast.error("Error saving channel");
       }
+    } catch (err) {
+      toast.error("Error saving channel");
     }
 
     setIsModalOpen(false);
@@ -167,11 +149,16 @@ const CustomChannels = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this channel?")) return;
-    const { error } = await supabase.from('custom_channels').delete().eq('id', id);
-    if (error) toast.error("Error deleting channel");
-    else {
-      toast.success("Channel deleted");
-      fetchAuthAndChannels();
+    try {
+      const res = await fetch(`/api/custom_channels?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success("Channel deleted");
+        fetchAuthAndChannels();
+      } else {
+        toast.error("Error deleting channel");
+      }
+    } catch (err) {
+      toast.error("Error deleting channel");
     }
   };
 

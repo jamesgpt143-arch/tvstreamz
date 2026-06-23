@@ -142,11 +142,11 @@ const WatchLive = () => {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <Navbar />
 
       {/* Main Page Scroll */}
-      <ScrollArea className="flex-1 pt-16">
+      <div className="flex-1 pt-16 overflow-y-auto overflow-x-hidden custom-scrollbar">
         <main className="pb-12">
           <div className="container mx-auto px-4">
             {/* Back Button */}
@@ -159,157 +159,180 @@ const WatchLive = () => {
               </Button>
             </div>
 
-            {/* Player Section */}
-            <div className="max-w-4xl mx-auto w-full">
-              {/* Channel Info */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={proxyLogo(channel.logo)}
-                    alt={channel.name}
-                    className="w-10 h-10 object-contain rounded-lg bg-secondary p-1.5"
-                  />
-                  <div>
-                    <h1 className="text-lg font-bold">{channel.name}</h1>
+            {/* Split Layout */}
+            <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full">
+              
+              {/* Left Column: Player Section */}
+              <div className="flex-1 w-full min-w-0">
+                {/* Channel Info */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={proxyLogo(channel.logo)}
+                      alt={channel.name}
+                      className="w-10 h-10 object-contain rounded-lg bg-secondary p-1.5"
+                    />
+                    <div>
+                      <h1 className="text-lg font-bold">{channel.name}</h1>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => toggleFavorite(channel, e)}
+                    className={cn(
+                      "rounded-full transition-all duration-300 h-10 w-10",
+                      isFavorite 
+                        ? "text-primary bg-primary/10 hover:bg-primary/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    )}
+                  >
+                    <Heart className={cn("w-5 h-5", isFavorite && "fill-current scale-110")} />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => toggleFavorite(channel, e)}
-                  className={cn(
-                    "rounded-full transition-all duration-300 h-10 w-10",
-                    isFavorite 
-                      ? "text-primary bg-primary/10 hover:bg-primary/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  )}
-                >
-                  <Heart className={cn("w-5 h-5", isFavorite && "fill-current scale-110")} />
-                </Button>
+
+                {/* Player */}
+                <LivePlayer 
+                  channel={channel}
+                />
+
+                {/* Share Button */}
+                <div className="flex justify-start mt-3">
+                  <ShareButton title={`Watch ${channel.name} - Live TV`} />
+                </div>
               </div>
 
-              {/* Player */}
-              <LivePlayer 
-                channel={channel}
-              />
+              {/* Right Column: Other Channels */}
+              {allChannels.length > 1 && (
+                <div className="w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col">
+                  <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start justify-between gap-3 mb-3">
+                    <h2 className="text-sm font-semibold">Other Channels</h2>
+                    
+                    <div className="flex items-center gap-2 w-full lg:w-auto">
+                      {/* Category Filter */}
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-[140px] lg:flex-1 h-8 text-xs bg-card">
+                          <SelectValue placeholder="Genre" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          {CATEGORIES.map(cat => (
+                            <SelectItem key={cat} value={cat}>
+                              <div className="flex items-center gap-2">
+                                {cat === 'Favorites' ? <Star className="w-3 h-3 text-primary" /> : <div className="w-3" />}
+                                <span>{cat === 'All' ? 'All Channels' : cat}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-              {/* Share Button & Optional Metadata */}
-              <div className="flex justify-start mt-3">
-                <ShareButton title={`Watch ${channel.name} - Live TV`} />
-              </div>
-            </div>
-
-            {/* Other Channels - Separate Scrollable Section */}
-            {allChannels.length > 1 && (
-              <div className="mt-6 max-w-4xl mx-auto w-full">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                  <h2 className="text-sm font-semibold">Other Channels</h2>
-                  
-                  <div className="flex items-center gap-2">
-                    {/* Category Filter */}
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
-                        <SelectValue placeholder="Genre" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        {CATEGORIES.map(cat => (
-                          <SelectItem key={cat} value={cat}>
+                      {/* Sort Dropdown */}
+                      <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                        <SelectTrigger className="w-[120px] lg:flex-1 h-8 text-xs bg-card">
+                          <SelectValue placeholder="Sort" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="a-z">
                             <div className="flex items-center gap-2">
-                              {cat === 'Favorites' ? <Star className="w-3 h-3 text-primary" /> : <div className="w-3" />}
-                              <span>{cat === 'All' ? 'All Channels' : cat}</span>
+                              <ArrowUpAZ className="w-3 h-3" />
+                              <span>A-Z</span>
                             </div>
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          <SelectItem value="popular">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="w-3 h-3" />
+                              <span>Popular</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="recent">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3" />
+                              <span>Recent</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="rounded-xl bg-muted/30 dark:bg-card/30 p-2 shadow-inner border-2 border-primary/20 dark:border-primary/30 flex-1">
+                    <div className="h-[400px] lg:h-[calc(100vh-280px)] lg:max-h-[600px] overflow-y-auto custom-scrollbar">
+                      <div className="flex flex-col gap-2 pr-2">
+                        {sortedOtherChannels.map((ch) => {
+                          const isFav = isInMyList(ch.id, 'channel');
+                          return (
+                            <div key={ch.id} className="relative group">
+                              <button
+                                onClick={() => handleChannelSwitch(ch.id)}
+                                className="w-full flex items-center gap-4 p-2.5 rounded-xl bg-background dark:bg-card/40 hover:bg-card hover:shadow-md hover:-translate-y-0.5 border border-border/50 dark:border-border/30 hover:border-primary/40 transition-all duration-300 overflow-hidden"
+                              >
+                                {/* Active Indicator / Glow on hover */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                    {/* Sort Dropdown */}
-                    <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                      <SelectTrigger className="w-[120px] h-8 text-xs bg-card">
-                        <SelectValue placeholder="Sort" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        <SelectItem value="a-z">
-                          <div className="flex items-center gap-2">
-                            <ArrowUpAZ className="w-3 h-3" />
-                            <span>A-Z</span>
+                                <div className="relative shrink-0">
+                                  <div className="w-14 h-14 rounded-xl bg-muted/50 dark:bg-background/60 shadow-sm border border-border/50 dark:border-border/40 flex items-center justify-center p-2 overflow-hidden relative">
+                                    <img
+                                      src={proxyLogo(ch.logo)}
+                                      alt={ch.name}
+                                      className="w-full h-full object-contain drop-shadow-sm transition-transform duration-500 group-hover:scale-110"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300">
+                                        <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col items-start pr-10 flex-1 min-w-0">
+                                  <p className="font-semibold text-sm text-foreground/80 group-hover:text-foreground transition-colors text-left truncate w-full">
+                                    {ch.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500/80 animate-pulse" />
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Live Now</span>
+                                  </div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={(e) => toggleFavorite(ch, e)}
+                                className={cn(
+                                  "absolute top-1/2 -translate-y-1/2 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 z-10",
+                                  isFav 
+                                    ? "bg-primary/20 text-primary shadow-sm" 
+                                    : "bg-background/80 backdrop-blur-md text-muted-foreground shadow-sm opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-background hover:scale-110"
+                                )}
+                              >
+                                <Heart className={cn("w-4 h-4", isFav && "fill-current")} />
+                              </button>
+                            </div>
+                          );
+                        })}
+
+                        {sortedOtherChannels.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            {selectedCategory === 'Favorites' ? (
+                              <>
+                                <Heart className="w-8 h-8 mb-2 text-muted-foreground opacity-20" />
+                                <p className="text-xs text-muted-foreground">No other favorites found.</p>
+                                <Button variant="link" size="sm" onClick={() => setSelectedCategory('All')} className="text-primary text-[10px] mt-1">
+                                  Browse All Channels
+                                </Button>
+                              </>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">No channels found in this category.</p>
+                            )}
                           </div>
-                        </SelectItem>
-                        <SelectItem value="popular">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>Popular</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="recent">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>Recent</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="border border-border rounded-xl bg-card/50 p-3">
-                  <ScrollArea className="h-[280px]">
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 pr-3">
-                      {sortedOtherChannels.map((ch) => {
-                        const isFav = isInMyList(ch.id, 'channel');
-                        return (
-                          <div key={ch.id} className="relative group">
-                            <button
-                              onClick={() => handleChannelSwitch(ch.id)}
-                              className="w-full flex flex-col items-center p-2 rounded-lg bg-background border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200"
-                            >
-                              <img
-                                src={proxyLogo(ch.logo)}
-                                alt={ch.name}
-                                className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-md bg-secondary/50 p-1"
-                              />
-                              <p className="font-medium text-[9px] sm:text-[10px] group-hover:text-primary transition-colors text-center mt-1.5 line-clamp-1 w-full">
-                                {ch.name}
-                              </p>
-                            </button>
-                            <button
-                              onClick={(e) => toggleFavorite(ch, e)}
-                              className={cn(
-                                "absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 z-10 backdrop-blur-md",
-                                isFav 
-                                  ? "bg-primary/20 text-primary opacity-100" 
-                                  : "bg-black/40 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white"
-                              )}
-                            >
-                              <Heart className={cn("w-2.5 h-2.5", isFav && "fill-current")} />
-                            </button>
-                          </div>
-                        );
-                      })}
-
-                      {sortedOtherChannels.length === 0 && (
-                        <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-                          {selectedCategory === 'Favorites' ? (
-                            <>
-                              <Heart className="w-8 h-8 mb-2 text-muted-foreground opacity-20" />
-                              <p className="text-xs text-muted-foreground">No other favorites found.</p>
-                              <Button variant="link" size="sm" onClick={() => setSelectedCategory('All')} className="text-primary text-[10px] mt-1">
-                                Browse All Channels
-                              </Button>
-                            </>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">No channels found in this category.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </main>
-      </ScrollArea>
+      </div>
     </div>
   );
 };

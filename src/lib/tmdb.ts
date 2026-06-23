@@ -43,6 +43,9 @@ export interface MovieDetails extends Movie {
   number_of_seasons?: number;
   number_of_episodes?: number;
   seasons?: Season[];
+  credits?: {
+    cast: { id: number; name: string; character: string; profile_path: string | null }[];
+  };
 }
 
 export interface TVShow {
@@ -135,6 +138,18 @@ export const fetchTrending = async (mediaType: 'movie' | 'tv' | 'all' = 'all', t
   return data.results;
 };
 
+export const fetchSimilar = async (id: number, type: 'movie' | 'tv'): Promise<Movie[]> => {
+  const response = await fetch(`${API_BASE_URL}/${type}/${id}/similar?api_key=${API_KEY}`);
+  const data = await response.json();
+  return data.results || [];
+};
+
+export const fetchRecommendations = async (id: number, type: 'movie' | 'tv'): Promise<Movie[]> => {
+  const response = await fetch(`${API_BASE_URL}/${type}/${id}/recommendations?api_key=${API_KEY}`);
+  const data = await response.json();
+  return data.results || [];
+};
+
 export const fetchPopularMovies = async (page = 1): Promise<Movie[]> => {
   const response = await fetch(`${API_BASE_URL}/movie/popular?api_key=${API_KEY}&page=${page}`);
   const data = await response.json();
@@ -160,12 +175,12 @@ export const fetchTopRatedTV = async (page = 1): Promise<TVShow[]> => {
 };
 
 export const fetchMovieDetails = async (movieId: number): Promise<MovieDetails> => {
-  const response = await fetch(`${API_BASE_URL}/movie/${movieId}?api_key=${API_KEY}`);
+  const response = await fetch(`${API_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&append_to_response=credits`);
   return response.json();
 };
 
 export const fetchTVDetails = async (tvId: number): Promise<MovieDetails> => {
-  const response = await fetch(`${API_BASE_URL}/tv/${tvId}?api_key=${API_KEY}`);
+  const response = await fetch(`${API_BASE_URL}/tv/${tvId}?api_key=${API_KEY}&append_to_response=credits`);
   return response.json();
 };
 

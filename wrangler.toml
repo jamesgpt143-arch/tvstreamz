@@ -1,0 +1,8 @@
+name = "tvstreamz"
+compatibility_date = "2024-03-20"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tvstreamz-db"
+database_id = "0430438d-d754-4d00-a9d0-f67c8a37c4a1"

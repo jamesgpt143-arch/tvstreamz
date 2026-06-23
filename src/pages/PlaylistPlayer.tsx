@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ShareButton } from "@/components/ShareButton";
-import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   Loader2, 
@@ -101,8 +100,15 @@ const PlaylistPlayer = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const res = await fetch("/api/auth");
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.isAdmin ? { role: 'admin' } : null);
+        }
+      } catch (e) {
+        setUser(null);
+      }
     };
     checkAuth();
     loadLocalData();
@@ -336,7 +342,7 @@ const PlaylistPlayer = () => {
   }, [channels, favorites]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pt-16 lg:pt-20">
+    <div className="min-h-screen bg-background text-foreground flex flex-col pt-16 lg:pt-20">
       <Navbar />
       
       <main className="flex-1 pb-20">
@@ -396,7 +402,7 @@ const PlaylistPlayer = () => {
 
                <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input 
                       placeholder="Paste M3U URL..." 
                       value={playlistUrl} 
@@ -428,7 +434,7 @@ const PlaylistPlayer = () => {
                          {activeChannel.logo ? (
                             <img src={getProxiedLogoUrl(activeChannel.logo, logoProxyUrl)} alt="" className="w-full h-full object-contain p-1.5" />
                          ) : (
-                            <Tv className="w-5 h-5 text-zinc-600" />
+                            <Tv className="w-5 h-5 text-muted-foreground" />
                          )}
                       </div>
                       <div>
@@ -469,7 +475,7 @@ const PlaylistPlayer = () => {
           ) : (
             <div className="mb-12 h-64 md:h-80 rounded-[3rem] bg-gradient-to-br from-muted/50 to-background border border-border flex flex-col items-center justify-center text-center p-8">
                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
-                  <Play className="w-10 h-10 text-zinc-800" fill="currentColor" />
+                  <Play className="w-10 h-10 text-foreground" fill="currentColor" />
                </div>
                <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">
                   No Active Stream
@@ -538,13 +544,13 @@ const PlaylistPlayer = () => {
                                 loading="lazy"
                               />
                            ) : (
-                              <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-black' : 'text-zinc-700'}`} />
+                              <Tv className={`w-8 h-8 ${activeChannel?.id === ch.id ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
                            )}
                         </div>
                         
                         <div className="p-2 sm:p-3 bg-inherit w-full">
                            <h3 className={`font-black text-[9px] sm:text-[10px] uppercase tracking-tight line-clamp-1 truncate text-center ${
-                             activeChannel?.id === ch.id ? 'text-black' : 'text-foreground'
+                             activeChannel?.id === ch.id ? 'text-primary-foreground' : 'text-foreground'
                            }`}>
                              {ch.name}
                            </h3>
@@ -576,7 +582,7 @@ const PlaylistPlayer = () => {
                {/* LOAD MORE BUTTON SA ILALIM NG GRID */}
                {/* ========================================== */}
                {filteredChannels.length > visibleCount && (
-                 <div className="col-span-full flex justify-center py-10 mt-4 border-t border-white/5">
+                 <div className="col-span-full flex justify-center py-10 mt-4 border-t border-border">
                    <Button 
                      onClick={() => setVisibleCount(prev => prev + 200)}
                      variant="outline"

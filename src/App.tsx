@@ -13,6 +13,7 @@ import WatchLive from "./pages/WatchLive";
 import LiveEvents from "./pages/LiveEvents";
 import WatchEvent from "./pages/WatchEvent";
 import Watch from "./pages/Watch";
+import Player from "./pages/Player";
 import Search from "./pages/Search";
 import MyList from "./pages/MyList";
 import Auth from "./pages/Auth";
@@ -28,17 +29,16 @@ import PlaylistPlayer from "./pages/PlaylistPlayer";
 
 import TempMail from "./pages/TempMail";
 import TextToSpeech from "./pages/TextToSpeech";
-import { BottomNav } from "./components/BottomNav";
+import { BottomNav } from "@/components/BottomNav";
+import { Sidebar } from "@/components/Sidebar";
+import { WelcomePopup } from "@/components/WelcomePopup";
 
 import CustomChannels from "./pages/CustomChannels";
-import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { MaintenanceOverlay } from '@/components/MaintenanceOverlay';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { SEOManager } from '@/components/SEOManager';
-import { CommunityChat } from '@/components/CommunityChat';
 import { useState, useEffect } from "react";
 import { useLocation, BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
@@ -75,29 +75,29 @@ const App = () => {
     const checkMaintenanceAndRole = async () => {
       try {
         // 1. Check Maintenance Setting
-        const { data: setting } = await supabase
-          .from("site_settings")
-          .select("value")
-          .eq("key", "maintenance_mode")
-          .maybeSingle();
-
-        const maintenanceVal = setting?.value as any;
-        if (maintenanceVal?.enabled) {
-          setMaintenance(maintenanceVal);
+        try {
+          const res = await fetch("/api/settings");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.maintenance_mode?.enabled) {
+              setMaintenance(data.maintenance_mode);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch settings", e);
         }
 
         // 2. Check User Role (for bypass)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: roles } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin");
-
-          if (roles && roles.length > 0) {
-            setIsAdmin(true);
+        try {
+          const res = await fetch("/api/auth");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.isAdmin) {
+              setIsAdmin(true);
+            }
           }
+        } catch (e) {
+          console.error("Failed to fetch auth", e);
         }
       } catch (error) {
         console.error("Maintenance check failed:", error);
@@ -152,38 +152,41 @@ const App = () => {
                 <SEOManager />
                 <Toaster />
                 <Sonner />
-                <UpdatePrompt />
                 <AnnouncementBar />
-                
-                <div className="pb-16 md:pb-0">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/movies" element={<Movies />} />
-                    <Route path="/tv-shows" element={<TVShows />} />
-                    <Route path="/anime" element={<Anime />} />
-                    <Route path="/manga" element={<Manga />} />
-                    <Route path="/manga/:mangaId" element={<MangaDetails />} />
-                    <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
-                    <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
-                    <Route path="/live-tv" element={<LiveTV />} />
-                    <Route path="/live-events" element={<LiveEvents />} />
-                    <Route path="/live-event/*" element={<WatchEvent />} />
-                    <Route path="/live/:channelId" element={<WatchLive />} />
-                    <Route path="/watch/:type/:id" element={<Watch />} />
-                    <Route path="/search" element={<Search />} />
-                    <Route path="/my-list" element={<MyList />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/iptv" element={<IPTV />} />
-                    <Route path="/temp-mail" element={<TempMail />} />
-                    <Route path="/text-to-speech" element={<TextToSpeech />} />
-                    <Route path="/custom-channels" element={<CustomChannels />} />
-                    <Route path="/playlist-player" element={<PlaylistPlayer />} />
+                <div className="flex bg-background min-h-screen">
+                  <Sidebar />
+                  <div className="flex-1 lg:pl-64 w-full relative pb-24 lg:pb-0">
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/movies" element={<Movies />} />
+                      <Route path="/tv-shows" element={<TVShows />} />
+                      <Route path="/anime" element={<Anime />} />
+                      <Route path="/manga" element={<Manga />} />
+                      <Route path="/manga/:mangaId" element={<MangaDetails />} />
+                      <Route path="/manga/:mangaId/read/:chapterId" element={<MangaReader />} />
+                      <Route path="/manga/:mangaId/read-comick/:chapterId" element={<ComickMangaReader />} />
+                      <Route path="/live-tv" element={<LiveTV />} />
+                      <Route path="/live-events" element={<LiveEvents />} />
+                      <Route path="/live-event/*" element={<WatchEvent />} />
+                      <Route path="/live/:channelId" element={<WatchLive />} />
+                      <Route path="/watch/:type/:id" element={<Watch />} />
+                      <Route path="/search" element={<Search />} />
+                      <Route path="/play/:type/:id" element={<Player />} />
+                      <Route path="/play/:type/:id/:season/:episode" element={<Player />} />
+                      <Route path="/my-list" element={<MyList />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/admin" element={<AdminDashboard />} />
+                      <Route path="/iptv" element={<IPTV />} />
+                      <Route path="/temp-mail" element={<TempMail />} />
+                      <Route path="/text-to-speech" element={<TextToSpeech />} />
+                      <Route path="/custom-channels" element={<CustomChannels />} />
+                      <Route path="/playlist-player" element={<PlaylistPlayer />} />
 
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </div>
                   <BottomNav />
-                  <CommunityChat />
+                  {/* CommunityChat disabled temporarily for Cloudflare migration */}
                 </div>
               </UserPreferencesProvider>
             </TooltipProvider>

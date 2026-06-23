@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,14 +25,12 @@ export const AppUpdateManager = () => {
   const fetchUpdateSettings = async () => {
     setIsFetching(true);
     try {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'app_update')
-        .maybeSingle();
-
-      if (data?.value) {
-        setVersionData(data.value as any);
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.app_update) {
+          setVersionData(data.app_update);
+        }
       }
     } catch (error) {
       console.error('Error fetching update settings:', error);
@@ -44,14 +42,13 @@ export const AppUpdateManager = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .upsert({ 
-          key: 'app_update', 
-          value: versionData 
-        }, { onConflict: 'key' });
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'app_update', value: versionData })
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Failed to save settings');
 
       toast({
         title: "Update Settings Saved!",

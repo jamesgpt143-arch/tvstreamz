@@ -12,6 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const Movies = () => {
   usePagePopup('movies');
@@ -76,97 +83,118 @@ const Movies = () => {
     }
   };
 
+  const renderFilters = () => (
+    <>
+      {/* Sort */}
+      <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+          <Filter className="w-3 h-3 text-primary" /> Sort
+        </label>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+            <SelectValue placeholder="Sort By" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+            <SelectItem value="popularity.desc">Most Popular</SelectItem>
+            <SelectItem value="primary_release_date.desc">Newest First</SelectItem>
+            <SelectItem value="primary_release_date.asc">Oldest First</SelectItem>
+            <SelectItem value="vote_average.desc">Highest Rated</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Genre */}
+      <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+          <Star className="w-3 h-3 text-primary" /> Genre
+        </label>
+        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+          <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+            <SelectValue placeholder="All Genres" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+            <SelectItem value="all">All Genres</SelectItem>
+            {MOVIE_GENRES.map(g => (
+              <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Year */}
+      <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+          <Calendar className="w-3 h-3 text-primary" /> Year
+        </label>
+        <Select value={year} onValueChange={setYear}>
+          <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+            <SelectValue placeholder="All Years" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+            <SelectItem value="all">All Years</SelectItem>
+            {years.map(y => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Min Rating */}
+      <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+          <Star className="w-3 h-3 text-primary" /> Min Rating
+        </label>
+        <Select value={minRating} onValueChange={setMinRating}>
+          <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+            <SelectValue placeholder="All Ratings" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+            <SelectItem value="0">All Ratings</SelectItem>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(r => (
+              <SelectItem key={r} value={r.toString()}>{r}+ Stars</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="pt-24 pb-20 md:pb-12">
+      <main className="pt-20 lg:pt-8 pb-20 md:pb-12">
         <div className="container mx-auto px-4">
           
-          <div className="mb-10">
-            <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight">{getDynamicTitle()}</h1>
-            <p className="text-muted-foreground transition-all duration-300">
-              {movies.length} titles available
-            </p>
+          {/* Filters - Desktop */}
+          <div className="hidden md:flex flex-wrap items-end gap-6 mb-12 p-6 bg-card/30 backdrop-blur-sm border border-border/50 rounded-3xl shadow-xl">
+            {renderFilters()}
           </div>
 
-          {/* New Filter Bar */}
-          <div className="flex flex-wrap items-end gap-6 mb-12 p-6 bg-card/30 backdrop-blur-sm border border-border/50 rounded-3xl shadow-xl">
-            {/* Sort */}
-            <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-                <Filter className="w-3 h-3 text-primary" /> Sort
-              </label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="popularity.desc">Most Popular</SelectItem>
-                  <SelectItem value="primary_release_date.desc">Newest First</SelectItem>
-                  <SelectItem value="primary_release_date.asc">Oldest First</SelectItem>
-                  <SelectItem value="vote_average.desc">Highest Rated</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Genre */}
-            <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-                <Star className="w-3 h-3 text-primary" /> Genre
-              </label>
-              <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
-                  <SelectValue placeholder="All Genres" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="all">All Genres</SelectItem>
-                  {MOVIE_GENRES.map(g => (
-                    <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Year */}
-            <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-                <Calendar className="w-3 h-3 text-primary" /> Year
-              </label>
-              <Select value={year} onValueChange={setYear}>
-                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
-                  <SelectValue placeholder="All Years" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="all">All Years</SelectItem>
-                  {years.map(y => (
-                    <SelectItem key={y} value={y}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Min Rating */}
-            <div className="space-y-2.5 min-w-[140px] flex-1 sm:flex-none">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-                <Star className="w-3 h-3 text-primary" /> Min Rating
-              </label>
-              <Select value={minRating} onValueChange={setMinRating}>
-                <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
-                  <SelectValue placeholder="All Ratings" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="0">All Ratings</SelectItem>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(r => (
-                    <SelectItem key={r} value={r.toString()}>{r}+ Stars</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Filters - Mobile */}
+          <div className="md:hidden flex justify-start mb-6">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-card/30 backdrop-blur-sm border-border/50 rounded-xl h-11 px-6 shadow-lg">
+                  <Filter className="w-4 h-4 text-primary" /> 
+                  <span className="font-bold tracking-widest uppercase text-xs">Filters</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="top" className="rounded-b-3xl border-b-white/10 bg-background/95 backdrop-blur-xl max-h-[85vh] overflow-y-auto">
+                <SheetHeader className="mb-6">
+                  <SheetTitle className="text-left font-black tracking-widest uppercase text-lg flex items-center gap-2">
+                    <Filter className="w-5 h-5 text-primary" /> Filters
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-6 pb-8 pt-8">
+                  {renderFilters()}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
           {/* Movies Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
             {movies.map((movie) => (
               <ContentCard key={movie.id} item={movie} type="movie" />
             ))}

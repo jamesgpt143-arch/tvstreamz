@@ -1,5 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
-
 let cachedIptvConfig: Record<string, string> | null = null;
 let lastConfigFetch = 0;
 const CONFIG_TTL = 10 * 60 * 1000; // 10 minutes
@@ -7,15 +5,13 @@ const CONFIG_TTL = 10 * 60 * 1000; // 10 minutes
 export const getIptvConfig = async () => {
   try {
     if (!cachedIptvConfig || (Date.now() - lastConfigFetch > CONFIG_TTL)) {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'iptv_config')
-        .single();
-      
-      if (data?.value) {
-        cachedIptvConfig = data.value as Record<string, string>;
-        lastConfigFetch = Date.now();
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.iptv_config) {
+          cachedIptvConfig = data.iptv_config as Record<string, string>;
+          lastConfigFetch = Date.now();
+        }
       }
     }
     return cachedIptvConfig;

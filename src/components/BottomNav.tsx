@@ -14,20 +14,28 @@ export const BottomNav = () => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border/50 pb-safe">
-      <div className="flex items-center justify-around h-16">
+    <nav className="fixed bottom-4 left-4 right-4 z-[60] lg:hidden bg-background/90 backdrop-blur-md border border-border rounded-[2rem] shadow-2xl">
+      <div className="flex items-center justify-around h-16 px-2 relative overflow-hidden rounded-[2rem]">
+        {/* Ambient Bottom Glow */}
+        <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 w-[80%] h-10 bg-primary/20 blur-2xl pointer-events-none" />
+        
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || 
+            (item.path !== '/' && location.pathname.startsWith(item.path)) ||
+            (item.path === '/movies' && (location.pathname.startsWith('/watch/movie') || location.pathname.startsWith('/play/movie'))) ||
+            (item.path === '/tv-shows' && (location.pathname.startsWith('/watch/tv') || location.pathname.startsWith('/play/tv'))) ||
+            (item.path === '/anime' && (location.pathname.startsWith('/watch/anime') || location.pathname.startsWith('/play/anime'))) ||
+            (item.path === '/live-tv' && location.pathname.startsWith('/live/'));
           
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-300 relative z-10 ${
                 isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+                  ? 'text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]'
+                  : 'text-muted-foreground hover:text-primary/70'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />

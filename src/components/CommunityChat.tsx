@@ -185,7 +185,7 @@ export const CommunityChat = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-2xl transition-all hover:scale-110 flex items-center justify-center group relative"
+          className="bg-foreground hover:bg-foreground/90 text-background rounded-full p-4 shadow-2xl transition-all hover:scale-110 flex items-center justify-center group relative"
         >
           <MessageCircle className="w-6 h-6" />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full animate-pulse"></span>
@@ -197,11 +197,11 @@ export const CommunityChat = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 h-[500px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="bg-card/95 text-foreground backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 h-[500px] max-h-[65vh] md:max-h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
-          <div className="p-4 border-b border-border bg-primary/10 flex items-center justify-between">
+          <div className="p-4 border-b border-border bg-muted flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/20 text-primary">
+              <div className="p-2 rounded-lg bg-foreground/10 text-foreground">
                 <MessageSquare className="w-4 h-4" />
               </div>
               <div>
@@ -223,7 +223,7 @@ export const CommunityChat = () => {
           <ScrollArea className="flex-1 px-10 py-4">
             {isLoading ? (
               <div className="h-full flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <Loader2 className="w-6 h-6 animate-spin text-foreground" />
               </div>
             ) : messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
@@ -252,13 +252,13 @@ export const CommunityChat = () => {
 
                     <div className="group relative max-w-[85%]">
                       {msg.reply_to_username && (
-                        <div className="text-[9px] mb-1 flex flex-col gap-1 text-primary opacity-80">
+                        <div className="text-[9px] mb-1 flex flex-col gap-1 text-foreground opacity-80">
                           <div className="flex items-center gap-1 italic">
                             <CornerDownRight className="w-3 h-3" />
                             Replying to @{msg.reply_to_username}
                           </div>
                           {msg.parent_id && messages.find(m => m.id === msg.parent_id) && (
-                            <div className="bg-primary/10 p-1.5 rounded-md border border-primary/10 text-foreground/80 line-clamp-2 italic shadow-sm">
+                            <div className="bg-foreground/5 p-1.5 rounded-md border border-foreground/10 text-foreground/80 line-clamp-2 italic shadow-sm">
                               "{messages.find(m => m.id === msg.parent_id)?.message}"
                             </div>
                           )}
@@ -268,8 +268,8 @@ export const CommunityChat = () => {
                         className={cn(
                           "p-3 rounded-2xl text-sm shadow-sm break-all whitespace-pre-wrap overflow-hidden max-w-full",
                           msg.user_id === user?.id 
-                            ? "bg-primary text-primary-foreground rounded-tr-none" 
-                            : "bg-muted border border-border rounded-tl-none"
+                            ? "bg-foreground text-background rounded-tr-none" 
+                            : "bg-muted text-foreground border border-border rounded-tl-none"
                         )}
                       >
                         {msg.message}
@@ -284,7 +284,7 @@ export const CommunityChat = () => {
                         {user && msg.user_id !== user.id && (
                           <button
                             onClick={() => setReplyingTo(msg)}
-                            className="p-1 text-primary/70 hover:text-primary transition-all bg-card border border-border rounded-full shadow-md"
+                            className="p-1 text-muted-foreground hover:text-foreground transition-all bg-card border border-border rounded-full shadow-md"
                             title="Reply"
                           >
                             <Reply className="w-3 h-3" />
@@ -312,7 +312,7 @@ export const CommunityChat = () => {
           {/* Input Area */}
           <div className="p-4 border-t border-border bg-muted/30">
             {!user ? (
-              <div className="text-center p-2 bg-primary/10 rounded-xl border border-primary/20">
+              <div className="text-center p-2 bg-foreground/5 rounded-xl border border-foreground/10">
                 <p className="text-xs font-bold mb-2">Login para makasali sa usapan</p>
                 <Button asChild size="sm" className="w-full gap-2 text-xs h-8">
                   <Link to="/auth"><LogIn className="w-3 h-3" /> Sign In</Link>
@@ -321,9 +321,9 @@ export const CommunityChat = () => {
             ) : (
               <form onSubmit={handleSendMessage} className="space-y-2">
                 {replyingTo && (
-                  <div className="flex flex-col bg-primary/10 p-2 rounded-lg border border-primary/20 animate-in slide-in-from-bottom-1 gap-1">
+                  <div className="flex flex-col bg-foreground/5 p-2 rounded-lg border border-foreground/10 animate-in slide-in-from-bottom-1 gap-1">
                     <div className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1 text-primary font-bold">
+                      <div className="flex items-center gap-1 text-foreground font-bold">
                         <Reply className="w-3 h-3" /> Replying to @{replyingTo.username}
                       </div>
                       <button 
@@ -350,7 +350,7 @@ export const CommunityChat = () => {
                     type="submit" 
                     size="icon" 
                     disabled={!newMessage.trim() || isSending}
-                    className="shrink-0 h-10 w-10 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    className="shrink-0 h-10 w-10 rounded-xl bg-foreground hover:bg-foreground/90 text-background shadow-lg"
                   >
                     {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>

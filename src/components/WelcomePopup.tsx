@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { X, Coffee } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 // BAGO: I-import ang Capacitor Browser plugin para magbukas sa labas ng app ang mga links
 import { Browser } from '@capacitor/browser';
 
@@ -36,22 +35,22 @@ export const WelcomePopup = () => {
   useEffect(() => {
     const fetchSettingsAndShow = async () => {
       try {
-        const { data: settings, error } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'welcome_popup')
-          .single();
-
-        if (!error && settings?.value) {
-          const popupData = { ...defaultData, ...(settings.value as unknown as WelcomePopupData) };
-          setData(popupData);
-          
-          // Only show if enabled (appears every time homepage is opened)
-          if (popupData.enabled) {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.welcome_popup) {
+            const popupData = { ...defaultData, ...(data.welcome_popup as WelcomePopupData) };
+            setData(popupData);
+            
+            // Only show if enabled (appears every time homepage is opened)
+            if (popupData.enabled) {
+              setIsOpen(true);
+            }
+          } else {
+            // Fallback to default - show every time
             setIsOpen(true);
           }
         } else {
-          // Fallback to default - show every time
           setIsOpen(true);
         }
       } catch (error) {

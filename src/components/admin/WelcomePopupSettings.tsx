@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { Loader2, Save, X, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Json } from '@/integrations/supabase/types';
+
 
 interface WelcomePopupData {
   enabled: boolean;
@@ -45,18 +45,12 @@ export const WelcomePopupSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const { data: settings, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'welcome_popup')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (settings?.value) {
-        setData({ ...defaultData, ...(settings.value as unknown as WelcomePopupData) });
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.welcome_popup) {
+          setData({ ...defaultData, ...(data.welcome_popup as unknown as WelcomePopupData) });
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -69,14 +63,12 @@ export const WelcomePopupSettings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .update({
-          value: data as unknown as Json
-        })
-        .eq('key', 'welcome_popup');
-
-      if (error) throw error;
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'welcome_popup', value: data })
+      });
+      if (!res.ok) throw new Error('Failed to save settings');
       toast.success('Welcome popup settings saved!');
     } catch (error) {
       console.error('Error saving settings:', error);

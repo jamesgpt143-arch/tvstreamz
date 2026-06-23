@@ -52,7 +52,7 @@ export const RecommendationsRow = ({ className }: RecommendationsRowProps) => {
         </h2>
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
           {recommendations.map((item) => (
-            <div key={item.id} className="flex-shrink-0 w-36 sm:w-44">
+            <div key={item.id} className="flex-shrink-0 w-[115px] min-[380px]:w-[120px] sm:w-44 md:w-52">
               <ContentCard
                 item={item}
                 type={lastWatched.type}

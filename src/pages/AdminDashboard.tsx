@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,31 +54,20 @@ export default function AdminDashboard() {
 
   const checkAdminAndLoadData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        navigate("/auth");
-        return;
+      const res = await fetch("/api/auth");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isAdmin) {
+          setIsAdmin(true);
+          try {
+            await loadAnalytics();
+          } catch (analyticsError) {
+            console.error("Error loading analytics:", analyticsError);
+          }
+          return;
+        }
       }
-
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin");
-
-      if (rolesError || !roles || roles.length === 0) {
-        navigate("/auth");
-        return;
-      }
-
-      setIsAdmin(true);
-
-      try {
-        await loadAnalytics();
-      } catch (analyticsError) {
-        console.error("Error loading analytics:", analyticsError);
-      }
+      navigate("/auth");
     } catch (error) {
       console.error("Error checking admin status:", error);
       navigate("/auth");
@@ -89,73 +77,28 @@ export default function AdminDashboard() {
   };
 
   const loadAnalytics = async () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const last7Days = subDays(today, 7);
-    const last30Days = subDays(today, 30);
+    try {
+      const res = await fetch("/api/analytics");
+      if (res.ok) {
+        const data = await res.json();
+        setTotals({
+          totalViews: data.totalViews || 0,
+          todayViews: data.todayViews || 0,
+          uniqueVisitors: data.uniqueVisitors || 0,
+          weeklyVisitors: data.weeklyVisitors || 0,
+        });
 
-    // Get total views
-    const { count: totalViews } = await supabase
-      .from("site_analytics")
-      .select("*", { count: "exact", head: true });
-
-    // Get today's views
-    const { count: todayViews } = await supabase
-      .from("site_analytics")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", today.toISOString());
-
-    // Get unique visitors
-    const { data: allVisitors } = await supabase
-      .from("site_analytics")
-      .select("visitor_id");
-    const uniqueVisitors = new Set(allVisitors?.map((v) => v.visitor_id)).size;
-
-    // Get weekly visitors
-    const { data: weekVisitors } = await supabase
-      .from("site_analytics")
-      .select("visitor_id")
-      .gte("created_at", last7Days.toISOString());
-    const weeklyVisitors = new Set(weekVisitors?.map((v) => v.visitor_id)).size;
-
-    setTotals({
-      totalViews: totalViews || 0,
-      todayViews: todayViews || 0,
-      uniqueVisitors,
-      weeklyVisitors,
-    });
-
-    const { data: dailyData } = await supabase.rpc('get_daily_analytics_stats', { days_back: 30 });
-    const dailyStatsArray: DailyStats[] = (dailyData || []).map((item: { stat_date: string; view_count: number; visitor_count: number }) => ({
-      date: format(new Date(item.stat_date), "MMM dd"),
-      views: Number(item.view_count),
-      visitors: Number(item.visitor_count),
-    }));
-    setDailyStats(dailyStatsArray);
-
-    const { data: contentData } = await supabase.from("site_analytics").select("content_title, content_type").not("content_id", "is", null).limit(500);
-    const contentMap = new Map<string, { type: string; count: number }>();
-    contentData?.forEach((item) => {
-      if (item.content_title) {
-        const key = item.content_title;
-        if (!contentMap.has(key)) {
-          contentMap.set(key, { type: item.content_type || "movie", count: 0 });
+        if (data.topContent) {
+          setTopContent(data.topContent);
         }
-        contentMap.get(key)!.count++;
-      }
-    });
-    const topContentArray: ContentStats[] = [];
-    contentMap.forEach((value, key) => { topContentArray.push({ title: key, type: value.type, count: value.count }); });
-    topContentArray.sort((a, b) => b.count - a.count);
-    setTopContent(topContentArray.slice(0, 10));
 
-    const { data: pageData } = await supabase.from("site_analytics").select("page_path").limit(500);
-    const pageMap = new Map<string, number>();
-    pageData?.forEach((item) => { pageMap.set(item.page_path, (pageMap.get(item.page_path) || 0) + 1); });
-    const topPagesArray: PageStats[] = [];
-    pageMap.forEach((count, path) => { topPagesArray.push({ path, count }); });
-    topPagesArray.sort((a, b) => b.count - a.count);
-    setTopPages(topPagesArray.slice(0, 5));
+        // Daily stats and top pages aren't returned yet, set to empty for now
+        setDailyStats([]);
+        setTopPages([]);
+      }
+    } catch (error) {
+      console.error("Error loading analytics from API", error);
+    }
   };
 
   // Menu Configuration

@@ -18,6 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type SortOption = 'a-z' | 'popular' | 'recent';
 
@@ -88,31 +95,8 @@ const LiveTV = () => {
       <main className="pt-24 pb-20 md:pb-12">
         <div className="container mx-auto px-4">
           
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
-                  <Radio className="w-5 h-5 text-destructive animate-pulse" />
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{getDynamicTitle()}</h1>
-              </div>
-              <div className="flex items-center gap-4">
-                <p className="text-muted-foreground transition-all duration-300">
-                  {channels.length} channels available
-                </p>
-                <Link
-                  to="/live-events"
-                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs font-bold border border-primary/20"
-                >
-                  <Trophy className="w-3.5 h-3.5" />
-                  LIVE EVENTS
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="flex flex-wrap items-end gap-6 mb-12 p-6 bg-card/30 backdrop-blur-sm border border-border/50 rounded-3xl shadow-xl">
+          {/* Filters - Desktop */}
+          <div className="hidden md:flex flex-wrap items-end gap-6 mb-12 p-6 bg-card/30 backdrop-blur-sm border border-border/50 rounded-3xl shadow-xl">
             {/* Sort */}
             <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
@@ -148,6 +132,60 @@ const LiveTV = () => {
             </div>
           </div>
 
+          {/* Filters - Mobile */}
+          <div className="md:hidden flex justify-start mb-6">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-card/30 backdrop-blur-sm border-border/50 rounded-xl h-11 px-6 shadow-lg">
+                  <Filter className="w-4 h-4 text-primary" /> 
+                  <span className="font-bold tracking-widest uppercase text-xs">Filters</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="top" className="rounded-b-3xl border-b-white/10 bg-background/95 backdrop-blur-xl max-h-[85vh] overflow-y-auto">
+                <SheetHeader className="mb-6">
+                  <SheetTitle className="text-left font-black tracking-widest uppercase text-lg flex items-center gap-2">
+                    <Filter className="w-5 h-5 text-primary" /> Filters
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-6 pb-8 pt-8">
+                  {/* Sort */}
+                  <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                      <Filter className="w-3 h-3 text-primary" /> Sort
+                    </label>
+                    <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
+                      <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                        <SelectValue placeholder="Sort By" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                        <SelectItem value="a-z">Alphabetical (A-Z)</SelectItem>
+                        <SelectItem value="popular">Most Popuar</SelectItem>
+                        <SelectItem value="recent">Recently Added</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Genre / Category */}
+                  <div className="space-y-2.5 min-w-[160px] flex-1 sm:flex-none">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                      <Star className="w-3 h-3 text-primary" /> Genre
+                    </label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-full bg-background/50 border-border/50 hover:border-primary/50 transition-colors h-11 rounded-xl">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border bg-popover/95 backdrop-blur-md">
+                        {CATEGORIES.map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat === 'All' ? 'All Channels' : cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
           {/* Channels Grid */}
           {isLoading ? (
             <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8">
@@ -158,19 +196,7 @@ const LiveTV = () => {
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8 min-h-[400px]">
               
-              {/* KO-FI SUPPORT CARD */}
-              <a 
-                href="https://ko-fi.com/james17582" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="group relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 hover:border-amber-500/50 transition-all flex flex-col items-center justify-center p-4 text-center shadow-lg hover:shadow-amber-500/10"
-              >
-                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-amber-500 rounded-full flex items-center justify-center mb-3 shadow-xl group-hover:scale-110 transition-transform">
-                  <Coffee className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
-                </div>
-                <h3 className="font-bold text-amber-500 text-xs sm:text-lg">Buy Us a Coffee</h3>
-                <p className="text-[10px] sm:text-sm text-muted-foreground mt-1 hidden sm:block">Please support our hosting servers <br/> so we can keep this free!</p>
-              </a>
+
 
               {/* Channel Cards */}
               {channels.map((channel) => (

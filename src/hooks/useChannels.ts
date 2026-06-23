@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface DbChannel {
   id: string;
@@ -91,22 +90,16 @@ export function useChannels(includeInactive = false) {
   return useQuery({
     queryKey: ['channels', includeInactive],
     queryFn: async () => {
-      let query = supabase
-        .from('channels')
-        .select('*')
-        .order('sort_order', { ascending: true, nullsFirst: false })
-        .order('name', { ascending: true });
-
-      if (!includeInactive) {
-        query = query.eq('is_active', true);
-      }
-
-      const { data, error } = await query;
-      if (error) {
+      const url = `/api/channels?includeInactive=${includeInactive}`;
+      const res = await fetch(url);
+      
+      if (!res.ok) {
         const cached = localStorage.getItem(cacheKey);
         if (cached) return JSON.parse(cached) as DbChannel[];
-        throw error;
+        throw new Error('Failed to fetch channels');
       }
+
+      const data = await res.json();
 
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data));
@@ -122,12 +115,10 @@ export function useChannels(includeInactive = false) {
       return undefined;
     },
     initialDataUpdatedAt: () => {
-      // If we have local storage data, mark it as completely stale (epoch 0)
-      // so it immediately refetches in the background to get fresh data
       return localStorage.getItem(`tvstreamz_channels_cache_${includeInactive}`) ? 0 : undefined;
     },
-    staleTime: 1000 * 60 * 15, // 15 minutes stale time
-    gcTime: 1000 * 60 * 60 * 24, // 24 hours retention
+    staleTime: 1000 * 60 * 15,
+    gcTime: 1000 * 60 * 60 * 24,
   });
 }
 
@@ -135,13 +126,12 @@ export function useChannel(id: string) {
   return useQuery({
     queryKey: ['channel', id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
+      const res = await fetch(`/api/channels`);
+      if (!res.ok) throw new Error('Failed to fetch channels');
+      const channels = await res.json() as DbChannel[];
+      const channel = channels.find(c => c.id === id);
+      if (!channel) throw new Error('Channel not found');
+      return channel;
     },
     enabled: !!id,
   });
@@ -152,13 +142,14 @@ export function useCreateChannel() {
 
   return useMutation({
     mutationFn: async (channel: ChannelInput) => {
-      const { data, error } = await supabase
-        .from('channels')
-        .insert(channel)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(channel)
+      });
+      if (!res.ok) throw new Error('Failed to create channel');
+      const data = await res.json();
+      return { id: data.id, ...channel } as unknown as DbChannel;
     },
     onSuccess: () => {
       localStorage.removeItem('tvstreamz_channels_cache_true');
@@ -173,14 +164,13 @@ export function useUpdateChannel() {
 
   return useMutation({
     mutationFn: async ({ id, ...channel }: Partial<ChannelInput> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('channels')
-        .update(channel)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as DbChannel;
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...channel })
+      });
+      if (!res.ok) throw new Error('Failed to update channel');
+      return { id, ...channel } as unknown as DbChannel;
     },
     onSuccess: () => {
       localStorage.removeItem('tvstreamz_channels_cache_true');
@@ -195,11 +185,8 @@ export function useDeleteChannel() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('channels')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      const res = await fetch(`/api/channels?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete channel');
     },
     onSuccess: () => {
       localStorage.removeItem('tvstreamz_channels_cache_true');

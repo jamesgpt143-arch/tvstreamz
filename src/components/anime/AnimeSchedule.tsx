@@ -37,7 +37,7 @@ export const AnimeSchedule = () => {
   }, [activeDay]);
 
   return (
-    <section className="py-16 md:py-24 border-t border-white/5 bg-background relative overflow-hidden">
+    <section className="pt-4 pb-16 md:pt-6 md:pb-24 bg-background relative overflow-hidden">
       {/* Decorative background blur */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-orange-500/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -46,11 +46,11 @@ export const AnimeSchedule = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Calendar className="w-6 h-6 text-orange-500" />
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-[0.1em] text-white">
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-[0.1em] text-foreground">
                 Release Schedule
               </h2>
             </div>
-            <p className="text-zinc-400 font-medium tracking-wide">
+            <p className="text-muted-foreground font-medium tracking-wide">
               Catch new episodes of your favorite currently airing anime.
             </p>
           </div>
@@ -68,8 +68,8 @@ export const AnimeSchedule = () => {
                 onClick={() => setActiveDay(day)}
                 className={`flex flex-col items-center min-w-[100px] py-3 px-4 rounded-2xl border transition-all duration-300 ${
                   isActive
-                    ? 'bg-orange-500 text-black border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)] scale-105 font-black'
-                    : 'bg-zinc-900/50 text-zinc-400 border-white/5 hover:bg-zinc-800 hover:text-white font-bold'
+                    ? 'bg-orange-500 text-white border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)] scale-105 font-black'
+                    : 'bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground font-bold shadow-sm'
                 }`}
               >
                 <span className="text-[10px] uppercase tracking-widest opacity-80 mb-1">

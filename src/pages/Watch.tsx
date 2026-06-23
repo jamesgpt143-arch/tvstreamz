@@ -5,6 +5,7 @@ import { VideoPlayer } from '@/components/VideoPlayer';
 import { TrailerModal } from '@/components/TrailerModal';
 import { ContentRow } from '@/components/ContentRow';
 import { EpisodePicker } from '@/components/EpisodePicker';
+import { CastSection } from '@/components/CastSection';
 
 import { fetchMovieDetails,
   fetchTVDetails,
@@ -16,6 +17,8 @@ import { fetchMovieDetails,
   MovieDetails,
   Movie,
   findTMDBIdByTitle,
+  fetchRecommendations,
+  fetchSimilar
 } from '@/lib/tmdb';
 import { getAnimeById, fetchAnimeList, getAnilistIdFromMalId, getMalIdFromTitle, getAnimeAiredEpisodes, fetchAnimeRecommendations } from '@/lib/anime-db';
 import { addToWatchHistory } from '@/lib/watchHistory';
@@ -62,7 +65,6 @@ const Watch = () => {
   // For resolving Anime servers when navigating from Search
   const [resolvedMalId, setResolvedMalId] = useState<string | undefined>(undefined);
   const [animeEpisodesCount, setAnimeEpisodesCount] = useState<number | null>(null);
-
 
   // BAGO: Gamitin natin ang Hook para sa pag-manage ng My List!
   const { isInMyList, addToMyList, removeFromMyList } = useUserPreferences();
@@ -221,7 +223,13 @@ const Watch = () => {
             trending = fallbackData.data;
           }
         } else {
-          trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
+          trending = await fetchRecommendations(Number(effectiveId), effectiveType as 'movie' | 'tv');
+          if (!trending || trending.length === 0) {
+            trending = await fetchSimilar(Number(effectiveId), effectiveType as 'movie' | 'tv');
+          }
+          if (!trending || trending.length === 0) {
+            trending = await fetchTrending(effectiveType as 'movie' | 'tv', 'week');
+          }
         }
         setSimilar(trending.filter((item: any) => item.id !== Number(id) && item.mal_id !== Number(id)));
       } catch (error) {
@@ -287,6 +295,9 @@ const Watch = () => {
         lastServer: currentServer,
       });
     }
+    
+    // Auto-play when selecting an episode
+    navigate(`/play/${type}/${id}/${season}/${episode}`);
   };
 
   // BAGO: Mas malinis na Toggle Function
@@ -359,116 +370,139 @@ const Watch = () => {
       )}
 
       {/* Hero Section */}
-      <section className="relative min-h-[60vh] md:min-h-[70vh] w-full">
+      <section className="relative pt-64 md:pt-24 pb-8 md:pb-12 w-full min-h-[85vh] md:min-h-[70vh] flex flex-col justify-end md:justify-center">
+        {/* Background - Mobile uses Poster, Desktop uses Backdrop */}
         <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 overflow-hidden"
+          className="absolute inset-0 bg-cover bg-top md:bg-center transition-all duration-1000 opacity-100 md:opacity-30 md:hidden"
           style={{
-            backgroundImage: `url(${getImageUrl(details.backdrop_path, 'original')})`,
+            backgroundImage: `url(${getImageUrl(details.poster_path || details.backdrop_path, 'original')})`,
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/80 to-transparent/10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent" />
         </div>
 
-        {/* Content Overlay */}
-        <div className="relative h-full container mx-auto px-4 flex flex-col justify-end pt-32 pb-12 md:pb-16 max-w-7xl animate-slide-up">
-          <div className="max-w-4xl space-y-4">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="mb-2 -ml-2 text-zinc-400 hover:text-white hover:bg-white/10 transition-colors gap-2 rounded-full"
-              onClick={() => {
-                navigate(type === 'anime' ? '/anime' : (type === 'movie' ? '/movies' : '/tv-shows'));
-              }}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </Button>
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 opacity-30 hidden md:block"
+          style={{
+            backgroundImage: `url(${getImageUrl(details.backdrop_path || details.poster_path, 'original')})`,
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent" />
+        </div>
 
-            <h1 className="text-3xl md:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl leading-tight">
-              {title}
-            </h1>
+        {/* Content Container */}
+        <div className="relative z-10 container mx-auto px-4 max-w-6xl animate-slide-up mt-0 md:mt-8">
+          
+          {/* Back Button */}
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="absolute -top-48 md:top-0 left-4 md:static md:mb-4 md:-ml-2 w-12 h-12 md:w-auto md:h-auto md:px-4 bg-background/20 backdrop-blur-xl border border-border text-foreground hover:bg-foreground/10 transition-all rounded-full z-50 flex items-center justify-center shadow-lg"
+            onClick={() => navigate(type === 'anime' ? '/anime' : (type === 'movie' ? '/movies' : '/tv-shows'))}
+          >
+            <ChevronLeft className="w-6 h-6 md:w-4 md:h-4" />
+            <span className="hidden md:inline ml-2 font-bold">Back</span>
+          </Button>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/20">
-                <Star className="w-4 h-4 fill-current" />
-                {(details.vote_average || 0).toFixed(1)}
-              </span>
-              {year && <span className="text-zinc-300 drop-shadow-md">{year}</span>}
-              {runtime > 0 && <span className="text-zinc-300 drop-shadow-md">{runtime} min</span>}
-              <span className="px-3 py-1 rounded bg-primary/20 text-primary text-[10px] uppercase font-black tracking-widest border border-primary/20">
-                {type === 'anime' ? 'Anime' : (type === 'movie' ? 'Movie' : 'TV Series')}
-              </span>
+          <div className="bg-transparent md:bg-card/80 md:backdrop-blur-xl md:border md:border-border rounded-3xl pt-16 md:pt-8 p-0 md:p-8 lg:p-10 flex flex-col md:flex-row gap-6 lg:gap-12 items-center md:items-start text-center md:text-left">
+            
+            {/* Poster - Hidden on mobile, visible on desktop */}
+            <div className="hidden md:block w-[180px] sm:w-[220px] md:w-[240px] lg:w-[280px] shrink-0 mx-auto md:mx-0">
+              <img 
+                src={getImageUrl(details.poster_path, 'w500')} 
+                alt={title} 
+                className="w-full rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 object-cover aspect-[2/3]"
+              />
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {details.genres?.map((genre) => (
-                <span
-                  key={genre.id}
-                  className="px-2 py-0.5 rounded bg-zinc-800/40 border border-zinc-700/50 text-[11px] text-zinc-300 backdrop-blur-sm"
-                >
-                  {genre.name}
+            {/* Details */}
+            <div className="flex-1 space-y-5 md:space-y-6 w-full flex flex-col items-center md:items-start">
+              <div>
+                <h1 className="text-4xl md:text-4xl lg:text-5xl font-black text-foreground drop-shadow-2xl leading-tight mb-2">
+                  {title}
+                </h1>
+                {details.original_title && details.original_title !== title && (
+                  <p className="text-lg text-muted-foreground font-medium">
+                    {details.original_title}
+                  </p>
+                )}
+              </div>
+
+              {/* Meta info */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-sm font-semibold text-muted-foreground">
+                <span className="flex items-center gap-1 text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg">
+                  <Star className="w-4 h-4 fill-amber-500" />
+                  {(details.vote_average || 0).toFixed(1)}/10
                 </span>
-              ))}
-            </div>
+                {year && <span>{year}</span>}
+                <span className="text-muted-foreground/50">•</span>
+                <span className="px-3 py-1 bg-foreground/5 backdrop-blur-md rounded-full border border-border text-xs text-foreground">
+                  {details.status || (isTV ? 'Airing' : 'Released')}
+                </span>
+              </div>
 
-            <p className="text-zinc-300 leading-relaxed text-sm md:text-base max-w-4xl drop-shadow-lg">
-              {details.overview}
-            </p>
+              {/* Genres - Glass Pill Style */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
+                {details.genres?.map((genre) => (
+                  <span
+                    key={genre.id}
+                    className="px-5 py-2 rounded-full bg-foreground/5 backdrop-blur-xl border border-border text-xs sm:text-sm font-bold text-foreground shadow-lg cursor-default"
+                  >
+                    {genre.name}
+                  </span>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button
-                variant={inMyList ? "secondary" : "outline"}
-                onClick={handleToggleMyList}
-                className="rounded-full px-6 bg-zinc-800/20 border-zinc-700/50 backdrop-blur-md hover:bg-zinc-800/40"
-              >
-                {inMyList ? <Check className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                {inMyList ? "In My List" : "Add to List"}
-              </Button>
-              {trailerUrl && (
+              {/* Action Buttons */}
+              <div className="flex flex-row flex-nowrap w-full md:w-auto gap-3 pt-4">
+                {/* Watch Now - Prominent button */}
                 <Button
-                  variant="default"
-                  onClick={() => setShowTrailer(true)}
-                  className="rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
+                  onClick={() => navigate(type === 'movie' ? `/play/movie/${id}` : `/play/${type}/${id}/1/1`)}
+                  className="rounded-full px-8 bg-primary/90 hover:bg-primary backdrop-blur-lg text-white font-black shadow-[0_0_30px_rgba(168,85,247,0.5)] h-14 flex-1 md:flex-none text-sm md:text-base border border-primary/50 transition-all hover:scale-105"
                 >
-                  <Play className="w-4 h-4 mr-2 fill-current" />
-                  Watch Trailer
+                  <Play className="w-5 h-5 mr-2 fill-current" />
+                  Watch Now
                 </Button>
-              )}
+
+                {/* Secondary buttons - Hidden on mobile, shown on PC as glass buttons */}
+                {trailerUrl && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTrailer(true)}
+                    className="rounded-full px-6 h-14 bg-foreground/5 backdrop-blur-xl border-border text-foreground hover:bg-foreground/10 hover:text-foreground flex-1 md:flex-none text-sm font-bold hidden md:flex transition-all hover:scale-105"
+                  >
+                    Trailer
+                  </Button>
+                )}
+
+                <Button
+                  variant={inMyList ? "secondary" : "outline"}
+                  onClick={handleToggleMyList}
+                  className={`rounded-full px-6 h-14 flex-1 md:flex-none text-sm font-bold hidden md:flex transition-all hover:scale-105 ${
+                    inMyList 
+                      ? 'bg-foreground/20 text-foreground border-border hover:bg-foreground/30 backdrop-blur-xl' 
+                      : 'bg-foreground/5 backdrop-blur-xl border-border text-foreground hover:bg-foreground/10'
+                  }`}
+                >
+                  {inMyList ? <Check className="w-5 h-5 mr-2 text-primary" /> : <Star className="w-5 h-5 mr-2" />}
+                  {inMyList ? "In My List" : "Add to List"}
+                </Button>
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* Player Section */}
-      <section className="relative z-20 -mt-8 md:-mt-12 pb-20">
+      {/* Main Content Area */}
+      <section id="player-section" className="relative z-20 pb-20 mt-4 md:mt-8">
         <div className="container mx-auto px-4 max-w-5xl">
-          <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 bg-black ring-1 ring-white/10">
-            <VideoPlayer 
-              servers={servers} 
-              title={details.title || details.name || ''} 
-              initialServer={currentServer}
-              onServerChange={setCurrentServer}
-            />
-          </div>
 
-          {resolvedMalId && (
-            <div className="mt-4 flex items-center justify-end">
-              <div className="bg-zinc-900/40 backdrop-blur-xl rounded-xl px-4 py-3 border border-white/5 flex items-center gap-3">
-                <span className="text-sm font-semibold text-zinc-300">Audio:</span>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-2 py-1 rounded transition-colors ${!isDub ? 'bg-primary text-primary-foreground' : 'bg-zinc-800 text-zinc-400'}`}>SUB</span>
-                  <Switch
-                    checked={isDub}
-                    onCheckedChange={setIsDub}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                  <span className={`text-xs font-bold px-2 py-1 rounded transition-colors ${isDub ? 'bg-primary text-primary-foreground' : 'bg-zinc-800 text-zinc-400'}`}>DUB</span>
-                </div>
-              </div>
-            </div>
-          )}
-          
+          {/* Cast Section replacing the old inline player */}
+          <CastSection cast={details.credits?.cast} />
+
           {type === 'anime' ? (
             <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/5 shadow-xl mt-8">
               <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
