@@ -48,7 +48,7 @@ const categoryMap: Record<string, string> = {
 };
 
 export const CATEGORIES = [
-  'All', 'Favorites'
+  'All', 'Favorites', 'Cignal', 'Converge', 'Other'
 ] as const;
 
 export type ChannelCategory = typeof CATEGORIES[number];
