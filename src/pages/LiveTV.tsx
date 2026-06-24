@@ -227,29 +227,7 @@ const LiveTV = () => {
             </div>
           )}
 
-          {/* About Section */}
-          <div className="mt-20 p-8 rounded-[2rem] bg-card/50 backdrop-blur-sm border border-border/50 shadow-2xl">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Radio className="w-6 h-6 text-destructive" />
-              About MovieStreamz Live TV
-            </h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <p className="text-muted-foreground leading-relaxed">
-                Stream your favorite Filipino and international channels live for free. We aggregate the best available streams to provide you with a seamless viewing experience. 
-                Some channels may require specific browser permissions or data-saving modes to be disabled for optimal playback.
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/30">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
-                  <p className="text-sm">High-speed Filipino content integration.</p>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/30">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                  <p className="text-sm">Zero ads on premium sandboxed servers.</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </main>
     </div>
