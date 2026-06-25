@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Shield, ListVideo, ListMusic, Mail, LogOut, User, Sun, Moon } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Shield, ListVideo, ListMusic, Mail, LogOut, User, Sun, Moon, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -102,9 +102,9 @@ export const Sidebar = () => {
           My List
           <span className="ml-auto bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[10px] font-black">{myList.length}</span>
         </Link>
-        <Link to="/playlist-player" className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all">
-          <ListMusic className="w-5 h-5" />
-          Playlist Player
+        <Link to="/ai" className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all">
+          <Bot className="w-5 h-5 text-primary" />
+          Streamz AI
         </Link>
         <Link to="/temp-mail" className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all">
           <Mail className="w-5 h-5" />

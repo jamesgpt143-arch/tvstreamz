@@ -1,0 +1,157 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/analytics",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/analytics.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/analytics",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/analytics.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/auth",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/auth.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/auth",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/auth.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/channels",
+      "mountPath": "/api",
+      "method": "DELETE",
+      "module": [
+        "api/channels.ts:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/channels",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/channels.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/channels",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/channels.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/chat",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/chat.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/custom_channels",
+      "mountPath": "/api",
+      "method": "DELETE",
+      "module": [
+        "api/custom_channels.ts:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/custom_channels",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/custom_channels.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/custom_channels",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/custom_channels.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/messages",
+      "mountPath": "/api",
+      "method": "DELETE",
+      "module": [
+        "api/messages.ts:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/messages",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/messages.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/messages",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/messages.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/notifications",
+      "mountPath": "/api",
+      "method": "DELETE",
+      "module": [
+        "api/notifications.ts:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/notifications",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/notifications.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/notifications",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/notifications.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/settings",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/settings.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/settings",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/settings.ts:onRequestPost"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

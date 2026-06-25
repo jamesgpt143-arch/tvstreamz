@@ -5,6 +5,7 @@ import { onRequestPost as __api_auth_ts_onRequestPost } from "D:\\APK\\tvstreamz
 import { onRequestDelete as __api_channels_ts_onRequestDelete } from "D:\\APK\\tvstreamz\\functions\\api\\channels.ts"
 import { onRequestGet as __api_channels_ts_onRequestGet } from "D:\\APK\\tvstreamz\\functions\\api\\channels.ts"
 import { onRequestPost as __api_channels_ts_onRequestPost } from "D:\\APK\\tvstreamz\\functions\\api\\channels.ts"
+import { onRequestPost as __api_chat_ts_onRequestPost } from "D:\\APK\\tvstreamz\\functions\\api\\chat.ts"
 import { onRequestDelete as __api_custom_channels_ts_onRequestDelete } from "D:\\APK\\tvstreamz\\functions\\api\\custom_channels.ts"
 import { onRequestGet as __api_custom_channels_ts_onRequestGet } from "D:\\APK\\tvstreamz\\functions\\api\\custom_channels.ts"
 import { onRequestPost as __api_custom_channels_ts_onRequestPost } from "D:\\APK\\tvstreamz\\functions\\api\\custom_channels.ts"
@@ -66,6 +67,13 @@ export const routes = [
       method: "POST",
       middlewares: [],
       modules: [__api_channels_ts_onRequestPost],
+    },
+  {
+      routePath: "/api/chat",
+      mountPath: "/api",
+      method: "POST",
+      middlewares: [],
+      modules: [__api_chat_ts_onRequestPost],
     },
   {
       routePath: "/api/custom_channels",

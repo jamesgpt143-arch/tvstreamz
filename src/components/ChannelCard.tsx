@@ -47,6 +47,13 @@ export const ChannelCard = ({ channel }: ChannelCardProps) => {
           loading="lazy"
         />
 
+        {/* Category Badge */}
+        {channel.category && channel.category !== 'Other' && (
+          <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 backdrop-blur-md uppercase tracking-wider">
+            {channel.category}
+          </span>
+        )}
+
         {/* Favorite Button */}
         <button
           onClick={toggleFavorite}

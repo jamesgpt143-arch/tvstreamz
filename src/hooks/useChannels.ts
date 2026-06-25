@@ -81,6 +81,7 @@ export const toAppChannel = (dbChannel: DbChannel) => {
     epgId: dbChannel.epg_id || undefined,
     num: dbChannel.channel_num || undefined,
     epgUrl: dbChannel.epg_url || undefined,
+    category: dbChannel.category || undefined,
   };
 };
 

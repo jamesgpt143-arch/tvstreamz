@@ -34,6 +34,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { WelcomePopup } from "@/components/WelcomePopup";
 
 import CustomChannels from "./pages/CustomChannels";
+import StreamzAI from "./pages/StreamzAI";
 import { MaintenanceOverlay } from '@/components/MaintenanceOverlay';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { SEOManager } from '@/components/SEOManager';
@@ -180,7 +181,7 @@ const App = () => {
                       <Route path="/temp-mail" element={<TempMail />} />
                       <Route path="/text-to-speech" element={<TextToSpeech />} />
                       <Route path="/custom-channels" element={<CustomChannels />} />
-                      <Route path="/playlist-player" element={<PlaylistPlayer />} />
+                      <Route path="/ai" element={<StreamzAI />} />
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>

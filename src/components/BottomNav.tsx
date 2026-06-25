@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Film, Sparkles, Tv, MonitorPlay, ListMusic } from 'lucide-react';
+import { Home, Film, Sparkles, Tv, MonitorPlay, Bot } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
@@ -7,7 +7,7 @@ const navItems = [
   { path: '/tv-shows', label: 'TV', icon: MonitorPlay },
   { path: '/anime', label: 'Anime', icon: Sparkles },
   { path: '/live-tv', label: 'Live', icon: Tv },
-  { path: '/playlist-player', label: 'Playlist', icon: ListMusic },
+  { path: '/ai', label: 'AI Chat', icon: Bot },
 ];
 
 export const BottomNav = () => {

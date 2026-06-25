@@ -6,8 +6,9 @@ import { ShareButton } from '@/components/ShareButton';
 import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews, trackChannelView } from '@/hooks/useChannelViews';
-import { ChevronLeft, Loader2, ArrowUpAZ, TrendingUp, Clock, Heart, Star } from 'lucide-react';
+import { ChevronLeft, Loader2, Heart, Star, Search, Tv } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useProxyLogo } from '@/hooks/useProxyLogo';
@@ -22,12 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type SortOption = 'a-z' | 'popular' | 'recent';
-
 const WatchLive = () => {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
-  const [sortBy, setSortBy] = useState<SortOption>('a-z');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
   const { data: dbChannels, isLoading } = useChannels();
@@ -91,29 +90,15 @@ const WatchLive = () => {
       });
     }
 
-    switch (sortBy) {
-      case 'a-z':
-        return [...others].sort((a, b) => a.name.localeCompare(b.name));
-      case 'popular':
-        return [...others].sort((a, b) => {
-          const aViews = viewCounts?.[a.id] || 0;
-          const bViews = viewCounts?.[b.id] || 0;
-          if (bViews !== aViews) return bViews - aViews;
-          return a.name.localeCompare(b.name);
-        });
-      case 'recent':
-        return [...others].sort((a, b) => {
-          const aDb = (dbChannels || []).find(ch => ch.id === a.id);
-          const bDb = (dbChannels || []).find(ch => ch.id === b.id);
-          if (aDb && bDb) {
-            return new Date(bDb.created_at).getTime() - new Date(aDb.created_at).getTime();
-          }
-          return a.name.localeCompare(b.name);
-        });
-      default:
-        return others;
+    // Search Filtering
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      others = others.filter(c => c.name.toLowerCase().includes(query));
     }
-  }, [allChannels, channelId, viewCounts, dbChannels, sortBy, selectedCategory, myList]);
+
+    // Default Sort (A-Z)
+    return [...others].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allChannels, channelId, viewCounts, dbChannels, selectedCategory, myList, searchQuery]);
 
   const handleChannelSwitch = useCallback((newChannelId: string) => {
     navigate(`/live/${newChannelId}`, { replace: true });
@@ -205,93 +190,74 @@ const WatchLive = () => {
               {/* Right Column: Other Channels */}
               {allChannels.length > 1 && (
                 <div className="w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col">
-                  <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start justify-between gap-3 mb-3">
-                    <h2 className="text-sm font-semibold">Other Channels</h2>
+                  <div className="flex flex-col gap-3 mb-4">
+                    <h2 className="text-sm font-semibold hidden lg:block">Other Channels</h2>
                     
-                    <div className="flex items-center gap-2 w-full lg:w-auto">
+                    <div className="flex items-center gap-2 w-full">
                       {/* Category Filter */}
-                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="w-[140px] lg:flex-1 h-8 text-xs bg-card">
-                          <SelectValue placeholder="Genre" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover">
-                          {CATEGORIES.map(cat => (
-                            <SelectItem key={cat} value={cat}>
-                              <div className="flex items-center gap-2">
-                                {cat === 'Favorites' ? <Star className="w-3 h-3 text-primary" /> : <div className="w-3" />}
-                                <span>{cat === 'All' ? 'All Channels' : cat}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-[1.5] lg:flex-none lg:w-[160px]">
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                          <SelectTrigger className="w-full h-10 text-sm bg-card border-white/10 rounded-xl">
+                            <SelectValue placeholder="Genre" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border-white/10 rounded-xl">
+                            {CATEGORIES.map(cat => (
+                              <SelectItem key={cat} value={cat} className="cursor-pointer rounded-lg my-0.5">
+                                <div className="flex items-center gap-2">
+                                  {cat === 'Favorites' ? <Star className="w-4 h-4 text-primary" /> : <div className="w-4" />}
+                                  <span>{cat === 'All' ? 'All Categories' : cat}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                      {/* Sort Dropdown */}
-                      <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                        <SelectTrigger className="w-[120px] lg:flex-1 h-8 text-xs bg-card">
-                          <SelectValue placeholder="Sort" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover">
-                          <SelectItem value="a-z">
-                            <div className="flex items-center gap-2">
-                              <ArrowUpAZ className="w-3 h-3" />
-                              <span>A-Z</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="popular">
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="w-3 h-3" />
-                              <span>Popular</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="recent">
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-3 h-3" />
-                              <span>Recent</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {/* Search Box */}
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search channels..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9 bg-card border-white/10 h-10 text-sm rounded-xl w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="rounded-xl bg-muted/30 dark:bg-card/30 p-2 shadow-inner border-2 border-primary/20 dark:border-primary/30 flex-1">
-                    <div className="h-[400px] lg:h-[calc(100vh-280px)] lg:max-h-[600px] overflow-y-auto custom-scrollbar">
-                      <div className="flex flex-col gap-2 pr-2">
+                  <div className="rounded-2xl bg-black/20 p-2 border border-white/5 flex-1 shadow-inner">
+                    <div className="h-[400px] lg:h-[calc(100vh-270px)] lg:max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+                      <div className="flex flex-col gap-1.5">
                         {sortedOtherChannels.map((ch) => {
                           const isFav = isInMyList(ch.id, 'channel');
                           return (
                             <div key={ch.id} className="relative group">
                               <button
                                 onClick={() => handleChannelSwitch(ch.id)}
-                                className="w-full flex items-center p-3 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_10px_rgba(0,0,0,0.1)] border border-white/10 transition-all duration-300 overflow-hidden relative"
+                                className="relative w-full flex items-center justify-center py-4 px-3 rounded-xl bg-gradient-to-r from-white/5 to-transparent border border-white/5 hover:border-primary/30 hover:from-primary/10 hover:to-primary/5 transition-all duration-300 shadow-sm overflow-hidden"
                               >
-                                <div className="relative shrink-0 z-10">
-                                  <div className="w-14 h-14 rounded-xl bg-black/40 shadow-inner border border-white/10 flex items-center justify-center p-2 overflow-hidden relative">
-                                    <img
-                                      src={proxyLogo(ch.logo)}
-                                      alt={ch.name}
-                                      className="w-full h-full object-contain drop-shadow-sm"
-                                    />
-                                  </div>
+                                {/* Left indicator bar */}
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 rounded-r-full bg-primary opacity-0 group-hover:opacity-100 transition-all duration-300 scale-y-50 group-hover:scale-y-100" />
+                                
+                                <div className="absolute left-4 w-8 h-8 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:border-primary/40 group-hover:bg-primary/20 transition-all duration-300">
+                                  <Tv className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                 </div>
-
-                                <div className="flex flex-col items-center justify-center flex-1 min-w-0 px-2 pr-8 z-10">
-                                  <p className="font-black text-[15px] uppercase tracking-wide text-foreground/90 text-center truncate w-full drop-shadow-sm">
-                                    {ch.name}
-                                  </p>
-                                </div>
+                                
+                                <span className="font-bold text-[14px] text-foreground/80 group-hover:text-foreground text-center truncate px-12 uppercase tracking-[0.1em] transition-colors drop-shadow-md">
+                                  {ch.name}
+                                </span>
                               </button>
                               <button
                                 onClick={(e) => toggleFavorite(ch, e)}
                                 className={cn(
-                                  "absolute top-1/2 -translate-y-1/2 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 z-10",
+                                  "absolute top-1/2 -translate-y-1/2 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
                                   isFav 
-                                    ? "bg-primary/20 text-primary shadow-sm" 
-                                    : "bg-background/80 backdrop-blur-md text-muted-foreground shadow-sm opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-background hover:scale-110"
+                                    ? "text-primary bg-primary/10 shadow-[0_0_10px_rgba(234,179,8,0.2)]" 
+                                    : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-white/10 hover:scale-110"
                                 )}
                               >
-                                <Heart className={cn("w-4 h-4", isFav && "fill-current")} />
+                                <Heart className={cn("w-4 h-4", isFav && "fill-current scale-110")} />
                               </button>
                             </div>
                           );
