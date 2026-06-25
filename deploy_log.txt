@@ -8,9 +8,9 @@
 
 ✨ Compiled Worker successfully
 Uploading... (16/16)
-✨ Success! Uploaded 0 files (16 already uploaded) (0.46 sec)
+✨ Success! Uploaded 0 files (16 already uploaded) (0.58 sec)
 
 ✨ Uploading _redirects
 ✨ Uploading Functions bundle
 🌎 Deploying...
-✨ Deployment complete! Take a peek over at https://0eb87412.tvstreamz.pages.dev
+✨ Deployment complete! Take a peek over at https://98da6a8c.tvstreamz.pages.dev
