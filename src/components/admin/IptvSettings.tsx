@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,19 +130,17 @@ export const IptvSettings = () => {
 
   const loadConfig = async () => {
     try {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "iptv_config")
-        .single();
-
-      if (data?.value) {
-        const val = data.value as Record<string, unknown>;
-        const merged = { ...defaultConfig };
-        for (const k of Object.keys(defaultConfig) as (keyof IptvConfig)[]) {
-          if (val[k] !== undefined) (merged as any)[k] = val[k] as string;
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.iptv_config) {
+          const val = data.iptv_config as Record<string, unknown>;
+          const merged = { ...defaultConfig };
+          for (const k of Object.keys(defaultConfig) as (keyof IptvConfig)[]) {
+            if (val[k] !== undefined) (merged as any)[k] = val[k] as string;
+          }
+          setConfig(merged);
         }
-        setConfig(merged);
       }
     } catch {
       // No config yet
@@ -154,17 +152,12 @@ export const IptvSettings = () => {
   const saveConfig = async () => {
     setSaving(true);
     try {
-      const { data: existing } = await supabase
-        .from("site_settings")
-        .select("id")
-        .eq("key", "iptv_config")
-        .single();
-
-      if (existing) {
-        await supabase.from("site_settings").update({ value: config as any }).eq("key", "iptv_config");
-      } else {
-        await supabase.from("site_settings").insert({ key: "iptv_config", value: config as any });
-      }
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "iptv_config", value: config }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
       toast.success("IPTV settings saved!");
     } catch {
       toast.error("Failed to save settings");

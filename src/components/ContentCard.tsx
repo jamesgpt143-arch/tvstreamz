@@ -28,7 +28,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
   return (
     <Link
       to={`/watch/${mediaType}/${(item as any).id || (item as any)._id}`}
-      className="group relative block rounded-[2rem] overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-zinc-900 border border-white/5 active:scale-95"
+      className="group relative block rounded-[2rem] overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl bg-card border border-border active:scale-95"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         <img
@@ -39,12 +39,12 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
         />
         
         {/* Gradient overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Play button on hover */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 scale-110 group-hover:scale-100">
-          <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.4)]">
-            <Play className="w-6 h-6 text-black ml-1 fill-black" />
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.6)]">
+            <Play className="w-6 h-6 text-white ml-1 fill-white" />
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
           </div>
           
           {(rating || 0) >= 7 && (
-            <div className="px-2 py-0.5 rounded-lg bg-orange-500 text-black text-[9px] font-black uppercase tracking-widest text-center shadow-lg">
+            <div className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-primary/30 to-secondary/30 backdrop-blur-md text-white border border-white/20 text-[9px] font-black uppercase tracking-widest text-center shadow-[0_0_15px_rgba(168,85,247,0.3)]">
               ULTRA HD
             </div>
           )}
@@ -71,7 +71,7 @@ export const ContentCard = ({ item, type }: ContentCardProps) => {
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-75">
           <span className="text-[10px] text-zinc-400 font-bold">{year}</span>
           <div className="w-1 h-1 rounded-full bg-zinc-700" />
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-zinc-400 uppercase font-black tracking-widest">
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary uppercase font-bold tracking-widest shadow-[0_0_10px_rgba(168,85,247,0.2)]">
             {mediaType === 'movie' ? 'Movie' : (mediaType === 'tv' ? 'TV Series' : 'Anime')}
           </span>
         </div>

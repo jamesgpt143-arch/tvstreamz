@@ -6,7 +6,6 @@ import { AlertCircle, Loader2, Smartphone, Settings, Check, Shield, RefreshCw } 
 import Hls from 'hls.js';
 import shaka from 'shaka-player/dist/shaka-player.ui';
 import 'shaka-player/dist/controls.css';
-import { supabase } from '@/integrations/supabase/client';
 import { setupOrientationFullscreen } from '@/lib/capacitorFullscreen';
 
 const badProxiesCache = new Map<string, number>(); 
@@ -34,8 +33,12 @@ const setStoredProxy = (channelId: string, proxyUrl: string) => {
 
 const getProxyUrls = async (proxyType: string = 'cloudflare'): Promise<{ primary: string; backup: string; backup2: string; backup3: string; backup4: string; backup5: string; backup6: string }> => {
   try {
-    const { data } = await supabase.from('site_settings').select('value').eq('key', 'iptv_config').single();
-    const config = data?.value as any;
+    const res = await fetch('/api/settings');
+    let config = null;
+    if (res.ok) {
+      const data = await res.json();
+      config = data.iptv_config;
+    }
     const prefix = proxyType === 'supabase' ? 'supabase_proxy_url' : 
                    proxyType === 'vercel' ? 'vercel_proxy_url' : 'cloudflare_proxy_url';
     return {
@@ -790,7 +793,7 @@ export const LivePlayer = ({ channel, onProxyChange }: LivePlayerProps) => {
   if (channel.type === 'youtube') {
     const yt = getYouTubeId(channel.embedUrl || channel.manifestUri || '');
     return (
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border">
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-border">
         {yt ? (
           <YouTubePlayer videoId={yt.id} title={channel.name} isChannel={yt.type === 'channel'} />
         ) : (
@@ -808,7 +811,7 @@ export const LivePlayer = ({ channel, onProxyChange }: LivePlayerProps) => {
 
   return (
     <div>
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-card border border-border relative">
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-border relative">
         <PlayerCore key={channel.id} channel={channel} onProxyChange={onProxyChange} />
       </div>
     </div>

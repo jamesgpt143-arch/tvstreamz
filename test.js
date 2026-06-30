@@ -1,0 +1,1 @@
+fetch('https://lite.duckduckgo.com/lite/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0' }, body: 'q=philippines+news' }).then(r=>r.text()).then(t=>{ const m = t.match(/<td class='result-snippet'>([\s\S]*?)<\/td>/g); if(m) console.log(m.map(x=>x.replace(/<[^>]+>/g,'').trim()).slice(0,3)); })

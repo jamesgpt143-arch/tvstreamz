@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { X, Megaphone, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,20 +20,17 @@ export function AnnouncementBar() {
 
   const fetchAnnouncement = async () => {
     try {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "announcement_settings")
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data?.value) {
-        const val = data.value as unknown as AnnouncementSettings;
-        setSettings(val);
-        // Check if user dismissed it in this session
-        const dismissed = sessionStorage.getItem("announcement_dismissed");
-        if (val.is_active && !dismissed) {
-          setIsVisible(true);
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.announcement_settings) {
+          const val = data.announcement_settings as AnnouncementSettings;
+          setSettings(val);
+          // Check if user dismissed it in this session
+          const dismissed = sessionStorage.getItem("announcement_dismissed");
+          if (val.is_active && !dismissed) {
+            setIsVisible(true);
+          }
         }
       }
     } catch (error) {

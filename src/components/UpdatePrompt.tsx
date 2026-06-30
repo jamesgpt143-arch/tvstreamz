@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Download, Rocket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Capacitor } from '@capacitor/core';
@@ -17,18 +16,16 @@ export const UpdatePrompt = () => {
 
     const checkUpdate = async () => {
       try {
-        const { data } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'app_update')
-          .maybeSingle();
-
-        if (data?.value) {
-          const config = data.value as any;
-          // GAGAMITIN NA NIYA YUNG APP_VERSION MULA SA version.ts
-          if (config.latest_version && config.latest_version !== APP_VERSION) {
-            setUpdateInfo(config);
-            setShowPrompt(true);
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.app_update) {
+            const config = data.app_update;
+            // GAGAMITIN NA NIYA YUNG APP_VERSION MULA SA version.ts
+            if (config.latest_version && config.latest_version !== APP_VERSION) {
+              setUpdateInfo(config);
+              setShowPrompt(true);
+            }
           }
         }
       } catch (error) {

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface SEOSettings {
   title: string;
@@ -17,17 +16,14 @@ export function SEOManager() {
 
   const fetchSEO = async () => {
     try {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "seo_settings")
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data?.value) {
-        const val = data.value as unknown as SEOSettings;
-        setSettings(val);
-        applySEO(val);
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.seo_settings) {
+          const val = data.seo_settings as SEOSettings;
+          setSettings(val);
+          applySEO(val);
+        }
       }
     } catch (error) {
       console.error("Error fetching SEO settings:", error);

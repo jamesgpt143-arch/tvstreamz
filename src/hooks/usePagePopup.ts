@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { Json } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 // BAGO: I-import ang Capacitor Browser Plugin
 import { Browser } from '@capacitor/browser';
@@ -21,13 +19,16 @@ const DEFAULT_CONFIG: PagePopupConfig = {
 
 // Helper function to check if user is admin
 async function isUserAdmin(): Promise<boolean> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return false;
-  
-  const { data, error } = await supabase
-    .rpc('has_role', { _user_id: session.user.id, _role: 'admin' });
-  
-  return !error && data === true;
+  try {
+    const res = await fetch('/api/auth');
+    if (res.ok) {
+      const data = await res.json();
+      return data.isAdmin;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return false;
 }
 
 export function usePagePopup(pageId: string) {
@@ -41,17 +42,16 @@ export function usePagePopup(pageId: string) {
       const adminStatus = await isUserAdmin();
       setIsAdmin(adminStatus);
       
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'page_popups')
-        .maybeSingle();
-
-      if (!error && data?.value) {
-        const popups = data.value as unknown as PagePopups;
-        if (popups[pageId]) {
-          setConfig(popups[pageId]);
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.page_popups && data.page_popups[pageId]) {
+            setConfig(data.page_popups[pageId]);
+          }
         }
+      } catch (e) {
+        console.error('Failed to fetch popups', e);
       }
     };
 
@@ -117,21 +117,19 @@ export function usePagePopupsAdmin() {
   const fetchPopups = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'page_popups')
-        .maybeSingle();
-
-      if (!error && data?.value) {
-        setPopups(data.value as unknown as PagePopups);
-      } else {
-        // Initialize with defaults
-        const defaults: PagePopups = {};
-        availablePages.forEach(page => {
-          defaults[page.id] = { enabled: false, url: '' };
-        });
-        setPopups(defaults);
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.page_popups) {
+          setPopups(data.page_popups);
+        } else {
+          // Initialize with defaults
+          const defaults: PagePopups = {};
+          availablePages.forEach(page => {
+            defaults[page.id] = { enabled: false, url: '' };
+          });
+          setPopups(defaults);
+        }
       }
     } catch (error) {
       console.error('Error fetching page popups:', error);
@@ -153,24 +151,12 @@ export function usePagePopupsAdmin() {
   const savePopups = async () => {
     setIsSaving(true);
     try {
-      // Check if record exists
-      const { data: existing } = await supabase
-        .from('site_settings')
-        .select('id')
-        .eq('key', 'page_popups')
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('site_settings')
-          .update({ value: popups as unknown as Json, updated_at: new Date().toISOString() })
-          .eq('key', 'page_popups');
-      } else {
-        await supabase
-          .from('site_settings')
-          .insert([{ key: 'page_popups', value: popups as unknown as Json }]);
-      }
-
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'page_popups', value: popups })
+      });
+      if (!res.ok) throw new Error('Failed to save');
       return { success: true };
     } catch (error) {
       console.error('Error saving page popups:', error);

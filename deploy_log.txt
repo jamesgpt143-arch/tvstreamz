@@ -1,0 +1,19 @@
+
+ ⛅️ wrangler 4.105.0
+────────────────────
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mWarning: Your working directory is a git repo and has uncommitted changes[0m
+
+  To silence this warning, pass in --commit-dirty=true
+
+
+✨ Compiled Worker successfully
+Uploading... (10/16)
+Uploading... (12/16)
+Uploading... (14/16)
+Uploading... (16/16)
+✨ Success! Uploaded 6 files (10 already uploaded) (16.53 sec)
+
+✨ Uploading _redirects
+✨ Uploading Functions bundle
+🌎 Deploying...
+✨ Deployment complete! Take a peek over at https://c0ccd3f8.tvstreamz.pages.dev

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, MailOpen, CheckCircle, Trash2, Loader2, User, Clock, Tv } from 'lucide-react';
@@ -16,42 +16,47 @@ export const MessageManager = () => {
 
   const fetchRequests = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('user_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const res = await fetch('/api/messages');
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data || []);
+      } else {
+        throw new Error('Failed to fetch');
+      }
+    } catch (error) {
       toast({ title: "Error", description: "Hindi ma-load ang mga messages.", variant: "destructive" });
-    } else {
-      setRequests(data || []);
     }
     setIsLoading(false);
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('user_requests')
-      .update({ status: newStatus })
-      .eq('id', id);
-
-    if (error) {
-      toast({ title: "Error", description: "Hindi ma-update ang status.", variant: "destructive" });
-    } else {
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus })
+      });
+      if (!res.ok) throw new Error('Failed');
+      
       setRequests(prev => prev.map(req => req.id === id ? { ...req, status: newStatus } : req));
       toast({ title: "Updated", description: `Message marked as ${newStatus}.` });
+    } catch (error) {
+      toast({ title: "Error", description: "Hindi ma-update ang status.", variant: "destructive" });
     }
   };
 
   const deleteRequest = async (id: string) => {
     if (!window.confirm('Sigurado ka bang gusto mong burahin ang message na ito?')) return;
     
-    const { error } = await supabase.from('user_requests').delete().eq('id', id);
-    if (error) {
-      toast({ title: "Error", description: "Hindi ma-delete ang message.", variant: "destructive" });
-    } else {
+    try {
+      const res = await fetch(`/api/messages?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed');
+
       setRequests(prev => prev.filter(req => req.id !== id));
       toast({ title: "Deleted", description: "Message removed." });
+    } catch (error) {
+      toast({ title: "Error", description: "Hindi ma-delete ang message.", variant: "destructive" });
     }
   };
 

@@ -46,6 +46,7 @@ export interface Channel {
   num?: string | number;
   epgId?: string;
   epgUrl?: string;
+  category?: string;
 }
 
 /**

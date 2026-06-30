@@ -1,0 +1,23 @@
+commit bb8c404c259ce46a896eb66ddbe676801c135911
+Reflog: HEAD@{8} (katulognadiha-bot <katulognadiha@gmail.com>)
+Reflog message: commit: Fix Live TV links, Global Chat export, and add Shopee popup
+Author: katulognadiha-bot <katulognadiha@gmail.com>
+Date:   Tue Jun 30 07:55:50 2026 +0800
+
+    Fix Live TV links, Global Chat export, and add Shopee popup
+
+diff --git a/src/pages/GlobalChat.tsx b/src/pages/GlobalChat.tsx
+new file mode 100644
+index 0000000..e1e26d7
+--- /dev/null
++++ b/src/pages/GlobalChat.tsx
+@@ -0,0 +1,9 @@
++import { API_BASE } from '@/lib/api';
++
++export default function GlobalChat() {
++  return (
++    <div className="flex h-screen items-center justify-center bg-background text-foreground">
++      <h1>Global Chat</h1>
++    </div>
++  );
++}

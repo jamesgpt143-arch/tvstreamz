@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Radio, WifiOff, Search, Tv, AlertCircle } from "lucide-react";
 import type { Channel } from "@/lib/channels";
+import { usePagePopup } from '@/hooks/usePagePopup';
 
 interface IptvChannel {
   id: string;
@@ -25,6 +26,7 @@ interface IptvGenre {
 }
 
 const IPTV = () => {
+  usePagePopup('livetv');
   const [channels, setChannels] = useState<IptvChannel[]>([]);
   const [genres, setGenres] = useState<IptvGenre[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +67,8 @@ const IPTV = () => {
         setGenres(data.genres || []);
         setCloudflareProxyUrl(data.cloudflare_proxy_url || "");
       }
-    } catch (err) {
-      setError("Failed to connect to IPTV service");
+    } catch (err: any) {
+      setError(err?.message || "Failed to connect to IPTV service");
     } finally {
       setLoading(false);
     }

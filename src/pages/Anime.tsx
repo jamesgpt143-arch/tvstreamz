@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ContentCard } from '@/components/ContentCard';
-import { AnimeHeroBanner } from '@/components/anime/AnimeHeroBanner';
 import { AnimeSchedule } from '@/components/anime/AnimeSchedule';
 import { fetchAnimeList, AnimeItem, getAnimeGenres, searchAnimeDropdown, AnimeDropdownResult, fetchLatestAnimeUpdates } from '@/lib/anime-db';
 import { Movie, TVShow } from '@/lib/tmdb';
@@ -17,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 
 const Anime = () => {
@@ -146,89 +152,70 @@ const Anime = () => {
     }
   };
 
+  const renderFilters = () => (
+    <>
+      {/* Sort */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-max">
+        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-2">Sort by</span>
+        <div className="flex items-center gap-3">
+          <Select value={sortBy} onValueChange={(val) => {
+            setSortBy(val);
+            if (val === 'score') setSortOrder('desc');
+            else if (val === 'popularity') setSortOrder('asc');
+          }}>
+            <SelectTrigger className="w-full sm:w-[160px] bg-background/50 border-white/5 hover:bg-white/5 transition-colors h-11 rounded-xl font-bold text-xs uppercase tracking-widest">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md">
+              <SelectItem value="score">Top Rated</SelectItem>
+              <SelectItem value="popularity">Popularity</SelectItem>
+              <SelectItem value="title">Alphabetical</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="h-11 w-11 rounded-xl bg-background/50 border border-white/5 hover:bg-orange-500 hover:text-black transition-all flex-shrink-0"
+          >
+            {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="w-px h-6 bg-white/10 hidden md:block" />
+
+      {/* Genre */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-max mt-4 md:mt-0">
+        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-2 sm:ml-0">Genre</span>
+        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+          <SelectTrigger className="w-full sm:w-[180px] bg-background/50 border-white/5 hover:bg-white/5 transition-colors h-11 rounded-xl font-bold text-xs uppercase tracking-widest">
+            <SelectValue placeholder="All Genres" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md max-h-80">
+            <SelectItem value="all">All Genres</SelectItem>
+            {genres.map(g => (
+              <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="pb-20 md:pb-12 pt-20 md:pt-24">
-        
-        {/* Cinematic Hero Banner */}
-        <AnimeHeroBanner />
+      <main className="pb-20 md:pb-12 pt-6 md:pt-8">
 
         {/* Weekly Release Schedule */}
         <AnimeSchedule />
 
         <div className="container mx-auto px-4 mt-8">
           
-          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-12 border-t border-white/5">
-            <div>
-              <h1 className="text-3xl md:text-5xl font-black mb-2 tracking-tighter bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent">
-                EXPLORE <span className="text-orange-500">CATALOG</span>
-              </h1>
-              <p className="text-muted-foreground font-medium tracking-wide flex items-center gap-2">
-                <Filter className="w-4 h-4 text-orange-500" /> Browse and filter thousands of anime
-              </p>
-            </div>
-
-            <div ref={searchContainerRef} className="relative w-full md:w-96 group z-50">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-orange-500 transition-colors" />
-              <Input 
-                placeholder="Search anime titles... (Press Enter)" 
-                className="pl-12 h-14 bg-card/50 border-white/5 rounded-2xl focus:ring-orange-500/20 focus:border-orange-500/50 transition-all text-lg font-medium shadow-2xl"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => { if (search.trim().length >= 2) setIsDropdownOpen(true); }}
-              />
-              {isDropdownLoading && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-              
-              {/* Dropdown Suggestions */}
-              {isDropdownOpen && dropdownResults.length > 0 && (
-                <div className="absolute top-full mt-2 left-0 right-0 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl">
-                  {dropdownResults.map((item) => (
-                    <button
-                      key={item.mal_id}
-                      onClick={() => navigate(`/watch/anime/${item.mal_id}`)}
-                      className="w-full flex items-center gap-4 p-3 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0"
-                    >
-                      <div className="w-12 h-16 rounded overflow-hidden flex-shrink-0 bg-muted">
-                        {item.image ? (
-                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><TvIcon className="w-5 h-5 text-zinc-600" /></div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white truncate">{item.title}</p>
-                        <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">
-                          {item.format && <span className="text-orange-500">{item.format}</span>}
-                          {item.year && <span>• {item.year}</span>}
-                          {item.score && (
-                            <span className="flex items-center gap-0.5">
-                              • <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" /> {(item.score / 10).toFixed(1)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      setDebouncedSearch(search);
-                    }}
-                    className="w-full p-3 text-center text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 hover:bg-white/5 transition-colors bg-white/[0.02]"
-                  >
-                    View All Results
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <div className="pt-8 border-t border-white/5" />
 
           {/* Latest Releases Section */}
           {latestReleases.length > 0 && (
@@ -252,48 +239,90 @@ const Anime = () => {
             </div>
           )}
 
-          {/* Premium Filter Bar */}
-          <div className="flex flex-wrap items-center gap-4 mb-12 p-4 bg-card/20 backdrop-blur-xl border border-white/5 rounded-[2rem] shadow-2xl overflow-x-auto no-scrollbar">
-            {/* Sort */}
-            <div className="flex items-center gap-3 min-w-max">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-2">Sort by</span>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[160px] bg-background/50 border-white/5 hover:bg-white/5 transition-colors h-11 rounded-xl font-bold text-xs uppercase tracking-widest">
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md">
-                  <SelectItem value="rank">Ranking</SelectItem>
-                  <SelectItem value="popularity">Popularity</SelectItem>
-                  <SelectItem value="title">Alphabetical</SelectItem>
-                </SelectContent>
-              </Select>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="h-11 w-11 rounded-xl bg-background/50 border border-white/5 hover:bg-orange-500 hover:text-black transition-all"
-              >
-                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
-              </Button>
+          {/* Premium Filter Bar */}
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-3 md:gap-4 mb-8 md:mb-12 p-3 md:p-4 bg-card/20 backdrop-blur-xl border border-white/5 rounded-[2rem] shadow-2xl">
+            {/* Search */}
+            <div ref={searchContainerRef} className="relative flex-1 md:w-64 md:flex-none group z-40">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-orange-500 transition-colors" />
+              <Input 
+                placeholder="Search anime..." 
+                className="pl-10 h-11 bg-background/50 border-white/5 rounded-xl focus:ring-orange-500/20 focus:border-orange-500/50 transition-all text-sm font-medium"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => { if (search.trim().length >= 2) setIsDropdownOpen(true); }}
+              />
+              {isDropdownLoading && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              
+              {/* Dropdown Suggestions */}
+              {isDropdownOpen && dropdownResults.length > 0 && (
+                <div className="absolute top-full mt-2 left-0 w-[calc(100vw-32px)] md:w-[400px] bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl">
+                  {dropdownResults.map((item) => (
+                    <button
+                      key={item.mal_id}
+                      onClick={() => navigate(`/watch/anime/${item.mal_id}`)}
+                      className="w-full flex items-center gap-3 p-2 hover:bg-accent transition-colors text-left border-b border-border last:border-0"
+                    >
+                      <div className="w-10 h-14 rounded overflow-hidden flex-shrink-0 bg-muted">
+                        {item.image ? (
+                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"><TvIcon className="w-4 h-4 text-zinc-600" /></div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+                          {item.format && <span className="text-orange-500">{item.format}</span>}
+                          {item.year && <span>• {item.year}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setDebouncedSearch(search);
+                    }}
+                    className="w-full p-2 text-center text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 hover:bg-accent transition-colors bg-card"
+                  >
+                    View All Results
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="w-px h-6 bg-white/10 hidden md:block" />
 
-            {/* Genre */}
-            <div className="flex items-center gap-3 min-w-max">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Genre</span>
-              <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-                <SelectTrigger className="w-[180px] bg-background/50 border-white/5 hover:bg-white/5 transition-colors h-11 rounded-xl font-bold text-xs uppercase tracking-widest">
-                  <SelectValue placeholder="All Genres" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-white/5 bg-popover/95 backdrop-blur-md max-h-80">
-                  <SelectItem value="all">All Genres</SelectItem>
-                  {genres.map(g => (
-                    <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Filters Desktop */}
+            <div className="hidden md:flex items-center gap-4 flex-wrap flex-1">
+              {renderFilters()}
+            </div>
+
+            {/* Filters Mobile Drawer */}
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="w-11 h-11 px-0 bg-background/50 border-white/5 rounded-xl hover:bg-white/5 transition-all">
+                    <Filter className="w-4 h-4 text-orange-500" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="top" className="rounded-b-3xl border-b-white/10 bg-background/95 backdrop-blur-xl max-h-[85vh] overflow-y-auto">
+                  <SheetHeader className="mb-6 text-left">
+                    <SheetTitle className="font-black tracking-widest uppercase text-lg flex items-center gap-2">
+                      <Filter className="w-5 h-5 text-orange-500" /> Filters
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col pb-8 pt-8">
+                    {renderFilters()}
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
 
@@ -311,7 +340,7 @@ const Anime = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
               {items.map((item) => (
                 <ContentCard key={item._id} item={item} type="anime" />
               ))}

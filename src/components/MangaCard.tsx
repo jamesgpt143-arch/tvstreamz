@@ -14,7 +14,7 @@ export const MangaCard = ({ manga }: MangaCardProps) => {
   return (
     <Link
       to={`/manga/${manga.id}`}
-      className="group relative block rounded-xl overflow-hidden bg-card transition-all duration-300 hover:scale-105 hover:shadow-xl"
+      className="group relative block rounded-[2rem] overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-500 hover:scale-105 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] active:scale-95"
     >
       {/* Cover Image */}
       <div className="aspect-[2/3] relative">
@@ -33,7 +33,7 @@ export const MangaCard = ({ manga }: MangaCardProps) => {
         )}
         
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-300" />
         
         {/* Status Badge */}
         <div className="absolute top-2 left-2">
@@ -60,7 +60,7 @@ export const MangaCard = ({ manga }: MangaCardProps) => {
 
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-bold text-sm line-clamp-2 text-white group-hover:text-white transition-colors drop-shadow-md">
           {manga.title}
         </h3>
         {manga.year && (
