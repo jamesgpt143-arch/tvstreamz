@@ -47,29 +47,107 @@ const fetchFromJikan = async (endpoint: string, params: Record<string, string | 
   return response.json();
 };
 
-export const fetchAnimeList = async (page = 1, size = 25, search = '', genres = '', sortBy = 'rank', sortOrder = 'asc'): Promise<AnimeResponse> => {
-  // Jikan's search endpoint: /anime
-  const params: Record<string, string | number> = { 
-    page, 
-    limit: size,
-    order_by: sortBy === 'ranking' ? 'rank' : sortBy,
-    sort: sortOrder 
+export const fetchAnimeList = async (page = 1, size = 25, search = '', genres = '', sortBy = 'popularity', sortOrder = 'desc'): Promise<AnimeResponse> => {
+  let sortStr = 'POPULARITY_DESC';
+  if (sortBy === 'rank') {
+    // Note: ranking in MAL usually means higher score is better. UI 'asc' means 1, 2, 3...
+    sortStr = sortOrder === 'asc' ? 'SCORE_DESC' : 'SCORE';
+  } else if (sortBy === 'popularity') {
+    // UI 'asc' for popularity means 1, 2, 3... which means highest popularity count in Anilist
+    sortStr = sortOrder === 'asc' ? 'POPULARITY_DESC' : 'POPULARITY';
+  } else if (sortBy === 'title') {
+    sortStr = sortOrder === 'asc' ? 'TITLE_ROMAJI' : 'TITLE_ROMAJI_DESC';
+  }
+
+  const variables: any = {
+    page,
+    perPage: size,
+    sort: [sortStr]
   };
-  
-  if (search) params.q = search;
-  if (genres && genres !== 'all') params.genres = genres;
-  
-  const result = await fetchFromJikan('/anime', params);
-  
-  // Map Jikan data to our app's internal format for compatibility
-  return {
-    data: result.data.map((item: any) => ({
-      ...item,
-      _id: item.mal_id.toString(),
-      image: item.images.webp.large_image_url || item.images.webp.image_url,
-    })),
-    pagination: result.pagination
-  };
+
+  if (search) variables.search = search;
+  if (genres && genres !== 'all') variables.genre = genres;
+
+  const query = `
+    query ($page: Int, $perPage: Int, $search: String, $sort: [MediaSort], $genre: String) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo {
+          currentPage
+          hasNextPage
+          lastPage
+        }
+        media(search: $search, type: ANIME, sort: $sort, genre: $genre) {
+          idMal
+          id
+          title {
+            romaji
+            english
+          }
+          coverImage {
+            large
+          }
+          description(asHtml: false)
+          format
+          status
+          averageScore
+          genres
+          episodes
+        }
+      }
+    }
+  `;
+
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ query, variables })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anilist API Error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const pageData = result?.data?.Page;
+
+    if (!pageData) {
+      return { data: [], pagination: { last_visible_page: 1, has_next_page: false, current_page: 1 } };
+    }
+
+    return {
+      data: pageData.media.map((item: any) => ({
+        mal_id: item.idMal || item.id,
+        _id: (item.idMal || item.id).toString(),
+        title: item.title.english || item.title.romaji,
+        image: item.coverImage?.large || '',
+        images: {
+          webp: {
+            image_url: item.coverImage?.large || '',
+            large_image_url: item.coverImage?.large || '',
+          }
+        },
+        synopsis: item.description || '',
+        type: item.format || 'TV',
+        status: item.status || 'FINISHED',
+        score: item.averageScore ? item.averageScore / 10 : 0,
+        genres: (item.genres || []).map((g: string) => ({ name: g })),
+        rank: 0,
+        episodes: item.episodes || 0,
+      })),
+      pagination: {
+        last_visible_page: pageData.pageInfo.lastPage,
+        has_next_page: pageData.pageInfo.hasNextPage,
+        current_page: pageData.pageInfo.currentPage,
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching from Anilist:", error);
+    throw error;
+  }
 };
 
 export const getAnimeById = async (id: string): Promise<any> => {
@@ -84,8 +162,29 @@ export const getAnimeById = async (id: string): Promise<any> => {
 };
 
 export const getAnimeGenres = async (): Promise<any[]> => {
-  const result = await fetchFromJikan('/genres/anime');
-  return result.data.map((g: any) => ({ id: g.mal_id, name: g.name }));
+  const query = `
+    query {
+      GenreCollection
+    }
+  `;
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ query })
+    });
+    
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return data?.data?.GenreCollection?.map((g: string) => ({ id: g, name: g })) || [];
+  } catch (error) {
+    console.error('Error fetching Anilist genres:', error);
+    return [];
+  }
 };
 
 export const getAnilistIdFromMalId = async (malId: number | string): Promise<string | null> => {

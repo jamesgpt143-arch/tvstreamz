@@ -97,6 +97,9 @@ const Anime = () => {
       } else {
         setDropdownResults([]);
         setIsDropdownOpen(false);
+        if (search.trim() === '') {
+          setDebouncedSearch('');
+        }
       }
     }, 300);
     return () => clearTimeout(timer);
