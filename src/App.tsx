@@ -36,6 +36,7 @@ import { MaintenanceOverlay } from '@/components/MaintenanceOverlay';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { SEOManager } from '@/components/SEOManager';
 import { CommunityChat } from '@/components/CommunityChat';
+import { WelcomePopup } from '@/components/WelcomePopup';
 import { useState, useEffect } from "react";
 import { useLocation, BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,6 +155,7 @@ const App = () => {
                 <Sonner />
                 <UpdatePrompt />
                 <AnnouncementBar />
+                <WelcomePopup />
                 
                 <div className="pb-16 md:pb-0">
                   <Routes>

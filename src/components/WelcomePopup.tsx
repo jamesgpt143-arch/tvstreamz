@@ -1,155 +1,83 @@
-import { useState, useEffect } from 'react';
-import { X, Coffee } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-// BAGO: I-import ang Capacitor Browser plugin para magbukas sa labas ng app ang mga links
-import { Browser } from '@capacitor/browser';
-
-interface WelcomePopupData {
-  enabled: boolean;
-  emoji: string;
-  title: string;
-  message: string;
-  button_text: string;
-  tags: string[];
-  link_url?: string;
-  link_text?: string;
-}
-
-const defaultData: WelcomePopupData = {
-  enabled: true,
-  emoji: '🎬',
-  title: 'Welcome to TVStreamz!',
-  message: 'Stream your favorite movies, TV shows, anime, and live TV channels for free. Enjoy unlimited entertainment anytime, anywhere!',
-  button_text: 'Start Watching 🍿',
-  tags: ['Movies', 'TV Shows', 'Anime', 'Live TV'],
-  link_url: '',
-  link_text: ''
-};
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const WelcomePopup = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [data, setData] = useState<WelcomePopupData>(defaultData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const fetchSettingsAndShow = async () => {
-      try {
-        const { data: settings, error } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'welcome_popup')
-          .single();
-
-        if (!error && settings?.value) {
-          const popupData = { ...defaultData, ...(settings.value as unknown as WelcomePopupData) };
-          setData(popupData);
-          
-          // Only show if enabled (appears every time homepage is opened)
-          if (popupData.enabled) {
-            setIsOpen(true);
-          }
-        } else {
-          // Fallback to default - show every time
-          setIsOpen(true);
-        }
-      } catch (error) {
-        console.error('Error fetching welcome popup settings:', error);
-        // Fallback to default
-        setIsOpen(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSettingsAndShow();
+    // Check if the popup has been shown before
+    const hasSeenPopup = sessionStorage.getItem("hasSeenWelcomePopup");
+    if (!hasSeenPopup) {
+      // Small delay to make it feel less intrusive on immediate load
+      const timer = setTimeout(() => {
+        setOpen(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
-  const handleStartWatching = () => {
-    setIsOpen(false);
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-  };
-
-  // BAGO: Universal link opener para sa Capacitor / Web
-  const handleOpenLink = async (url: string) => {
-    try {
-      await Browser.open({ url });
-    } catch (error) {
-      // Fallback kung naka-web browser lang
-      window.open(url, '_blank');
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      sessionStorage.setItem("hasSeenWelcomePopup", "true");
     }
   };
 
-  if (isLoading || !isOpen) return null;
+  const handleBannerClick = () => {
+    sessionStorage.setItem("hasSeenWelcomePopup", "true");
+    setOpen(false);
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden border-primary/20">
-        {/* Close button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 top-2 z-50 h-8 w-8 rounded-full bg-background/80 hover:bg-background"
-          onClick={handleClose}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden bg-transparent border-none shadow-none">
+        <a 
+          href="https://luckywatch.pro/u/oatno" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          onClick={handleBannerClick}
+          className="block w-full h-full relative group cursor-pointer"
         >
-          <X className="h-4 w-4" />
-        </Button>
-
-        {/* Welcome Content */}
-        <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5">
-          <div className="space-y-4 text-center">
-            <div className="text-5xl">{data.emoji}</div>
-            <h2 className="text-2xl font-bold text-foreground">
-              {data.title}
-            </h2>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-              {data.message}
-            </p>
-
-            {/* BAGO: Clickable Link na pinapagana ng Capacitor Browser */}
-            {data.link_text && data.link_url && (
-              <button
-                onClick={() => handleOpenLink(data.link_url!)}
-                className="inline-block mt-2 text-primary hover:text-primary/80 font-medium underline underline-offset-4 text-sm transition-colors bg-transparent border-none p-0 cursor-pointer"
-              >
-                {data.link_text}
-              </button>
-            )}
-
-            <div className="flex flex-wrap justify-center gap-2 pt-2">
-              {data.tags.map((tag) => (
-                <span key={tag} className="px-2 py-1 bg-primary/20 rounded-full text-xs text-primary">
-                  {tag}
-                </span>
-              ))}
+          {/* Replace this src with the actual path to the uploaded image if you save it to public/ folder */}
+          <img 
+            src="/lucky-watch-banner.jpg" 
+            alt="Lucky Watch - Watch Videos and Earn Money" 
+            className="w-full h-auto rounded-lg shadow-2xl object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            onError={(e) => {
+              // Fallback if image is not yet uploaded
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          
+          {/* Fallback content if image fails to load */}
+          <div className="hidden w-full aspect-[2/3] bg-[#0b0c10] border border-zinc-800 rounded-lg flex flex-col items-center justify-center p-6 text-center relative overflow-hidden bg-cover bg-center" style={{backgroundImage: 'url("https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?q=80&w=600&auto=format&fit=crop")'}}>
+            <div className="absolute inset-0 bg-black/60 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+            
+            <div className="relative z-10 w-full h-full flex flex-col items-center justify-between py-4">
+              <div className="flex items-center gap-2 self-start mb-auto">
+                <div className="w-8 h-8 bg-[#c4ff2b] rounded-full flex items-center justify-center text-black font-bold text-xl">
+                  ♣
+                </div>
+                <span className="text-white font-bold tracking-wider">LUCKY WATCH</span>
+              </div>
+              
+              <div className="mt-auto w-full mb-6">
+                <h2 className="text-white text-3xl font-black uppercase mb-3 leading-tight text-left">
+                  Watch Videos<br />and <span className="text-[#c4ff2b]">Earn Money</span>
+                </h2>
+                
+                <p className="text-gray-300 text-base text-left mb-6 font-medium">
+                  Without investments<br />and any skills.
+                </p>
+                
+                <button className="w-full bg-[#c4ff2b] hover:bg-[#aee615] text-black font-bold py-3 px-8 rounded-full text-lg transition-colors">
+                  START
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Bottom action - May Ko-fi button na sa ibabaw ng Start Watching */}
-        <div className="p-4 bg-muted/30 border-t border-border flex flex-col gap-3">
-          
-          {/* BAGO: Ko-fi Donation Button na pinapagana ng Capacitor Browser */}
-          <button
-            onClick={() => handleOpenLink('https://ko-fi.com/james17582')}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF5E5B] hover:bg-[#E05350] text-white font-bold transition-all shadow-md hover:shadow-lg border-none cursor-pointer"
-          >
-            <Coffee className="w-5 h-5" />
-            Buy Us a Coffee to Keep Servers Free!
-          </button>
-
-          {/* Original Start Watching Button */}
-          <Button 
-            className="w-full" 
-            onClick={handleStartWatching}
-          >
-            {data.button_text}
-          </Button>
-        </div>
+        </a>
       </DialogContent>
     </Dialog>
   );
