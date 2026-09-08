@@ -11,10 +11,12 @@ interface YouTubePlayerProps {
 export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, isChannel = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false); // Start as false to be safe with autoplay
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const sendCommand = useCallback((func: string, args: any = []) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -57,6 +59,23 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
     }
   };
 
+  const resetControlsTimeout = useCallback(() => {
+    setShowControls(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (isPlaying && hasStarted) {
+      timeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2500);
+    }
+  }, [isPlaying, hasStarted]);
+
+  useEffect(() => {
+    resetControlsTimeout();
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [isPlaying, hasStarted, resetControlsTimeout]);
+
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -73,7 +92,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
           data = event.data;
         }
 
-        // Handle both 'onStateChange' and 'infoDelivery' events from YouTube API
         let state = -1;
         if (data.event === 'onStateChange') {
           state = data.info;
@@ -82,13 +100,12 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
         }
 
         if (state !== -1) {
-          // 1: playing, 3: buffering
           if (state === 1 || state === 3) {
             setHasStarted(true);
             setIsPlaying(true);
-          } else if (state === 2) { // 2: paused
+          } else if (state === 2) {
             setIsPlaying(false);
-          } else if (state === 0) { // 0: ended
+          } else if (state === 0) {
             setIsPlaying(false);
           }
         }
@@ -100,17 +117,14 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
   }, []);
 
   useEffect(() => {
-    // Reset state for new video
     setIsPlaying(false);
     setIsLoading(true);
     setHasStarted(false);
     
-    // Initial play attempt
     const timer = setTimeout(() => {
       sendCommand('playVideo');
     }, 1000);
 
-    // Poll for state to ensure sync
     const pollInterval = setInterval(() => {
       sendCommand('getPlayerState');
     }, 1000);
@@ -128,13 +142,16 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full group bg-black overflow-hidden select-none rounded-xl"
+      className="relative w-full h-full bg-black overflow-hidden select-none rounded-xl"
+      onMouseMove={resetControlsTimeout}
+      onTouchStart={resetControlsTimeout}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
     >
       <iframe
         ref={iframeRef}
         src={embedUrl}
         title={title}
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full pointer-events-none"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
@@ -148,29 +165,36 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
           e.preventDefault();
           e.stopPropagation();
           togglePlay();
+          resetControlsTimeout();
         }}
       />
 
       {/* Loading Indicator */}
       {isLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
         </div>
       )}
 
       {/* Control UI */}
       <div className={cn(
-        "absolute inset-0 z-30 flex flex-col items-center justify-center transition-all duration-300",
-        (isPlaying && hasStarted) 
-          ? "opacity-0 group-hover:opacity-100 bg-black/20 pointer-events-none" 
-          : "opacity-100 bg-black/40 backdrop-blur-[2px] pointer-events-auto"
+        "absolute inset-0 z-30 flex flex-col items-center justify-center transition-all duration-500 pointer-events-none",
+        (!isPlaying || !hasStarted) 
+          ? "opacity-100 bg-black/40 backdrop-blur-[2px]" 
+          : showControls
+            ? "opacity-100 bg-black/20"
+            : "opacity-0"
       )}>
         <button 
           onClick={(e) => {
             e.stopPropagation();
             togglePlay();
+            resetControlsTimeout();
           }}
-          className="relative group/btn transform transition-transform hover:scale-110 active:scale-95 pointer-events-auto"
+          className={cn(
+            "relative transform transition-transform hover:scale-110 active:scale-95",
+            (!isPlaying || !hasStarted || showControls) ? "pointer-events-auto" : "pointer-events-none"
+          )}
         >
           {(!isPlaying || !hasStarted) && !isLoading && (
             <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
@@ -191,15 +215,22 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
             onClick={(e) => {
               e.stopPropagation();
               toggleFullscreen();
+              resetControlsTimeout();
             }}
-            className="p-3 rounded-xl bg-white/10 backdrop-blur-2xl border border-white/20 hover:bg-white/20 transition-all active:scale-90"
+            className={cn(
+              "p-3 rounded-xl bg-white/10 backdrop-blur-2xl border border-white/20 hover:bg-white/20 transition-all active:scale-90",
+              (!isPlaying || !hasStarted || showControls) ? "pointer-events-auto" : "pointer-events-none"
+            )}
           >
             {isFullscreen ? <Minimize className="w-6 h-6 text-white" /> : <Maximize className="w-6 h-6 text-white" />}
           </button>
         </div>
 
-        {/* Bottom Metadata - Old Version (Hidden but kept for structure if needed) */}
-        <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 opacity-0">
+        {/* Bottom Metadata */}
+        <div className={cn(
+          "absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-all duration-500",
+          (!isPlaying || !hasStarted || showControls) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+        )}>
           <p className="text-white font-bold text-xl drop-shadow-lg tracking-tight">
             {title}
           </p>
@@ -207,8 +238,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, title, is
             {isPlaying ? (isChannel ? 'Live Streaming' : 'Now Playing') : 'Paused'}
           </p>
         </div>
-
-
       </div>
 
       {/* Interaction Hint */}
