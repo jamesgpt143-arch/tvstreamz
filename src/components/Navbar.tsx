@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Mail, Shield, MonitorUp, ListMusic } from 'lucide-react';
+import { Search, Tv, Film, MonitorPlay, Home, Sparkles, Users, Menu, ListVideo, Clock, Mail, Shield, MonitorUp, ListMusic, LayoutGrid } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
@@ -81,6 +81,7 @@ export const Navbar = () => {
     { path: '/tv-shows', label: 'TV Shows', icon: MonitorPlay },
     { path: '/anime', label: 'Anime', icon: Sparkles },
     { path: '/live-tv', label: 'Live TV', icon: Tv },
+    { path: '/multiview', label: 'Multi-View', icon: LayoutGrid },
   ];
 
   return (
@@ -206,6 +207,18 @@ export const Navbar = () => {
                         <div>
                           <p className="font-black text-xs uppercase tracking-widest">Playlist Player</p>
                           <p className="text-[10px] text-zinc-500">M3U & DRM Player</p>
+                        </div>
+                      </div>
+                    </Link>
+
+                    <Link to="/multiview" onClick={() => setIsMenuOpen(false)} className="group flex items-center justify-between p-4 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <LayoutGrid className="w-5 h-5 text-orange-500" />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs uppercase tracking-widest text-orange-500">Multi-View Studio</p>
+                          <p className="text-[10px] text-zinc-400">Quad-Stream Live TV</p>
                         </div>
                       </div>
                     </Link>

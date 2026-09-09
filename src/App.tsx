@@ -24,6 +24,7 @@ import ComickMangaReader from "./pages/ComickMangaReader";
 import NotFound from "./pages/NotFound";
 import IPTV from "./pages/IPTV";
 import PlaylistPlayer from "./pages/PlaylistPlayer";
+import MultiView from "./pages/MultiView";
 
 
 import TempMail from "./pages/TempMail";
@@ -181,6 +182,7 @@ const App = () => {
                     <Route path="/text-to-speech" element={<TextToSpeech />} />
                     <Route path="/custom-channels" element={<CustomChannels />} />
                     <Route path="/playlist-player" element={<PlaylistPlayer />} />
+                    <Route path="/multiview" element={<MultiView />} />
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>

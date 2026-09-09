@@ -6,7 +6,7 @@ import { type Channel } from '@/lib/channels';
 import { useChannels, toAppChannel } from '@/hooks/useChannels';
 import { useChannelViews } from '@/hooks/useChannelViews';
 import { usePagePopup } from '@/hooks/usePagePopup';
-import { Radio, Filter, Star, Trophy, Coffee, Loader2, Heart } from 'lucide-react';
+import { Radio, Filter, Star, Trophy, Coffee, Loader2, Heart, LayoutGrid } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORIES, type ChannelCategory } from '@/lib/channelCategories';
 import { Button } from '@/components/ui/button';
@@ -96,10 +96,17 @@ const LiveTV = () => {
                 </div>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{getDynamicTitle()}</h1>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <p className="text-muted-foreground transition-all duration-300">
                   {channels.length} channels available
                 </p>
+                <Link
+                  to="/multiview"
+                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 transition-all text-xs font-bold border border-orange-500/30"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  MULTI-VIEW MODE
+                </Link>
                 <Link
                   to="/live-events"
                   className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs font-bold border border-primary/20"
