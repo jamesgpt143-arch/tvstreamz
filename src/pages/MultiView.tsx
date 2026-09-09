@@ -25,28 +25,16 @@ const MultiView = () => {
     return (dbChannels || []).map(toAppChannel);
   }, [dbChannels]);
 
-  // Up to 4 slot channels
+  // Up to 4 slot channels (starts empty, user selects streams)
   const [slots, setSlots] = useState<(Channel | null)[]>([null, null, null, null]);
   const [layout, setLayout] = useState<LayoutMode>('4-grid');
-  const [unmutedSlot, setUnmutedSlot] = useState<number>(0);
+  const [unmutedSlot, setUnmutedSlot] = useState<number>(-1);
 
   // Channel Picker Dialog State
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [targetSlot, setTargetSlot] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-
-  // Auto-fill initial channels if slots are completely empty and channels load
-  useMemo(() => {
-    if (allChannels.length > 0 && slots.every(s => s === null)) {
-      setSlots([
-        allChannels[0] || null,
-        allChannels[1] || null,
-        allChannels[2] || null,
-        allChannels[3] || null,
-      ]);
-    }
-  }, [allChannels]);
 
   const handleOpenSelector = (slotIndex: number) => {
     setTargetSlot(slotIndex);
